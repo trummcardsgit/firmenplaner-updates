@@ -16,7 +16,21 @@ function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show")
 function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
 async function load(){if(!state.user)return;const [a,b]=await Promise.all([db.from("tp_companies").select("*").order("name"),db.from("tp_entries").select("*").order("created_at",{ascending:false})]);if(a.error)throw a.error;if(b.error)throw b.error;state.companies=a.data||[];state.entries=b.data||[];render();checkReminders().catch(console.warn);}
 function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];}}
-async function auth(create){const email=$("login-email").value.trim(),password=$("login-password").value;$("login-submit").disabled=true;try{const r=create?await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await db.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(create&&!r.data.session)notice("Konto erstellt. Bitte E-Mail-Bestätigung öffnen.");else if(r.data.user)showApp(r.data.user);}catch(e){fail(e)}finally{$("login-submit").disabled=false;}}
+async function auth(create){
+  const emailField=$("login-email"),passwordField=$("login-password");
+  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
+  const email=emailField.value.trim(),password=passwordField.value;
+  $("login-submit").disabled=true;$("signup").disabled=true;
+  try{
+    const r=create
+      ? await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}})
+      : await db.auth.signInWithPassword({email,password});
+    if(r.error)throw r.error;
+    if(create&&!r.data.session)notice("Registrierung angefragt. Bei neuen Konten bitte E-Mail bestätigen. Falls dein Konto bereits existiert, klicke auf Anmelden; es wird keine neue E-Mail verschickt.");
+    else if(r.data.session?.user)showApp(r.data.session.user);
+  }catch(e){fail(e)}
+  finally{$("login-submit").disabled=false;$("signup").disabled=false;}
+}
 $("auth-form").addEventListener("submit",e=>{e.preventDefault();auth(false)});
 $("signup").addEventListener("click",()=>auth(true));
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
