@@ -21,6 +21,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: App-Code pruefen
+        run: node --check cloud/public/app.js
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
