@@ -21,6 +21,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Smartphone-Icons aus dem Original-Logo erstellen
+        run: |
+          python3 -m pip install --user Pillow==11.3.0
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          folder=Path('cloud/public/icons')
+          logo=Image.open(folder/'logo-full.webp').convert('RGB')
+          icon=logo.crop((68,35,190,159))
+          for size in (192,512):
+              icon.resize((size,size),Image.Resampling.LANCZOS).save(folder/f'icon-{size}.png',format='PNG')
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
