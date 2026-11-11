@@ -3,7 +3,7 @@ const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
-const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[]};
+const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -36,7 +36,7 @@ async function load(){
  render();
  checkReminders().catch(console.warn);
 }
-function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];}}
+function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -72,6 +72,7 @@ function settings(){
  const admin=state.isAdmin?
  '<div class="panel"><h2>Benutzer einladen</h2><p>Nur du als Administrator kannst weitere Personen freischalten. Sie erhalten einen Einladungslink per E-Mail und legen danach ihr eigenes Passwort fest.</p>'+
  '<form id="invite-form"><label>E-Mail-Adresse des neuen Benutzers<input type="email" id="invite-email" required autocomplete="off" placeholder="person@firma.at"></label><button class="primary" type="submit">Einladung senden</button></form>'+
+ (state.inviteLink?'<div class="warning" style="margin-top:18px"><strong>Einladungslink erstellt</strong><p>Der SMTP-Versand ist für diese Adresse nicht verfügbar. Kopiere diesen vertraulichen Link und sende ihn ausschließlich an die eingeladene Person.</p><input type="text" id="invite-share-link" readonly value="'+esc(state.inviteLink)+'"><button type="button" class="subtle" id="copy-invite-link" style="margin-top:10px">Einladungslink kopieren</button></div>':'')+
  '<h3 style="margin-top:24px">Bisherige Einladungen</h3>'+
  (state.invites.length?state.invites.map(i=>'<p class="muted">'+esc(i.email)+' · '+esc(i.status==="sent"?"Gesendet":i.status==="pending"?"In Bearbeitung":"Fehlgeschlagen")+' · '+esc(fmt(i.created_at))+'</p>').join(""):'<p class="muted">Noch keine Einladungen</p>')+
  '</div>':"";
@@ -98,6 +99,12 @@ if(b.dataset.companyEdit)return openCompany(state.companies.find(c=>c.id===b.dat
 if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!confirm("Firma "+c.name+" und alle zugehörigen Aufgaben löschen?"))return;const {error}=await db.from("tp_companies").delete().eq("id",c.id);if(error)throw error;return await load();}
 if(b.dataset.delete){if(!confirm("Diesen Eintrag endgültig löschen?"))return;const {error}=await db.from("tp_entries").delete().eq("id",b.dataset.delete);if(error)throw error;return await load();}
 if(b.dataset.status){const x=state.entries.find(e=>e.id===b.dataset.status);const {error}=await db.from("tp_entries").update({status:x.status==="done"?"open":"done",updated_at:new Date().toISOString()}).eq("id",x.id);if(error)throw error;return await load();}
+if(b.id==="copy-invite-link"){
+ if(!state.isAdmin||!state.inviteLink)return;
+ await navigator.clipboard.writeText(state.inviteLink);
+ notice("Einladungslink kopiert. Nur privat weitergeben.");
+ return;
+}
 if(b.id==="enable-notifications"){if(!("Notification" in window))return notice("Browser unterstützt keine Benachrichtigungen.");return notice("Berechtigung: "+await Notification.requestPermission());}
 if(b.id==="test-notification"){if(!("Notification" in window)||Notification.permission!=="granted")return notice("Bitte zuerst Benachrichtigungen erlauben.");await showNotification("TrummPlaner","Dies ist eine Testbenachrichtigung.");return notice("Testbenachrichtigung ausgelöst.");}
 if(b.id==="install-app"){if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else notice("Im Browsermenü App installieren / Zum Home-Bildschirm wählen.");}
@@ -119,7 +126,8 @@ $("content").addEventListener("submit",async event=>{
    });
    const body=await res.json().catch(()=>({error:"Ungültige Serverantwort"}));
    if(!res.ok)throw new Error(body.error||"Einladung fehlgeschlagen (HTTP "+res.status+")");
-   notice("Einladung wurde an "+email+" versendet.");
+   state.inviteLink=body.delivery==="manual"&&typeof body.link==="string"?body.link:null;
+   notice(state.inviteLink?"Einladungslink erstellt. Bitte unten kopieren und privat versenden.":"Einladung wurde an "+email+" versendet.");
    await load();
   }catch(err){fail(err)}
   finally{btn.disabled=false;}
