@@ -1,0 +1,13 @@
+{
+  "name": "FirmenPlaner – Aufgaben & Notizen",
+  "short_name": "FirmenPlaner",
+  "description": "Aufgaben und Notizen je Firma mit Push-Erinnerungen.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#111d32",
+  "lang": "de-AT",
+  "icons": [{"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
+}

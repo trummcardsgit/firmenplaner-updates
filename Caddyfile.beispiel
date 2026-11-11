@@ -1,0 +1,5 @@
+# Beispiel: Domain und Server-IP/Port anpassen. HTTPS-Zertifikat wird von Caddy beschafft.
+aufgaben.beispiel.at {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:4173
+}

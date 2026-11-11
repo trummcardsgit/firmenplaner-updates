@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111d32">
+  <meta name="description" content="FirmenPlaner - Firmen, Notizen, Aufgaben und fällige Erinnerungen an einem Ort.">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles.css">
+  <title>FirmenPlaner</title>
+</head>
+<body>
+  <div id="gate" class="gate">
+    <div class="gate-hero">
+      <div class="brand-mark large">FP</div>
+      <div class="eyebrow">DEIN DIGITALER ARBEITSPLATZ</div>
+      <h1>Jede Aufgabe.<br><span>Genau im Blick.</span></h1>
+      <p>Firmennotizen organisieren, Aufgaben planen und zum richtigen Zeitpunkt erinnert werden.</p>
+      <div class="gate-feature"><span class="feature-symbol">✓</span> Aufgaben nach Firmen strukturieren</div>
+      <div class="gate-feature"><span class="feature-symbol">✓</span> Notizen in Aufgaben umwandeln</div>
+      <div class="gate-feature"><span class="feature-symbol">✓</span> Fälligkeiten und Push-Erinnerungen</div>
+    </div>
+    <div class="gate-form-wrap">
+      <form id="auth-form" class="gate-card">
+        <div class="tiny-label" id="auth-kicker">Willkommen</div>
+        <h2 id="auth-heading">FirmenPlaner öffnen</h2>
+        <p id="auth-description" class="muted">Melde dich mit deinem Passwort an.</p>
+        <label class="field-label" for="auth-password">Passwort</label>
+        <input id="auth-password" type="password" autocomplete="current-password" minlength="10" required placeholder="Dein Passwort">
+        <p class="auth-hint" id="auth-hint" hidden>Mindestens 10 Zeichen. Merke es dir gut – es gibt noch keine Passwort-Wiederherstellung.</p>
+        <button id="auth-submit" class="btn btn-primary full" type="submit">Anmelden</button>
+        <div id="auth-error" class="error" role="alert" hidden></div>
+        <p class="auth-footer">Deine Daten bleiben auf deinem eigenen Server gespeichert.</p>
+      </form>
+    </div>
+  </div>
+
+  <div id="app" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-mark">FP</div><div><strong>FirmenPlaner</strong><small>Mein Aufgabenbüro</small></div></div>
+      <div class="sidebar-label">ARBEITSBEREICH</div>
+      <nav class="side-nav" aria-label="Hauptnavigation">
+        <button class="nav-link active" data-view="dashboard"><span>◫</span> Übersicht</button>
+        <button class="nav-link" data-view="tasks"><span>☷</span> Alle Aufgaben</button>
+        <button class="nav-link" data-view="notes"><span>▤</span> Notizen</button>
+        <button class="nav-link" data-view="companies"><span>▦</span> Firmen</button>
+      </nav>
+      <div class="sidebar-label with-top">VERWALTUNG</div>
+      <nav class="side-nav"><button class="nav-link" data-view="settings"><span>⚙</span> Einstellungen</button></nav>
+      <div class="sidebar-bottom"><span class="online-dot"></span> Deine Aufgaben. Dein Überblick.<small>Version 1.1.1 · PWA</small></div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <div class="heading-group"><div class="mobile-brand">FP <span>FirmenPlaner</span></div><div id="page-eyebrow" class="eyebrow">DEIN ÜBERBLICK</div><h1 id="page-title">Guten Überblick!</h1><p id="page-subtitle" class="muted">Das steht heute bei dir an.</p></div>
+        <div class="topbar-actions"><button class="btn btn-secondary desktop-only" id="quick-note">+ Notiz</button><button class="btn btn-primary" id="quick-task">+ Neue Aufgabe</button></div>
+      </header>
+      <section id="content" class="main-content" aria-live="polite"></section>
+    </main>
+    <nav class="mobile-nav" aria-label="Mobile Navigation">
+      <button data-view="dashboard" class="mobile-nav-item active"><span>◫</span>Übersicht</button>
+      <button data-view="tasks" class="mobile-nav-item"><span>☷</span>Aufgaben</button>
+      <button data-view="notes" class="mobile-nav-item"><span>▤</span>Notizen</button>
+      <button data-view="companies" class="mobile-nav-item"><span>▦</span>Firmen</button>
+      <button data-view="settings" class="mobile-nav-item"><span>⚙</span>Mehr</button>
+    </nav>
+  </div>
+
+  <dialog id="entry-dialog" class="dialog">
+    <form id="entry-form" class="modal-content">
+      <div class="modal-head"><div><span class="tiny-label">EINTRAG BEARBEITEN</span><h2 id="entry-modal-title">Neue Aufgabe</h2></div><button type="button" class="icon-button close-dialog" aria-label="Schließen">×</button></div>
+      <div class="modal-body">
+        <div class="field"><label for="entry-type">Art des Eintrags</label><select id="entry-type"><option value="task">Aufgabe mit Fälligkeit</option><option value="note">Notiz</option></select></div>
+        <div class="field"><label for="entry-company">Firma <span class="required">*</span></label><div class="inline-select"><select id="entry-company" required></select><button type="button" id="entry-company-add" class="btn btn-soft" title="Firma anlegen">+</button></div></div>
+        <div class="field"><label for="entry-title">Titel <span class="required">*</span></label><input id="entry-title" maxlength="140" required placeholder="z. B. Drucker im Büro prüfen"></div>
+        <div class="field"><label for="entry-description">Beschreibung / Problembeschreibung</label><textarea id="entry-description" rows="5" maxlength="10000" placeholder="Was ist passiert? Welche Schritte sind nötig? Ansprechpartner, Gerät, weitere Infos ..."></textarea></div>
+        <div id="task-options">
+          <div class="field-row"><div class="field"><label for="entry-due">Fällig am (Datum und Uhrzeit)</label><input id="entry-due" type="datetime-local" step="60"></div><div class="field"><label for="entry-reminder">Zusätzlich vorher erinnern</label><select id="entry-reminder"><option value="0">Keine Vorwarnung</option><option value="5">5 Minuten davor</option><option value="15">15 Minuten davor</option><option value="30">30 Minuten davor</option><option value="60">1 Stunde davor</option><option value="1440">1 Tag davor</option></select></div></div>
+          <p class="field-note">Zum Fälligkeitszeitpunkt erfolgt immer eine Erinnerung, wenn Push aktiviert ist.</p>
+          <div class="field-row"><div class="field"><label for="entry-priority">Priorität</label><select id="entry-priority"><option value="normal">Normal</option><option value="high">Hoch</option><option value="low">Niedrig</option></select></div><div class="field"><label for="entry-status">Status</label><select id="entry-status"><option value="open">Offen</option><option value="done">Erledigt</option></select></div></div>
+        </div>
+        <div id="entry-error" class="error" hidden></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary close-dialog">Abbrechen</button><button type="submit" class="btn btn-primary" id="entry-save">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="company-dialog" class="dialog small-dialog">
+    <form id="company-form" class="modal-content">
+      <div class="modal-head"><div><span class="tiny-label">FIRMENVERWALTUNG</span><h2 id="company-modal-title">Firma anlegen</h2></div><button class="icon-button close-dialog" type="button" aria-label="Schließen">×</button></div>
+      <div class="modal-body"><div class="field"><label for="company-name">Firmenname <span class="required">*</span></label><input id="company-name" maxlength="120" required placeholder="z. B. Muster GmbH"></div><div class="field"><label for="company-contact">Ansprechpartner / Zusatzinfo</label><input id="company-contact" maxlength="200" placeholder="Optional"></div><div id="company-error" class="error" hidden></div></div>
+      <div class="modal-actions"><button class="btn btn-secondary close-dialog" type="button">Abbrechen</button><button class="btn btn-primary" type="submit">Firma speichern</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
