@@ -2,7 +2,8 @@ import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
-const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all"};
+let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
+const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[]};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -14,8 +15,28 @@ const today=e=>e.due_at&&new Date(e.due_at).toDateString()===new Date().toDateSt
 let toastTimer,installPrompt;
 function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),6000);}
 function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
-async function load(){if(!state.user)return;const [a,b]=await Promise.all([db.from("tp_companies").select("*").order("name"),db.from("tp_entries").select("*").order("created_at",{ascending:false})]);if(a.error)throw a.error;if(b.error)throw b.error;state.companies=a.data||[];state.entries=b.data||[];render();checkReminders().catch(console.warn);}
-function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];}}
+async function load(){
+ if(!state.user)return;
+ const [a,b,adminStatus]=await Promise.all([
+  db.from("tp_companies").select("*").order("name"),
+  db.from("tp_entries").select("*").order("created_at",{ascending:false}),
+  db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle()
+ ]);
+ if(a.error)throw a.error;
+ if(b.error)throw b.error;
+ if(adminStatus.error)throw adminStatus.error;
+ state.companies=a.data||[];
+ state.entries=b.data||[];
+ state.isAdmin=!!adminStatus.data;
+ if(state.isAdmin){
+  const invites=await db.from("tp_invites").select("email,status,created_at").order("created_at",{ascending:false}).limit(40);
+  if(invites.error)throw invites.error;
+  state.invites=invites.data||[];
+ }else state.invites=[];
+ render();
+ checkReminders().catch(console.warn);
+}
+function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];}}
 async function auth(create){
   const emailField=$("login-email"),passwordField=$("login-password");
   if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -50,7 +71,21 @@ if(kind==="task"&&state.filter!=="all")data=data.filter(e=>state.filter==="overd
 data.sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));
 return '<div class="toolbar"><input id="search" placeholder="Titel, Firma oder Beschreibung suchen" value="'+esc(state.search)+'">'+(kind==="task"?'<select id="status-filter"><option value="all">Alle Status</option><option value="open">Offen</option><option value="done">Erledigt</option><option value="overdue">Überfällig</option></select>':"")+'<span class="counter">'+data.length+" Einträge</span></div>"+list(data);}
 function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' offene Aufgaben</span><div class="actions"><button data-company-edit="'+c.id+'">Bearbeiten</button><button data-company-delete="'+c.id+'" class="danger">Löschen</button></div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
-function settings(){return '<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+"</p><p>Deine Aufgaben und Firmen werden geschützt in Supabase gespeichert.</p></div>"+'<div class="panel"><h2>Erinnerungen</h2><p>Benachrichtigungen funktionieren bei geöffneter App. Für echte Push-Erinnerungen bei geschlossener App muss der Hintergrundversand noch eingerichtet werden.</p><div class="settings-actions"><button class="primary" id="enable-notifications">Benachrichtigungen erlauben</button><button class="subtle" id="test-notification">Testmeldung</button></div></div>'+'<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud 1.0.0</p></div>'+'<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON speichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';}
+function settings(){
+ const own='<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+
+ '</p><p>Deine Firmen und Aufgaben sind durch Benutzerrechte geschützt. Neue Konten erhalten nur eingeladene Personen.</p></div>';
+ const admin=state.isAdmin?
+ '<div class="panel"><h2>Benutzer einladen</h2><p>Nur du als Administrator kannst weitere Personen freischalten. Sie erhalten einen Einladungslink per E-Mail und legen danach ihr eigenes Passwort fest.</p>'+
+ '<form id="invite-form"><label>E-Mail-Adresse des neuen Benutzers<input type="email" id="invite-email" required autocomplete="off" placeholder="person@firma.at"></label><button class="primary" type="submit">Einladung senden</button></form>'+
+ '<h3 style="margin-top:24px">Bisherige Einladungen</h3>'+
+ (state.invites.length?state.invites.map(i=>'<p class="muted">'+esc(i.email)+' · '+esc(i.status==="sent"?"Gesendet":i.status==="pending"?"In Bearbeitung":"Fehlgeschlagen")+' · '+esc(fmt(i.created_at))+'</p>').join(""):'<p class="muted">Noch keine Einladungen</p>')+
+ '</div>':"";
+ const password='<div class="panel"><h2>Passwort festlegen oder ändern</h2><p>Nach der ersten Einladung hier dein Passwort erstellen. Das geht nur nach erfolgreicher Anmeldung über den Einladungslink.</p><form id="password-form"><label>Neues Passwort<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="subtle" type="submit">Passwort speichern</button></form></div>';
+ const reminder='<div class="panel"><h2>Erinnerungen</h2><p>Hinweise funktionieren bei geöffneter App. Erinnerungen bei geschlossener PWA benötigen noch den Hintergrund-Push-Dienst.</p><div class="settings-actions"><button class="primary" id="enable-notifications">Benachrichtigungen erlauben</button><button class="subtle" id="test-notification">Testmeldung</button></div></div>';
+ const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud – Zugang nur per Einladung</p></div>';
+ const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
+ return own+admin+password+reminder+install+backup;
+}
 function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];$("new-entry").style.display=state.view==="settings"?"none":"block";
 $("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="companies"?companies():settings();
@@ -73,6 +108,42 @@ if(b.id==="test-notification"){if(!("Notification" in window)||Notification.perm
 if(b.id==="install-app"){if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else notice("Im Browsermenü App installieren / Zum Home-Bildschirm wählen.");}
 if(b.id==="export-json"){const json=JSON.stringify({exported_at:new Date().toISOString(),companies:state.companies,entries:state.entries},null,2),url=URL.createObjectURL(new Blob([json],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="trummplaner-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }catch(e){fail(e)}});
+$("content").addEventListener("submit",async event=>{
+ if(event.target.id==="invite-form"){
+  event.preventDefault();
+  if(!state.isAdmin)return notice("Keine Administratorberechtigung.");
+  const email=$("invite-email").value.trim().toLowerCase(),btn=event.target.querySelector('button[type="submit"]');
+  btn.disabled=true;
+  try{
+   const {data:{session}}=await db.auth.getSession();
+   if(!session?.access_token)throw new Error("Bitte neu anmelden.");
+   const res=await fetch(cfg.supabaseUrl+"/functions/v1/tp-invite-user",{
+    method:"POST",
+    headers:{"content-type":"application/json","apikey":cfg.supabasePublishableKey,"authorization":"Bearer "+session.access_token},
+    body:JSON.stringify({email})
+   });
+   const body=await res.json().catch(()=>({error:"Ungültige Serverantwort"}));
+   if(!res.ok)throw new Error(body.error||"Einladung fehlgeschlagen (HTTP "+res.status+")");
+   notice("Einladung wurde an "+email+" versendet.");
+   await load();
+  }catch(err){fail(err)}
+  finally{btn.disabled=false;}
+ }
+ if(event.target.id==="password-form"){
+  event.preventDefault();
+  const btn=event.target.querySelector('button[type="submit"]');
+  btn.disabled=true;
+  try{
+   const pwd=$("new-password").value;
+   if(pwd.length<8)throw new Error("Mindestens acht Zeichen verwenden.");
+   const {error}=await db.auth.updateUser({password:pwd});
+   if(error)throw error;
+   $("new-password").value="";
+   notice("Dein Passwort wurde gespeichert.");
+  }catch(err){fail(err)}
+  finally{btn.disabled=false;}
+ }
+});
 $("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
 $("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
@@ -83,6 +154,12 @@ setInterval(()=>checkReminders().catch(console.warn),30000);
 setInterval(()=>{if(state.user&&!document.hidden&&navigator.onLine)load().catch(console.warn)},90000);
 window.addEventListener("online",()=>state.user&&load().catch(console.warn));
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)load().catch(console.warn);});
-db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT")showApp(null);else if(session?.user&&(!state.user||state.user.id!==session.user.id))showApp(session.user);});
+db.auth.onAuthStateChange((event,session)=>{
+ if(event==="SIGNED_OUT")showApp(null);
+ else if(session?.user){
+  if(!state.user||state.user.id!==session.user.id)showApp(session.user);
+  if(inviteFlow){inviteFlow=false;nav("settings");notice("Einladung angenommen! Bitte in Einstellungen ein neues Passwort festlegen.");}
+ }
+});
 db.auth.getUser().then(r=>showApp(r.data.user||null)).catch(fail);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(console.warn);
