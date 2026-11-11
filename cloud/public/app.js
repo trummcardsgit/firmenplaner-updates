@@ -1,0 +1,74 @@
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
+const cfg=window.TRUMMPLANER_CONFIG||{};
+const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);
+const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all"};
+const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
+const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
+const iso=x=>x?new Date(x).toISOString():null;
+const company=id=>state.companies.find(c=>c.id===id)?.name||"Unbekannte Firma";
+const active=()=>state.entries.filter(x=>x.kind==="task"&&x.status==="open");
+const overdue=e=>e.kind==="task"&&e.status==="open"&&e.due_at&&Date.parse(e.due_at)<Date.now();
+const today=e=>e.due_at&&new Date(e.due_at).toDateString()===new Date().toDateString();
+let toastTimer,installPrompt;
+function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),6000);}
+function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
+async function load(){if(!state.user)return;const [a,b]=await Promise.all([db.from("tp_companies").select("*").order("name"),db.from("tp_entries").select("*").order("created_at",{ascending:false})]);if(a.error)throw a.error;if(b.error)throw b.error;state.companies=a.data||[];state.entries=b.data||[];render();checkReminders().catch(console.warn);}
+function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];}}
+async function auth(create){const email=$("login-email").value.trim(),password=$("login-password").value;$("login-submit").disabled=true;try{const r=create?await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await db.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(create&&!r.data.session)notice("Konto erstellt. Bitte E-Mail-Bestätigung öffnen.");else if(r.data.user)showApp(r.data.user);}catch(e){fail(e)}finally{$("login-submit").disabled=false;}}
+$("auth-form").addEventListener("submit",e=>{e.preventDefault();auth(false)});
+$("signup").addEventListener("click",()=>auth(true));
+$("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
+function nav(view){state.view=view;state.filter="all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
+function chip(value,extra){return '<span class="pill '+(extra||"")+'">'+esc(value)+"</span>";}
+function row(e){let meta=chip(company(e.company_id),"gold")+chip(e.kind==="note"?"Notiz":"Aufgabe");
+if(e.kind==="task")meta+=chip(e.status==="done"?"Erledigt":overdue(e)?"Überfällig":"Offen",e.status==="done"?"green":overdue(e)?"red":"");
+if(e.priority==="high")meta+=chip("Dringend","red");
+return '<article class="item"><div class="meta">'+meta+"</div><h3>"+esc(e.title)+"</h3>"+(e.description?"<p>"+esc(e.description)+"</p>":"")+'<div class="meta">'+(e.due_at?"<span>📅 Fällig: "+esc(fmt(e.due_at))+"</span>":"")+(e.remind_at?"<span>🔔 Erinnerung: "+esc(fmt(e.remind_at))+"</span>":"")+'</div><div class="actions"><button data-edit="'+e.id+'">Bearbeiten</button>'+(e.kind==="note"?'<button data-convert="'+e.id+'">Als Aufgabe</button>':'<button data-status="'+e.id+'">'+(e.status==="done"?"Wieder öffnen":"Erledigen")+"</button>")+'<button class="danger" data-delete="'+e.id+'">Löschen</button></div></article>';}
+function list(items,empty){return items.length?items.map(row).join(""):'<div class="empty">'+esc(empty||"Keine Einträge vorhanden.")+"</div>";}
+function metric(t,n,h){return '<div class="metric '+(h||"")+'"><strong>'+n+"</strong><span>"+esc(t)+"</span></div>";}
+function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return '<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
+function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
+data=data.filter(e=>(e.title+" "+e.description+" "+company(e.company_id)).toLowerCase().includes(state.search.toLowerCase()));
+if(kind==="task"&&state.filter!=="all")data=data.filter(e=>state.filter==="overdue"?overdue(e):e.status===state.filter);
+data.sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));
+return '<div class="toolbar"><input id="search" placeholder="Titel, Firma oder Beschreibung suchen" value="'+esc(state.search)+'">'+(kind==="task"?'<select id="status-filter"><option value="all">Alle Status</option><option value="open">Offen</option><option value="done">Erledigt</option><option value="overdue">Überfällig</option></select>':"")+'<span class="counter">'+data.length+" Einträge</span></div>"+list(data);}
+function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' offene Aufgaben</span><div class="actions"><button data-company-edit="'+c.id+'">Bearbeiten</button><button data-company-delete="'+c.id+'" class="danger">Löschen</button></div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
+function settings(){return '<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+"</p><p>Deine Aufgaben und Firmen werden geschützt in Supabase gespeichert.</p></div>"+'<div class="panel"><h2>Erinnerungen</h2><p>Benachrichtigungen funktionieren bei geöffneter App. Für echte Push-Erinnerungen bei geschlossener App muss der Hintergrundversand noch eingerichtet werden.</p><div class="settings-actions"><button class="primary" id="enable-notifications">Benachrichtigungen erlauben</button><button class="subtle" id="test-notification">Testmeldung</button></div></div>'+'<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud 1.0.0</p></div>'+'<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON speichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';}
+function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];$("new-entry").style.display=state.view==="settings"?"none":"block";
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="companies"?companies():settings();
+const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
+const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}}
+function openCompany(c){$("company-id").value=c?.id||"";$("company-name").value=c?.name||"";$("company-contact").value=c?.contact||"";$("company-phone").value=c?.phone||"";$("company-email").value=c?.email||"";$("company-editor").showModal();}
+function openEntry(e){if(!state.companies.length){nav("companies");notice("Bitte zuerst eine Firma anlegen.");return;}const x=e||{};$("entry-id").value=x.id||"";$("entry-kind").value=x.kind||"task";$("entry-title").value=x.title||"";$("entry-description").value=x.description||"";$("entry-company").innerHTML=state.companies.map(c=>'<option value="'+c.id+'">'+esc(c.name)+"</option>").join("");$("entry-company").value=x.company_id||state.companies[0].id;$("entry-priority").value=x.priority||"normal";$("entry-status").value=x.status||"open";$("entry-due").value=inDate(x.due_at);$("entry-remind").value=inDate(x.remind_at);$("entry-heading").textContent=x.id?"Eintrag bearbeiten":"Neuen Eintrag erstellen";$("editor").showModal();}
+$("new-entry").addEventListener("click",()=>openEntry());
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
+$("content").addEventListener("click",async event=>{const b=event.target.closest("button");if(!b)return;try{
+if(b.id==="new-company")return openCompany();
+if(b.dataset.edit)return openEntry(state.entries.find(e=>e.id===b.dataset.edit));
+if(b.dataset.convert)return openEntry({...state.entries.find(e=>e.id===b.dataset.convert),kind:"task"});
+if(b.dataset.companyEdit)return openCompany(state.companies.find(c=>c.id===b.dataset.companyEdit));
+if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!confirm("Firma "+c.name+" und alle zugehörigen Aufgaben löschen?"))return;const {error}=await db.from("tp_companies").delete().eq("id",c.id);if(error)throw error;return await load();}
+if(b.dataset.delete){if(!confirm("Diesen Eintrag endgültig löschen?"))return;const {error}=await db.from("tp_entries").delete().eq("id",b.dataset.delete);if(error)throw error;return await load();}
+if(b.dataset.status){const x=state.entries.find(e=>e.id===b.dataset.status);const {error}=await db.from("tp_entries").update({status:x.status==="done"?"open":"done",updated_at:new Date().toISOString()}).eq("id",x.id);if(error)throw error;return await load();}
+if(b.id==="enable-notifications"){if(!("Notification" in window))return notice("Browser unterstützt keine Benachrichtigungen.");return notice("Berechtigung: "+await Notification.requestPermission());}
+if(b.id==="test-notification"){if(!("Notification" in window)||Notification.permission!=="granted")return notice("Bitte zuerst Benachrichtigungen erlauben.");await showNotification("TrummPlaner","Dies ist eine Testbenachrichtigung.");return notice("Testbenachrichtigung ausgelöst.");}
+if(b.id==="install-app"){if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else notice("Im Browsermenü App installieren / Zum Home-Bildschirm wählen.");}
+if(b.id==="export-json"){const json=JSON.stringify({exported_at:new Date().toISOString(),companies:state.companies,entries:state.entries},null,2),url=URL.createObjectURL(new Blob([json],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="trummplaner-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+}catch(e){fail(e)}});
+$("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
+$("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
+window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
+async function showNotification(title,body){const opts={body,icon:"./icons/icon-192.png"};if("serviceWorker" in navigator){const reg=await navigator.serviceWorker.ready;return reg.showNotification(title,opts)}return new Notification(title,opts);}
+async function checkReminders(){if(!state.user||!("Notification" in window)||Notification.permission!=="granted")return;const key="trummplaner-notified-"+state.user.id,sent=JSON.parse(localStorage.getItem(key)||"[]");for(const e of active()){const mark=e.id+"|"+e.remind_at;if(e.remind_at&&Date.parse(e.remind_at)<=Date.now()&&!sent.includes(mark)){await showNotification("TrummPlaner: "+e.title,company(e.company_id)+" · Fällig: "+fmt(e.due_at));sent.push(mark);}}localStorage.setItem(key,JSON.stringify(sent.slice(-200)));}
+setInterval(()=>checkReminders().catch(console.warn),30000);
+setInterval(()=>{if(state.user&&!document.hidden&&navigator.onLine)load().catch(console.warn)},90000);
+window.addEventListener("online",()=>state.user&&load().catch(console.warn));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)load().catch(console.warn);});
+db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT")showApp(null);else if(session?.user&&(!state.user||state.user.id!==session.user.id))showApp(session.user);});
+db.auth.getUser().then(r=>showApp(r.data.user||null)).catch(fail);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(console.warn);
