@@ -1,0 +1,1 @@
+window.TRUMMPLANER_CONFIG = { supabaseUrl:"https://ilmwoapvcluoravpsrjv.supabase.co", supabasePublishableKey:"sb_publishable_K3LUrl4tNLgthAFILk7JVQ_SPOrUbtm" };
