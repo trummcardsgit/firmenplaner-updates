@@ -37,23 +37,18 @@ async function load(){
  checkReminders().catch(console.warn);
 }
 function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];}}
-async function auth(create){
-  const emailField=$("login-email"),passwordField=$("login-password");
-  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
-  const email=emailField.value.trim(),password=passwordField.value;
-  $("login-submit").disabled=true;$("signup").disabled=true;
-  try{
-    const r=create
-      ? await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}})
-      : await db.auth.signInWithPassword({email,password});
-    if(r.error)throw r.error;
-    if(create&&!r.data.session)notice("Registrierung angefragt. Bei neuen Konten bitte E-Mail bestätigen. Falls dein Konto bereits existiert, klicke auf Anmelden; es wird keine neue E-Mail verschickt.");
-    else if(r.data.session?.user)showApp(r.data.session.user);
-  }catch(e){fail(e)}
-  finally{$("login-submit").disabled=false;$("signup").disabled=false;}
+async function login(){
+ const emailField=$("login-email"),passwordField=$("login-password");
+ if(!emailField.reportValidity()||!passwordField.reportValidity())return;
+ $("login-submit").disabled=true;
+ try{
+  const {data,error}=await db.auth.signInWithPassword({email:emailField.value.trim(),password:passwordField.value});
+  if(error)throw error;
+  if(data.session?.user)showApp(data.session.user);
+ }catch(e){fail(e)}
+ finally{$("login-submit").disabled=false;}
 }
-$("auth-form").addEventListener("submit",e=>{e.preventDefault();auth(false)});
-$("signup").addEventListener("click",()=>auth(true));
+$("auth-form").addEventListener("submit",e=>{e.preventDefault();login()});
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
 function nav(view){state.view=view;state.filter="all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
