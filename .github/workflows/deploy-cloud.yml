@@ -22,7 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: App-Code pruefen
-        run: node --check cloud/public/app.js
+        run: |
+          node --check cloud/public/app.js
+          node --check cloud/public/sw.js
+          node -e "JSON.parse(require('fs').readFileSync('cloud/public/manifest.webmanifest','utf8'))"
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
