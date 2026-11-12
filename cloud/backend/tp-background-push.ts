@@ -55,7 +55,22 @@ Deno.serve(async req=>{
     const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:cfg,error:cfgError}=await admin.from("tp_push_config").select("*").eq("only_row",true).maybeSingle();
     if(cfgError)return response({error:"Push configuration unavailable"},503);
-    if(req.method==="GET")return response({ready:!!cfg,publicKey:cfg?.vapid_public_key||null});
+    if(req.method==="GET"){
+      if(cfg)return response({ready:true,publicKey:cfg.vapid_public_key});
+      // Generate credentials only on Supabase's server and store them in RLS-protected config.
+      const keys=await webpush.generateVapidKeys({extractable:true});
+      const exported=await webpush.exportVapidKeys(keys);
+      const publicKey=await webpush.exportApplicationServerKey(keys);
+      const {error:createError}=await admin.from("tp_push_config").insert({
+        only_row:true,vapid_public_key:publicKey,vapid_jwk:exported,cron_token:randomToken()
+      });
+      if(createError){
+        const {data:existing,error:readError}=await admin.from("tp_push_config").select("vapid_public_key").eq("only_row",true).maybeSingle();
+        if(readError||!existing)return response({error:"Could not initialize the push service"},503);
+        return response({ready:true,publicKey:existing.vapid_public_key});
+      }
+      return response({ready:true,publicKey});
+    }
     let body: Record<string,unknown>={};
     try{body=await req.json() as Record<string,unknown>;}catch{return response({error:"Invalid JSON"},400);}
     const action=body.action;
