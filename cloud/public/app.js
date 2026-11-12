@@ -103,7 +103,13 @@ function settings(){
  (state.invites.length?state.invites.map(i=>'<p class="muted">'+esc(i.email)+' · '+esc(i.status==="sent"?"Gesendet":i.status==="pending"?"In Bearbeitung":"Fehlgeschlagen")+' · '+esc(fmt(i.created_at))+'</p>').join(""):'<p class="muted">Noch keine Einladungen</p>')+
  '</div>':"";
  const password='<div class="panel"><h2>Passwort festlegen oder ändern</h2><p>Nach der ersten Einladung hier dein Passwort erstellen. Das geht nur nach erfolgreicher Anmeldung über den Einladungslink.</p><form id="password-form"><label>Neues Passwort<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="subtle" type="submit">Passwort speichern</button></form></div>';
- const reminder='<div class="panel"><h2>Erinnerungen</h2><p>Hinweise funktionieren bei geöffneter App. Erinnerungen bei geschlossener PWA benötigen noch den Hintergrund-Push-Dienst.</p><div class="settings-actions"><button class="primary" id="enable-notifications">Benachrichtigungen erlauben</button><button class="subtle" id="test-notification">Testmeldung</button></div></div>';
+ const permission=typeof Notification==="undefined"?"Nicht unterstützt":Notification.permission==="granted"?"Erlaubt":Notification.permission==="denied"?"Blockiert":"Noch nicht erlaubt";
+ const reminder='<div class="panel"><h2>🔔 Hintergrund-Push-Benachrichtigungen</h2>'+
+ '<p>Erinnerungen werden im Hintergrund über Supabase versendet – auch wenn TrummPlaner geschlossen ist. Die Prüfung erfolgt ungefähr einmal pro Minute.</p>'+
+ '<p class="muted">Browserberechtigung: <strong>'+esc(permission)+'</strong> · Hinterlegte Geräte: '+state.pushSubs.length+'</p>'+
+ '<div class="settings-actions"><button class="primary" id="enable-notifications">Push auf diesem Gerät aktivieren</button>'+
+ '<button class="subtle" id="test-notification">Echten Push testen</button><button class="subtle" id="disable-push">Auf diesem Gerät deaktivieren</button></div>'+
+ '<p class="install-tip">iPhone: zuerst TrummPlaner über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
  const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+admin+password+reminder+install+backup;
@@ -139,8 +145,9 @@ if(b.id==="copy-invite-link"){
  notice("Einladungslink kopiert. Nur privat weitergeben.");
  return;
 }
-if(b.id==="enable-notifications"){if(!("Notification" in window))return notice("Browser unterstützt keine Benachrichtigungen.");return notice("Berechtigung: "+await Notification.requestPermission());}
-if(b.id==="test-notification"){if(!("Notification" in window)||Notification.permission!=="granted")return notice("Bitte zuerst Benachrichtigungen erlauben.");await showNotification("TrummPlaner","Dies ist eine Testbenachrichtigung.");return notice("Testbenachrichtigung ausgelöst.");}
+if(b.id==="enable-notifications")return await enablePush();
+if(b.id==="test-notification")return await testPush();
+if(b.id==="disable-push")return await disablePush();
 if(b.id==="install-app"){if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else notice("Im Browsermenü App installieren / Zum Home-Bildschirm wählen.");}
 if(b.id==="export-json"){const json=JSON.stringify({exported_at:new Date().toISOString(),companies:state.companies,entries:state.entries},null,2),url=URL.createObjectURL(new Blob([json],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="trummplaner-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }catch(e){fail(e)}});
@@ -200,9 +207,69 @@ $("company-form").addEventListener("submit",async event=>{event.preventDefault()
 $("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
 window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
-async function showNotification(title,body){const opts={body,icon:"./icons/icon-192.png"};if("serviceWorker" in navigator){const reg=await navigator.serviceWorker.ready;return reg.showNotification(title,opts)}return new Notification(title,opts);}
-async function checkReminders(){if(!state.user||!("Notification" in window)||Notification.permission!=="granted")return;const key="trummplaner-notified-"+state.user.id,sent=JSON.parse(localStorage.getItem(key)||"[]");for(const e of active()){const mark=e.id+"|"+e.remind_at;if(e.remind_at&&Date.parse(e.remind_at)<=Date.now()&&!sent.includes(mark)){await showNotification("TrummPlaner: "+e.title,company(e.company_id)+" · Fällig: "+fmt(e.due_at));sent.push(mark);}}localStorage.setItem(key,JSON.stringify(sent.slice(-200)));}
-setInterval(()=>checkReminders().catch(console.warn),30000);
+const pushEndpoint=cfg.supabaseUrl+"/functions/v1/tp-background-push";
+function decodeBase64Url(input){
+ const value=input.replace(/-/g,"+").replace(/_/g,"/");
+ const raw=atob(value+"=".repeat((4-value.length%4)%4));
+ return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function callPushApi(action){
+ const {data:{session},error}=await db.auth.getSession();
+ if(error||!session?.access_token)throw new Error("Bitte erneut anmelden.");
+ const res=await fetch(pushEndpoint,{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.supabasePublishableKey,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({action})});
+ const result=await res.json().catch(()=>({error:"Keine gültige Serverantwort"}));
+ if(!res.ok)throw new Error(result.error||"Push-Dienst meldet HTTP "+res.status);
+ return result;
+}
+async function enablePush(){
+ if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))throw new Error("Dein Browser unterstützt Web Push nicht.");
+ const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
+ const installed=window.matchMedia?.("(display-mode: standalone)").matches||navigator.standalone===true;
+ if(ios&&!installed)throw new Error("Auf dem iPhone zuerst über Safari zum Home-Bildschirm hinzufügen und die installierte TrummPlaner-App öffnen.");
+ const perm=await Notification.requestPermission();
+ if(perm!=="granted")throw new Error("Benachrichtigungen sind nicht erlaubt. Bitte in den Browser-/Systemeinstellungen freigeben.");
+ const reg=await navigator.serviceWorker.ready;
+ const info=await fetch(pushEndpoint,{headers:{"apikey":cfg.supabasePublishableKey}}).then(r=>r.json());
+ const configured=info.ready?info:await callPushApi("setup");
+ const publicKey=configured.publicKey;
+ if(!publicKey)throw new Error("Kein öffentlicher Push-Schlüssel verfügbar.");
+ let subscription=await reg.pushManager.getSubscription();
+ if(subscription){
+  const key=subscription.options?.applicationServerKey;
+  const existingKey=key?Array.from(new Uint8Array(key)):[];
+  const wantedKey=Array.from(decodeBase64Url(publicKey));
+  if(existingKey.length!==wantedKey.length||existingKey.some((x,i)=>x!==wantedKey[i])){
+   await subscription.unsubscribe();
+   subscription=null;
+  }
+ }
+ if(!subscription)subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeBase64Url(publicKey)});
+ const obj=subscription.toJSON();
+ if(!obj.endpoint||!obj.keys?.auth||!obj.keys?.p256dh)throw new Error("Push-Gerätedaten sind unvollständig.");
+ const infoDevice=(navigator.userAgent||"Browser").slice(0,220);
+ const {error}=await db.from("tp_push_subscriptions").upsert({
+  owner_id:state.user.id,endpoint:obj.endpoint,p256dh:obj.keys.p256dh,auth_secret:obj.keys.auth,device_name:infoDevice,updated_at:new Date().toISOString()
+ },{onConflict:"endpoint"});
+ if(error)throw error;
+ await load();
+ notice("Push für dieses Gerät aktiviert. Teste die Zustellung mit „Echten Push testen“.");
+}
+async function testPush(){
+ if(!("Notification" in window)||Notification.permission!=="granted")throw new Error("Bitte Push auf diesem Gerät zuerst aktivieren.");
+ const result=await callPushApi("test");
+ notice(result.sent+" Push-Nachricht(en) an deine angemeldeten Geräte geschickt.");
+}
+async function disablePush(){
+ if(!("serviceWorker" in navigator))throw new Error("Service Worker nicht verfügbar.");
+ const reg=await navigator.serviceWorker.ready;
+ const subscription=await reg.pushManager.getSubscription();
+ if(!subscription)return notice("Auf diesem Gerät ist kein Push aktiviert.");
+ const {error}=await db.from("tp_push_subscriptions").delete().eq("endpoint",subscription.endpoint);
+ if(error)throw error;
+ await subscription.unsubscribe();
+ await load();
+ notice("Hintergrund-Push auf diesem Gerät deaktiviert.");
+}
 setInterval(()=>{if(state.user&&!document.hidden&&navigator.onLine)load().catch(console.warn)},90000);
 window.addEventListener("online",()=>state.user&&load().catch(console.warn));
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)load().catch(console.warn);});
