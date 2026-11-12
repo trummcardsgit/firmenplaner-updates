@@ -3,7 +3,7 @@ const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
-const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null};
+const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[]};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -17,14 +17,20 @@ function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show")
 function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
 async function load(){
  if(!state.user)return;
- const [a,b,adminStatus]=await Promise.all([
+ const [a,b,adminStatus,sol,pushDevices]=await Promise.all([
   db.from("tp_companies").select("*").order("name"),
   db.from("tp_entries").select("*").order("created_at",{ascending:false}),
-  db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle()
+  db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle(),
+  db.from("tp_solutions").select("*").order("updated_at",{ascending:false}),
+  db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id)
  ]);
  if(a.error)throw a.error;
  if(b.error)throw b.error;
  if(adminStatus.error)throw adminStatus.error;
+ if(sol.error)throw sol.error;
+ if(pushDevices.error)throw pushDevices.error;
+ state.solutions=sol.data||[];
+ state.pushSubs=pushDevices.data||[];
  state.companies=a.data||[];
  state.entries=b.data||[];
  state.isAdmin=!!adminStatus.data;
@@ -34,9 +40,8 @@ async function load(){
   state.invites=invites.data||[];
  }else state.invites=[];
  render();
- checkReminders().catch(console.warn);
 }
-function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;}}
+function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -65,6 +70,27 @@ data=data.filter(e=>(e.title+" "+e.description+" "+company(e.company_id)).toLowe
 if(kind==="task"&&state.filter!=="all")data=data.filter(e=>state.filter==="overdue"?overdue(e):e.status===state.filter);
 data.sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));
 return '<div class="toolbar"><input id="search" placeholder="Titel, Firma oder Beschreibung suchen" value="'+esc(state.search)+'">'+(kind==="task"?'<select id="status-filter"><option value="all">Alle Status</option><option value="open">Offen</option><option value="done">Erledigt</option><option value="overdue">Überfällig</option></select>':"")+'<span class="counter">'+data.length+" Einträge</span></div>"+list(data);}
+function solutionResults(){
+ const term=state.search.toLowerCase().trim();
+ const filtered=state.solutions.filter(s=>(s.problem_title+" "+s.problem_description+" "+s.solution_text+" "+s.company_name).toLowerCase().includes(term));
+ return '<div class="panel"><h2>📖 Lösungsdatenbank</h2><p>Hier findest du dokumentierte Problemlösungen aus bereits erledigten Aufgaben.</p>'+
+ '<input id="search" type="search" aria-label="Lösungen durchsuchen" placeholder="Problem, Fehlermeldung oder Lösungsbegriff suchen …" value="'+esc(state.search)+'">'+
+ '<p class="counter" style="margin-top:10px">'+filtered.length+' Lösungen gefunden</p></div>'+
+ (filtered.length?filtered.map(s=>'<article class="item"><div class="meta"><span class="pill gold">'+esc(s.company_name||"Ohne Firma")+'</span><span>'+esc(fmt(s.updated_at))+'</span></div>'+
+ '<h3>'+esc(s.problem_title)+'</h3>'+
+ (s.problem_description?'<p><strong>Problembeschreibung:</strong> '+esc(s.problem_description)+'</p>':'')+
+ '<div style="border-left:3px solid #e2af48;padding:12px;background:#242630;border-radius:9px"><strong>✔ Lösung</strong><p style="margin:8px 0 0;white-space:pre-wrap">'+esc(s.solution_text)+'</p></div>'+
+ '</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');
+}
+function openResolution(entry){
+ if(!entry)return;
+ $("solution-entry-id").value=entry.id;
+ $("solution-problem-title").textContent=entry.title;
+ $("solution-problem-description").textContent=entry.description||"";
+ $("solution-text").value=state.solutions.find(s=>s.source_entry_id===entry.id)?.solution_text||"";
+ $("solution-dialog").showModal();
+ $("solution-text").focus();
+}
 function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' offene Aufgaben</span><div class="actions"><button data-company-edit="'+c.id+'">Bearbeiten</button><button data-company-delete="'+c.id+'" class="danger">Löschen</button></div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
 function settings(){
  const own='<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+
@@ -82,9 +108,9 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+admin+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];$("new-entry").style.display=state.view==="settings"?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="companies"?companies():settings();
+function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];$("new-entry").style.display=["settings","solutions"].includes(state.view)?"none":"block";
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="companies"?companies():settings();
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}}
 function openCompany(c){$("company-id").value=c?.id||"";$("company-name").value=c?.name||"";$("company-contact").value=c?.contact||"";$("company-phone").value=c?.phone||"";$("company-email").value=c?.email||"";$("company-editor").showModal();}
@@ -98,7 +124,15 @@ if(b.dataset.convert)return openEntry({...state.entries.find(e=>e.id===b.dataset
 if(b.dataset.companyEdit)return openCompany(state.companies.find(c=>c.id===b.dataset.companyEdit));
 if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!confirm("Firma "+c.name+" und alle zugehörigen Aufgaben löschen?"))return;const {error}=await db.from("tp_companies").delete().eq("id",c.id);if(error)throw error;return await load();}
 if(b.dataset.delete){if(!confirm("Diesen Eintrag endgültig löschen?"))return;const {error}=await db.from("tp_entries").delete().eq("id",b.dataset.delete);if(error)throw error;return await load();}
-if(b.dataset.status){const x=state.entries.find(e=>e.id===b.dataset.status);const {error}=await db.from("tp_entries").update({status:x.status==="done"?"open":"done",updated_at:new Date().toISOString()}).eq("id",x.id);if(error)throw error;return await load();}
+if(b.dataset.status){
+ const x=state.entries.find(e=>e.id===b.dataset.status);
+ if(!x)return;
+ if(x.status!=="done")return openResolution(x);
+ const {error}=await db.from("tp_entries").update({status:"open",updated_at:new Date().toISOString()}).eq("id",x.id);
+ if(error)throw error;
+ notice("Aufgabe wurde wieder geöffnet. Die Lösung bleibt in der Wissensdatenbank.");
+ return await load();
+}
 if(b.id==="copy-invite-link"){
  if(!state.isAdmin||!state.inviteLink)return;
  await navigator.clipboard.writeText(state.inviteLink);
@@ -147,8 +181,23 @@ $("content").addEventListener("submit",async event=>{
   finally{btn.disabled=false;}
  }
 });
+$("solution-form").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const entryId=$("solution-entry-id").value,solution=$("solution-text").value.trim();
+ if(solution.length<3)return notice("Bitte mindestens drei Zeichen für die Lösung eingeben.");
+ const submit=event.target.querySelector('button[type="submit"]');
+ submit.disabled=true;
+ try{
+  const {error}=await db.rpc("tp_complete_task",{p_entry_id:entryId,p_solution:solution});
+  if(error)throw error;
+  $("solution-dialog").close();
+  await load();
+  notice("Aufgabe erledigt. Die Lösung wurde gespeichert und ist jetzt durchsuchbar.");
+ }catch(err){fail(err)}
+ finally{submit.disabled=false;}
+});
 $("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
-$("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
+$("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
 window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
 async function showNotification(title,body){const opts={body,icon:"./icons/icon-192.png"};if("serviceWorker" in navigator){const reg=await navigator.serviceWorker.ready;return reg.showNotification(title,opts)}return new Notification(title,opts);}
