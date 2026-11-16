@@ -1,4 +1,5 @@
 
+import {runTableCommand,TABLE_MAX_ROWS,TABLE_MAX_COLS} from "./table-editor.js";
 const BUCKET="tp-private-files";
 const DOCX_MIME="application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const SCRIPT_DOCX="https://cdn.jsdelivr.net/npm/docx@9.15.3/dist/index.iife.js";
@@ -229,9 +230,9 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    return new Paragraph({...options,children:parts.length?parts:[new TextRun({text:""})]});
   }
   function makeTable(tableNode){
-   const rows=[...tableNode.querySelectorAll("tr")].filter(tr=>tr.closest("table")===tableNode).slice(0,100);
+   const rows=[...tableNode.querySelectorAll("tr")].filter(tr=>tr.closest("table")===tableNode).slice(0,TABLE_MAX_ROWS);
    if(!rows.length)return null;
-   const cellsOf=tr=>[...tr.children].filter(td=>["TD","TH"].includes(td.tagName)).slice(0,8);
+   const cellsOf=tr=>[...tr.children].filter(td=>["TD","TH"].includes(td.tagName)).slice(0,TABLE_MAX_COLS);
    const count=Math.max(1,...rows.map(tr=>cellsOf(tr).length));
    const width=9000;
    const base=Math.floor(width/count);
@@ -623,6 +624,100 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   let lastEditor=null,lastRange=null;
   const dialogs=[$("tp-document-dialog"),$("tp-project-dialog")];
   const editorOf=element=>element.closest("dialog")?.querySelector("[contenteditable]");
+  const tableMenu=$("tp-table-context-menu");
+  let selectedTableCell=null;
+  let tableLongPressTimer=null;
+  let touchStart=null;
+  function hideTableMenu(){
+   tableMenu.hidden=true;
+   selectedTableCell=null;
+  }
+  function showTableMenu(cell,x,y){
+   if(!wordDialog.open||!cell||!wordEditor.contains(cell))return;
+   selectedTableCell=cell;
+   tableMenu.hidden=false;
+   tableMenu.style.left="0px";
+   tableMenu.style.top="0px";
+   // Keep the entire menu visible near the clicked cell, including near screen edges.
+   const bounds=tableMenu.getBoundingClientRect();
+   const left=Math.max(8,Math.min(x,window.innerWidth-bounds.width-8));
+   const top=Math.max(8,Math.min(y,window.innerHeight-bounds.height-8));
+   tableMenu.style.left=Math.round(left)+"px";
+   tableMenu.style.top=Math.round(top)+"px";
+   tableMenu.focus({preventScroll:true});
+  }
+  function focusTableCell(cell){
+   if(cell&&wordEditor.contains(cell)){
+    wordEditor.focus();
+    const range=document.createRange();
+    range.selectNodeContents(cell);
+    range.collapse(true);
+    const sel=window.getSelection();
+    if(sel){sel.removeAllRanges();sel.addRange(range);}
+    lastEditor=wordEditor;
+    lastRange=range.cloneRange();
+   }else wordEditor.focus();
+  }
+  wordEditor.addEventListener("contextmenu",event=>{
+   const cell=event.target.closest("td,th");
+   if(!cell||!wordEditor.contains(cell)||!cell.closest("table"))return;
+   event.preventDefault();
+   showTableMenu(cell,event.clientX,event.clientY);
+  });
+  // The installed PWA has no right mouse button on phones. Long-press a cell.
+  wordEditor.addEventListener("pointerdown",event=>{
+   if(event.pointerType!=="touch")return;
+   const cell=event.target.closest("td,th");
+   if(!cell||!wordEditor.contains(cell))return;
+   clearTimeout(tableLongPressTimer);
+   touchStart={x:event.clientX,y:event.clientY};
+   tableLongPressTimer=setTimeout(()=>{
+    tableLongPressTimer=null;
+    showTableMenu(cell,touchStart.x,touchStart.y);
+   },650);
+  });
+  const cancelLongPress=()=>{clearTimeout(tableLongPressTimer);tableLongPressTimer=null;touchStart=null;};
+  wordEditor.addEventListener("pointerup",cancelLongPress);
+  wordEditor.addEventListener("pointercancel",cancelLongPress);
+  wordEditor.addEventListener("pointermove",event=>{
+   if(touchStart&&Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y)>12)cancelLongPress();
+  });
+  wordDialog.addEventListener("tp-word-open",hideTableMenu);
+  wordDialog.addEventListener("close",hideTableMenu);
+  wordDialog.addEventListener("scroll",hideTableMenu,true);
+  wordDialog.addEventListener("pointerdown",event=>{
+   if(!tableMenu.hidden&&!event.target.closest("#tp-table-context-menu")&&!event.target.closest("td,th"))hideTableMenu();
+  });
+  tableMenu.addEventListener("keydown",event=>{
+   if(event.key==="Escape"){event.stopPropagation();hideTableMenu();wordEditor.focus();}
+   if(event.key==="ArrowDown"||event.key==="ArrowUp"){
+    event.preventDefault();
+    const buttons=[...tableMenu.querySelectorAll("[data-table-action]")];
+    const current=buttons.indexOf(document.activeElement);
+    const direction=event.key==="ArrowDown"?1:-1;
+    buttons[(current+direction+buttons.length)%buttons.length]?.focus();
+   }
+  });
+  tableMenu.addEventListener("click",event=>{
+   const button=event.target.closest("[data-table-action]");
+   if(!button||!selectedTableCell)return;
+   event.preventDefault();
+   event.stopPropagation();
+   const cell=selectedTableCell;
+   const command=button.dataset.tableAction;
+   hideTableMenu();
+   if(command==="table-delete"&&!confirm("Die gesamte Tabelle einschließlich aller Inhalte wirklich löschen?")){
+    focusTableCell(cell);return;
+   }
+   try{
+    const action=runTableCommand(cell,command);
+    if(action.changed){
+     setWordDirty(true);
+     focusTableCell(action.selection);
+    }
+   }catch(error){fail(error);focusTableCell(cell);}
+  });
+
   function rememberSelection(){
    const sel=window.getSelection();
    if(!sel?.rangeCount||!sel.anchorNode)return;
