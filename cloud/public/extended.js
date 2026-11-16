@@ -468,22 +468,101 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    $("tp-project-save").disabled=true;
    try{await saveProject();}catch(error){fail(error)}finally{$("tp-project-save").disabled=false;}
   });
-  function toolbar(event){
+  let lastEditor=null,lastRange=null;
+  const dialogs=[$("tp-document-dialog"),$("tp-project-dialog")];
+  const editorOf=element=>element.closest("dialog")?.querySelector("[contenteditable]");
+  function rememberSelection(){
+   const sel=window.getSelection();
+   if(!sel?.rangeCount||!sel.anchorNode)return;
+   const editor=dialogs.map(d=>d.querySelector("[contenteditable]")).find(e=>e?.contains(sel.anchorNode));
+   if(!editor)return;
+   lastEditor=editor;
+   lastRange=sel.getRangeAt(0).cloneRange();
+  }
+  document.addEventListener("selectionchange",rememberSelection);
+  function restoreSelection(editor){
+   editor.focus();
+   if(lastEditor===editor&&lastRange){
+    try{
+     const sel=window.getSelection();
+     sel.removeAllRanges();
+     sel.addRange(lastRange.cloneRange());
+    }catch{ /* Selection was invalidated by editing. */ }
+   }
+  }
+  function addTable(editor,dialog){
+   const count=(selector,defaultValue)=>Math.max(2,Math.min(8,Number(dialog.querySelector(selector)?.value||defaultValue)||defaultValue));
+   const rows=count("[data-table-rows]",3),cols=count("[data-table-cols]",3);
+   let html="<table><tbody>";
+   for(let i=0;i<rows;i++){
+    html+="<tr>";
+    for(let j=0;j<cols;j++)html+=(i===0?"<th>":"<td>")+"<br>"+(i===0?"</th>":"</td>");
+    html+="</tr>";
+   }
+   html+="</tbody></table><p><br></p>";
+   if(!document.execCommand("insertHTML",false,html)){
+    const wrapper=document.createElement("div");
+    wrapper.innerHTML=html;
+    const sel=window.getSelection();
+    const range=sel?.rangeCount?sel.getRangeAt(0):null;
+    if(range&&editor.contains(range.commonAncestorContainer)){
+     range.deleteContents();
+     while(wrapper.firstChild)range.insertNode(wrapper.firstChild);
+    }else while(wrapper.firstChild)editor.appendChild(wrapper.firstChild);
+   }
+   const tables=editor.querySelectorAll("table");
+   const firstCell=tables[tables.length-1]?.querySelector("th,td");
+   if(firstCell){
+    const range=document.createRange();
+    range.selectNodeContents(firstCell);
+    range.collapse(true);
+    const selection=window.getSelection();
+    selection.removeAllRanges();selection.addRange(range);
+    lastEditor=editor;lastRange=range.cloneRange();
+   }
+  }
+  function runToolbar(event){
    const button=event.target.closest("button[data-format]");
    if(!button)return;
    event.preventDefault();
-   const editor=button.closest("dialog").querySelector("[contenteditable]");
+   const dialog=button.closest("dialog");
+   const editor=editorOf(button);
    if(!editor)return;
-   editor.focus();
+   restoreSelection(editor);
    const cmd=button.dataset.format;
-   if(cmd==="h1"||cmd==="h2"||cmd==="p")document.execCommand("formatBlock",false,cmd);
+   if(cmd==="table")addTable(editor,dialog);
+   else if(cmd==="rule")document.execCommand("insertHorizontalRule",false,null);
+   else if(["h1","h2","p"].includes(cmd))document.execCommand("formatBlock",false,cmd);
    else if(cmd==="ul")document.execCommand("insertUnorderedList",false,null);
    else if(cmd==="ol")document.execCommand("insertOrderedList",false,null);
    else document.execCommand(cmd,false,null);
+   rememberSelection();
   }
-  for(const dialog of [$("tp-document-dialog"),$("tp-project-dialog")]){
-   dialog.addEventListener("mousedown",event=>{if(event.target.closest("button[data-format]"))event.preventDefault();});
-   dialog.addEventListener("click",toolbar);
+  for(const dialog of dialogs){
+   dialog.addEventListener("mousedown",event=>{
+    if(event.target.closest("button[data-format]"))event.preventDefault();
+   });
+   dialog.addEventListener("click",runToolbar);
+   dialog.addEventListener("change",event=>{
+    const input=event.target;
+    if(!input.matches("[data-color],[data-font-size],[data-font-family]"))return;
+    const editor=editorOf(input);
+    if(!editor)return;
+    restoreSelection(editor);
+    if(input.matches("[data-color]")){
+     if(input.dataset.color==="fore")document.execCommand("foreColor",false,input.value);
+     else{
+      const ok=document.execCommand("hiliteColor",false,input.value);
+      if(!ok)document.execCommand("backColor",false,input.value);
+     }
+    }else if(input.matches("[data-font-size]")){
+     if(/^[1-7]$/.test(input.value))document.execCommand("fontSize",false,input.value);
+    }else if(input.matches("[data-font-family]")){
+     if(fonts.includes(input.value))document.execCommand("fontName",false,input.value);
+    }
+    rememberSelection();
+    if(input.matches("select"))input.selectedIndex=0;
+   });
    dialog.addEventListener("paste",event=>{
     if(!event.target.closest("[contenteditable]"))return;
     event.preventDefault();
