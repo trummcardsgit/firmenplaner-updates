@@ -36,76 +36,166 @@
  <div class="panel" style="margin-top:18px"><h3>Projektdateien und Word-Dokumente</h3><div id="tp-project-attachments"></div></div>
  <div class="modal-actions"><button type="button" class="subtle" data-close>Schließen</button><button id="tp-project-save" type="button" class="primary">Projekt speichern</button></div>
 </dialog>
-<dialog id="tp-document-dialog" class="tp-workspace-dialog" aria-label="Word-Dokument bearbeiten">
- <div class="modal-header"><h2>📝 Word-Dokument</h2><button type="button" class="close" data-close aria-label="Schließen">×</button></div>
- <input id="tp-document-id" type="hidden">
- <div class="fields">
-  <label>Dokumentname *<input id="tp-document-title" maxlength="180" required placeholder="z. B. Umstellung – Dokumentation"></label>
-  <label>Zuordnung<select id="tp-document-link"></select></label>
- </div>
- <div class="tp-editor-toolbar tp-word-toolbar" role="toolbar" aria-label="Word-Formatierung">
-  <div class="tp-toolbar-group">
-   <button type="button" data-format="bold" title="Fett"><strong>B</strong></button>
-   <button type="button" data-format="italic" title="Kursiv"><em>I</em></button>
-   <button type="button" data-format="underline" title="Unterstrichen"><u>U</u></button>
-   <button type="button" data-format="strikeThrough" title="Durchgestrichen"><s>S</s></button>
+<dialog id="tp-document-dialog" class="tp-document-fullscreen" aria-label="TrummPlaner Dokumenteditor" aria-modal="true">
+ <div class="tp-word-appbar">
+  <div class="tp-word-appbar-left">
+   <button type="button" id="tp-word-close" class="tp-word-back" title="Zurück zu TrummPlaner" aria-label="Dokumenteditor verlassen">‹</button>
+   <div class="tp-word-brand" aria-hidden="true"><span>W</span></div>
+   <div class="tp-word-identity">
+    <span class="tp-word-product">TRUMMPLANER <strong>DOCS</strong></span>
+    <label class="tp-word-title-label" for="tp-document-title">
+     <input id="tp-document-title" maxlength="180" required placeholder="Unbenanntes Dokument" aria-label="Dokumentname">
+     <span class="tp-word-title-pencil" aria-hidden="true">✎</span>
+    </label>
+   </div>
   </div>
-  <div class="tp-toolbar-group">
-   <label class="tp-toolbar-control">Schrift
-    <select data-font-family aria-label="Schriftart">
-     <option value="">Schriftart</option>
-     <option value="Arial">Arial</option>
-     <option value="Calibri">Calibri</option>
-     <option value="Georgia">Georgia</option>
-     <option value="Times New Roman">Times New Roman</option>
-     <option value="Verdana">Verdana</option>
-     <option value="Courier New">Courier New</option>
-    </select>
-   </label>
-   <label class="tp-toolbar-control">Größe
-    <select data-font-size aria-label="Schriftgröße">
-     <option value="">Größe</option><option value="1">8 pt</option><option value="2">10 pt</option>
-     <option value="3">12 pt</option><option value="4">14 pt</option><option value="5">18 pt</option>
-     <option value="6">24 pt</option><option value="7">36 pt</option>
-    </select>
-   </label>
-   <label class="tp-toolbar-control">Textfarbe
-    <input data-color="fore" type="color" value="#202124" aria-label="Schriftfarbe wählen">
-   </label>
-   <label class="tp-toolbar-control">Markieren
-    <input data-color="highlight" type="color" value="#fff1a8" aria-label="Hintergrundfarbe für Text wählen">
-   </label>
-  </div>
-  <div class="tp-toolbar-group">
-   <button type="button" data-format="h1" title="Titel">H1</button>
-   <button type="button" data-format="h2" title="Zwischenüberschrift">H2</button>
-   <button type="button" data-format="p" title="Normaler Absatz">Absatz</button>
-   <button type="button" data-format="ul" title="Aufzählung">• Liste</button>
-   <button type="button" data-format="ol" title="Nummerierte Liste">1. Liste</button>
-  </div>
-  <div class="tp-toolbar-group">
-   <button type="button" data-format="justifyLeft" title="Linksbündig">≡ Links</button>
-   <button type="button" data-format="justifyCenter" title="Zentriert">≡ Mitte</button>
-   <button type="button" data-format="justifyRight" title="Rechtsbündig">≡ Rechts</button>
-   <button type="button" data-format="justifyFull" title="Blocksatz">≡ Block</button>
-  </div>
-  <div class="tp-toolbar-group">
-   <label class="tp-toolbar-control">Zeilen
-    <select data-table-rows aria-label="Tabellenzeilen">
-     <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
-    </select>
-   </label>
-   <label class="tp-toolbar-control">Spalten
-    <select data-table-cols aria-label="Tabellenspalten">
-     <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
-    </select>
-   </label>
-   <button type="button" data-format="table" title="Tabelle an Cursorposition einfügen">▦ Tabelle</button>
-   <button type="button" data-format="rule" title="Trennlinie einfügen">— Linie</button>
+  <div class="tp-word-appbar-right">
+   <span class="tp-word-sync" id="tp-word-save-state" role="status" aria-live="polite">Bereit</span>
+   <button id="tp-document-export" type="button" class="tp-word-top-action tp-word-outline-action" title="Als Word-Datei herunterladen">↓ <span>DOCX</span></button>
+   <button id="tp-document-save" type="button" class="tp-word-top-action tp-word-save">✓ <span>Speichern</span></button>
   </div>
  </div>
- <div id="tp-document-body" class="tp-rich-editor tp-page-editor" contenteditable="true" role="textbox" aria-label="Dokumenttext" aria-multiline="true" data-placeholder="Hier das Word-Dokument direkt bearbeiten …"></div>
- <p class="muted" style="margin-top:10px">Tabellen, Farben, Schriftgrößen, Überschriften, Listen und Textausrichtung werden im DOCX-Export berücksichtigt. Komplexe Word-Layouts, Bilder, Kopf-/Fußzeilen, Makros und Änderungsverfolgung werden nicht vollständig übernommen.</p>
- <div class="modal-actions"><button id="tp-document-export" type="button" class="subtle">DOCX herunterladen</button><button type="button" class="subtle" data-close>Schließen</button><button id="tp-document-save" type="button" class="primary">Dokument speichern</button></div>
+
+ <div class="tp-word-tabs" role="tablist" aria-label="Dokumentfunktionen">
+  <button type="button" class="tp-word-tab" data-ribbon-tab="file" role="tab" aria-selected="false" aria-controls="tp-word-ribbon-file">Datei</button>
+  <button type="button" class="tp-word-tab is-active" data-ribbon-tab="home" role="tab" aria-selected="true" aria-controls="tp-word-ribbon-home">Start</button>
+  <button type="button" class="tp-word-tab" data-ribbon-tab="insert" role="tab" aria-selected="false" aria-controls="tp-word-ribbon-insert">Einfügen</button>
+  <button type="button" class="tp-word-tab" data-ribbon-tab="layout" role="tab" aria-selected="false" aria-controls="tp-word-ribbon-layout">Layout</button>
+  <button type="button" class="tp-word-tab" data-ribbon-tab="view" role="tab" aria-selected="false" aria-controls="tp-word-ribbon-view">Ansicht</button>
+  <div class="tp-word-tab-hint">Word-kompatible DOCX-Dokumente · in deiner Cloud</div>
+ </div>
+
+ <div class="tp-word-ribbons">
+  <section class="tp-word-ribbon-panel" id="tp-word-ribbon-home" role="tabpanel" data-ribbon-panel="home" aria-label="Start">
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls tp-word-font-controls">
+     <label class="tp-toolbar-control">Schriftart
+      <select data-font-family aria-label="Schriftart">
+       <option value="">Schriftart</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option>
+       <option value="Georgia">Georgia</option><option value="Times New Roman">Times New Roman</option>
+       <option value="Verdana">Verdana</option><option value="Courier New">Courier New</option>
+      </select>
+     </label>
+     <label class="tp-toolbar-control">Größe
+      <select data-font-size aria-label="Schriftgröße">
+       <option value="">Größe</option><option value="1">8 pt</option><option value="2">10 pt</option>
+       <option value="3">12 pt</option><option value="4">14 pt</option><option value="5">18 pt</option>
+       <option value="6">24 pt</option><option value="7">36 pt</option>
+      </select>
+     </label>
+    </div>
+    <div class="tp-ribbon-controls">
+     <button type="button" data-format="bold" title="Fett" aria-label="Fett"><strong>B</strong></button>
+     <button type="button" data-format="italic" title="Kursiv" aria-label="Kursiv"><em>I</em></button>
+     <button type="button" data-format="underline" title="Unterstrichen" aria-label="Unterstrichen"><u>U</u></button>
+     <button type="button" data-format="strikeThrough" title="Durchgestrichen" aria-label="Durchgestrichen"><s>S</s></button>
+     <label class="tp-word-color-control" title="Textfarbe">A <input data-color="fore" type="color" value="#202124" aria-label="Schriftfarbe wählen"></label>
+     <label class="tp-word-color-control" title="Markieren">✎ <input data-color="highlight" type="color" value="#fff1a8" aria-label="Textmarkierungsfarbe wählen"></label>
+    </div>
+    <span class="tp-ribbon-group-label">Schriftart</span>
+   </div>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls">
+     <button type="button" data-format="ul" title="Aufzählung">☷ <span>Liste</span></button>
+     <button type="button" data-format="ol" title="Nummerierte Liste">1. <span>Liste</span></button>
+     <button type="button" data-format="justifyLeft" title="Linksbündig">☷</button>
+     <button type="button" data-format="justifyCenter" title="Zentriert">≡</button>
+     <button type="button" data-format="justifyRight" title="Rechtsbündig">☰</button>
+     <button type="button" data-format="justifyFull" title="Blocksatz">▤</button>
+    </div>
+    <div class="tp-ribbon-controls">
+     <button type="button" data-format="h1">Titel</button>
+     <button type="button" data-format="h2">Überschrift</button>
+     <button type="button" data-format="p">Normal</button>
+    </div>
+    <span class="tp-ribbon-group-label">Absatz &amp; Formatvorlagen</span>
+   </div>
+  </section>
+
+  <section class="tp-word-ribbon-panel" id="tp-word-ribbon-insert" role="tabpanel" data-ribbon-panel="insert" aria-label="Einfügen" hidden>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls">
+     <label class="tp-toolbar-control">Zeilen
+      <select data-table-rows aria-label="Tabellenzeilen"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+     </label>
+     <label class="tp-toolbar-control">Spalten
+      <select data-table-cols aria-label="Tabellenspalten"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+     </label>
+     <button type="button" data-format="table" class="tp-ribbon-highlight" title="Tabelle an der Cursorposition einfügen">▦ Tabelle einfügen</button>
+    </div>
+    <span class="tp-ribbon-group-label">Tabellen</span>
+   </div>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls"><button type="button" data-format="rule">— Trennlinie</button></div>
+    <span class="tp-ribbon-group-label">Elemente</span>
+   </div>
+  </section>
+
+  <section class="tp-word-ribbon-panel" id="tp-word-ribbon-layout" role="tabpanel" data-ribbon-panel="layout" aria-label="Layout" hidden>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls">
+     <button type="button" data-format="justifyLeft">◧ Links</button>
+     <button type="button" data-format="justifyCenter">≡ Zentriert</button>
+     <button type="button" data-format="justifyRight">◨ Rechts</button>
+     <button type="button" data-format="justifyFull">▤ Blocksatz</button>
+    </div>
+    <span class="tp-ribbon-group-label">Absatzausrichtung</span>
+   </div>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls"><button type="button" data-format="h1">Titel</button><button type="button" data-format="h2">Überschrift</button><button type="button" data-format="p">Fließtext</button></div>
+    <span class="tp-ribbon-group-label">Formatvorlagen</span>
+   </div>
+  </section>
+
+  <section class="tp-word-ribbon-panel" id="tp-word-ribbon-view" role="tabpanel" data-ribbon-panel="view" aria-label="Ansicht" hidden>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls">
+     <button type="button" data-word-action="zoom-out" aria-label="Ansicht verkleinern">−</button>
+     <input type="range" id="tp-word-zoom" min="60" max="140" step="10" value="100" aria-label="Ansichtsgröße">
+     <button type="button" data-word-action="zoom-in" aria-label="Ansicht vergrößern">+</button>
+     <button type="button" data-word-action="zoom-reset">100 %</button>
+    </div>
+    <span class="tp-ribbon-group-label">Ansichtsgröße</span>
+   </div>
+   <div class="tp-ribbon-group">
+    <span class="tp-word-info">A4-Dokumentansicht. Die dargestellte Blattfläche ist eine Bearbeitungsansicht, keine exakte Druckvorschau.</span>
+    <span class="tp-ribbon-group-label">Dokumentansicht</span>
+   </div>
+  </section>
+
+  <section class="tp-word-ribbon-panel" id="tp-word-ribbon-file" role="tabpanel" data-ribbon-panel="file" aria-label="Datei" hidden>
+   <div class="tp-ribbon-group">
+    <div class="tp-ribbon-controls">
+     <button type="button" data-word-action="save" class="tp-ribbon-highlight">✓ Cloud speichern</button>
+     <button type="button" data-word-action="export">↓ Als DOCX herunterladen</button>
+    </div>
+    <span class="tp-ribbon-group-label">Dokumentaktionen</span>
+   </div>
+   <div class="tp-ribbon-group tp-ribbon-file-link">
+    <label class="tp-toolbar-control" for="tp-document-link">Ablage / Zuordnung
+     <select id="tp-document-link" aria-label="Dokument zu Aufgabe, Notiz oder Projekt zuordnen"></select>
+    </label>
+    <span class="tp-ribbon-group-label">Dateiablage</span>
+   </div>
+  </section>
+ </div>
+
+ <div class="tp-word-ruler" aria-hidden="true"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span><span>18</span><span>20 cm</span></div>
+ <div class="tp-word-workspace" id="tp-word-workspace">
+  <div class="tp-word-paper" id="tp-word-paper">
+   <input id="tp-document-id" type="hidden">
+   <div id="tp-document-body" class="tp-rich-editor tp-page-editor" contenteditable="true" role="textbox" aria-label="Dokumenttext" aria-multiline="true" spellcheck="true" data-placeholder="Beginne hier dein Dokument zu schreiben …"></div>
+  </div>
+ </div>
+
+ <div class="tp-word-statusbar">
+  <div class="tp-word-status-left"><span class="tp-word-status-indicator" aria-hidden="true"></span> TrummPlaner Cloud <span class="tp-word-separator">·</span> <span id="tp-word-count">0 Wörter · 0 Zeichen</span></div>
+  <div class="tp-word-status-right">
+   <span class="tp-word-compatible">DOCX-kompatibel</span>
+   <button type="button" data-word-action="zoom-out" aria-label="Zoom verkleinern">−</button>
+   <span id="tp-word-zoom-value">100 %</span>
+   <button type="button" data-word-action="zoom-in" aria-label="Zoom vergrößern">+</button>
+  </div>
+ </div>
 </dialog>
 <script src="./config.js"></script><script type="module" src="./app.js"></script></body></html>
