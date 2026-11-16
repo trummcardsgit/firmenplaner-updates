@@ -252,3 +252,98 @@ dialog.tp-document-fullscreen[open]{
 @media(prefers-reduced-motion:reduce){
  .tp-word-workspace{scroll-behavior:auto}
 }
+
+
+/* Read-only Word preview within the project archive */
+.tp-file .tp-preview-button{
+ background:#223a59;color:#d8eaff;border:1px solid #5877a3;
+ font-weight:600;
+}
+.tp-file .tp-preview-button:hover{background:#30517a;color:#fff}
+dialog.tp-doc-preview-dialog:not([open]){display:none}
+dialog.tp-doc-preview-dialog[open]{
+ position:fixed;inset:0;width:min(1080px,calc(100vw - 20px));
+ height:min(94dvh,1080px);max-width:none;max-height:none;
+ margin:auto;padding:0;display:flex;flex-direction:column;overflow:hidden;
+ border:1px solid #7d94b3;border-radius:15px;background:#e9eef5;color:#263446;
+ box-shadow:0 25px 85px #050d2480;
+}
+.tp-doc-preview-dialog::backdrop{background:#071025c7}
+.tp-preview-topbar{
+ flex:0 0 auto;min-height:82px;padding:15px 22px;background:linear-gradient(120deg,#153a70,#1c5bac);
+ display:flex;justify-content:space-between;align-items:center;gap:16px;color:#fff
+}
+.tp-preview-heading{display:flex;align-items:center;gap:15px;min-width:0}
+.tp-preview-word-icon{
+ display:grid;place-items:center;flex:0 0 auto;width:43px;height:48px;
+ border-radius:5px;background:#fff;color:#205a9f;font-size:27px;font-weight:800;
+ box-shadow:inset -9px 0 #cbdbee
+}
+.tp-preview-heading>div{min-width:0}
+.tp-preview-kicker{display:block;font-size:10px;color:#d3e8ff;font-weight:700;letter-spacing:1.6px}
+#tp-preview-title{
+ margin:5px 0 3px;max-width:720px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ color:#fff;font-size:19px;line-height:1.25
+}
+.tp-preview-subtitle{color:#d8e9ff;font-size:12px;margin:0}
+#tp-preview-close-top{
+ padding:3px;border:1px solid #ffffff55;background:#ffffff18;color:#fff;
+ width:36px;height:36px;font-size:25px;border-radius:8px;line-height:24px
+}
+#tp-preview-close-top:hover{background:#ffffff38}
+.tp-preview-controls{
+ flex:0 0 auto;min-height:57px;display:flex;align-items:center;gap:16px;
+ padding:9px 20px;background:#f9fbff;border-bottom:1px solid #cbd4e1;
+ color:#64758b;font-size:12px
+}
+.tp-preview-viewonly{
+ display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid #cddbec;
+ background:#e8f0fc;border-radius:18px;color:#215b9b;font-weight:700;white-space:nowrap
+}
+.tp-preview-spacer{flex:1}
+#tp-preview-download,#tp-preview-close{
+ font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;white-space:nowrap
+}
+#tp-preview-download{color:#fff;background:#1e5eaa;border:1px solid #1e5eaa}
+#tp-preview-close{color:#3d536f;background:#fff;border:1px solid #bac9dc}
+.tp-preview-scroll{
+ flex:1;overflow:auto;min-height:0;padding:25px 14px 35px;overscroll-behavior:contain;
+ background:#e7ecf3
+}
+.tp-preview-paper{
+ background:#fff;color:#1f2a37;width:min(794px,100%);min-height:850px;
+ margin:0 auto;padding:66px 69px 90px;box-shadow:0 7px 27px #2945652c;
+ border:1px solid #d6dfeb
+}
+.tp-preview-content{
+ color:#243142;font-family:Calibri,Arial,sans-serif;line-height:1.65;font-size:15px;
+ overflow-wrap:anywhere;white-space:normal;user-select:text
+}
+.tp-preview-content h1{font-size:28px;line-height:1.25;margin:0 0 18px}
+.tp-preview-content h2{font-size:22px;margin:12px 0}
+.tp-preview-content h3{font-size:18px;margin:10px 0}
+.tp-preview-content p{margin:9px 0}
+.tp-preview-content ol,.tp-preview-content ul{padding-left:28px}
+.tp-preview-content table{border-collapse:collapse;width:100%;margin:16px 0;table-layout:fixed}
+.tp-preview-content td,.tp-preview-content th{
+ border:1px solid #a7b6c9;padding:9px;vertical-align:top;overflow-wrap:anywhere
+}
+.tp-preview-content th{background:#e7eef8}
+.tp-preview-content hr{border:0;border-top:1px solid #b8c5d6;margin:20px 0}
+.tp-preview-footer{
+ flex:0 0 auto;padding:9px 19px;border-top:1px solid #d1dce8;
+ background:#f9fbff;color:#718299;font-size:11px;display:flex;gap:12px;
+ justify-content:space-between
+}
+@media(max-width:650px){
+ dialog.tp-doc-preview-dialog[open]{width:100vw;height:100dvh;border:0;border-radius:0}
+ .tp-preview-topbar{padding:11px 13px;min-height:70px}
+ .tp-preview-word-icon{width:32px;height:38px;font-size:22px}
+ #tp-preview-title{font-size:16px}
+ .tp-preview-controls{gap:8px;padding:8px 10px;flex-wrap:wrap}
+ #tp-preview-source{display:none}
+ .tp-preview-scroll{padding:12px 8px 20px}
+ .tp-preview-paper{padding:25px 19px 45px;min-height:680px}
+ .tp-preview-content{font-size:14px}
+ .tp-preview-footer{font-size:10px}
+}
