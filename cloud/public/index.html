@@ -36,6 +36,34 @@
  <div class="panel" style="margin-top:18px"><h3>Projektdateien und Word-Dokumente</h3><div id="tp-project-attachments"></div></div>
  <div class="modal-actions"><button type="button" class="subtle" data-close>Schließen</button><button id="tp-project-save" type="button" class="primary">Projekt speichern</button></div>
 </dialog>
+
+<dialog id="tp-doc-preview-dialog" class="tp-doc-preview-dialog" aria-label="Word-Dokumentvorschau" aria-modal="true" aria-labelledby="tp-preview-title">
+ <div class="tp-preview-topbar">
+  <div class="tp-preview-heading">
+   <span class="tp-preview-word-icon" aria-hidden="true">W</span>
+   <div>
+    <span class="tp-preview-kicker">TRUMMPLANER · WORD-VORSCHAU</span>
+    <h2 id="tp-preview-title">Dokument</h2>
+    <p id="tp-preview-subtitle" class="tp-preview-subtitle">Nur ansehen – keine Bearbeitung</p>
+   </div>
+  </div>
+  <button type="button" id="tp-preview-close-top" class="tp-preview-close" aria-label="Vorschau schließen" title="Schließen">×</button>
+ </div>
+ <div class="tp-preview-controls">
+  <span class="tp-preview-viewonly"><span aria-hidden="true">👁</span> Leseansicht</span>
+  <span id="tp-preview-source"></span>
+  <span class="tp-preview-spacer"></span>
+  <button type="button" id="tp-preview-download" class="tp-preview-download">↓ Word-Datei</button>
+  <button type="button" id="tp-preview-close" class="tp-preview-close-text">Schließen</button>
+ </div>
+ <div class="tp-preview-scroll" id="tp-preview-scroll">
+  <article class="tp-preview-paper">
+   <div id="tp-preview-content" class="tp-preview-content" aria-label="Schreibgeschützte Dokumentvorschau"></div>
+  </article>
+ </div>
+ <div class="tp-preview-footer"><span>Schreibgeschützte Vorschau · Kein Speichern oder Bearbeiten</span><span>DOCX-Ansicht</span></div>
+</dialog>
+
 <dialog id="tp-document-dialog" class="tp-document-fullscreen" aria-label="TrummPlaner Dokumenteditor" aria-modal="true">
  <div class="tp-word-appbar">
   <div class="tp-word-appbar-left">
