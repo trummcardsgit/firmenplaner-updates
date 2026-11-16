@@ -9,9 +9,10 @@
 <div class="modal-header"><h2 id="solution-heading">Aufgabe abschließen</h2><button type="button" class="close" data-close aria-label="Schließen">×</button></div>
 <input type="hidden" id="solution-entry-id">
 <div class="panel"><strong id="solution-problem-title"></strong><p class="muted" id="solution-problem-description"></p></div>
-<label>Wie wurde das Problem gelöst? *<textarea id="solution-text" rows="7" minlength="3" maxlength="20000" required placeholder="Beschreibe die Schritte, Einstellungen und das Ergebnis. Diese Information wird in deiner Lösungsdatenbank gespeichert."></textarea></label>
-<p class="muted">Die Lösung bleibt auch dann erhalten, wenn du die ursprüngliche Aufgabe später löschst.</p>
-<div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary" type="submit">Erledigen &amp; Lösung speichern</button></div>
+<label class="tp-solution-option"><input id="solution-save-to-library" type="checkbox"> <span>Problemlösung in der Lösungsdatenbank speichern</span></label>
+<div id="solution-fields" class="hidden"><label>Wie wurde das Problem gelöst? *<textarea id="solution-text" rows="7" minlength="3" maxlength="20000" placeholder="Beschreibe die Schritte, Einstellungen und das Ergebnis."></textarea></label><p class="muted">Die Lösung bleibt auch dann erhalten, wenn du die ursprüngliche Aufgabe später löschst.</p></div>
+<p id="solution-skip-note" class="muted">Die Aufgabe wird erledigt, ohne einen neuen Eintrag in der Lösungsdatenbank anzulegen.</p>
+<div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button id="solution-confirm" class="primary" type="submit">Nur erledigen</button></div>
 </form></dialog>
 
 <dialog id="tp-project-dialog" class="tp-workspace-dialog" aria-label="Projekt bearbeiten">
