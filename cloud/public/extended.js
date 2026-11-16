@@ -529,6 +529,16 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    closeWordEditor();
   });
   wordDialog.addEventListener("keydown",event=>{
+   const activeTab=event.target.closest("[data-ribbon-tab]");
+   if(activeTab&&["ArrowLeft","ArrowRight"].includes(event.key)){
+    event.preventDefault();
+    const tabs=[...wordDialog.querySelectorAll("[data-ribbon-tab]")];
+    const current=tabs.indexOf(activeTab);
+    const next=tabs[(current+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length];
+    switchRibbon(next.dataset.ribbonTab);
+    next.focus();
+    return;
+   }
    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){
     event.preventDefault();
     $("tp-document-save").click();
