@@ -186,42 +186,127 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
  }
  async function toWord(title,raw){
   await loadScript(SCRIPT_DOCX,()=>!!window.docx?.Packer);
-  const {Document,Paragraph,TextRun,HeadingLevel,Packer}=window.docx;
+  const {Document,Paragraph,TextRun,HeadingLevel,Packer,Table,TableCell,TableRow,
+   WidthType,BorderStyle,AlignmentType,ShadingType}=window.docx;
   const container=document.createElement("div");
   container.innerHTML=cleanHtml(raw);
-  const paragraphs=[];
-  function runs(node,style={}){
-   if(node.nodeType===3)return node.nodeValue?[new TextRun({text:node.nodeValue,bold:!!style.bold,italics:!!style.italics,underline:style.underline?{}:undefined})]:[];
+  const elements=[];
+  function runStyle(node,existing={}){
+   const style={...existing};
+   if(["B","STRONG","TH"].includes(node.tagName)||node.style.fontWeight==="bold")style.bold=true;
+   if(["I","EM"].includes(node.tagName)||node.style.fontStyle==="italic")style.italics=true;
+   if(node.tagName==="U"||node.style.textDecorationLine?.includes("underline"))style.underline={};
+   if(["S","STRIKE"].includes(node.tagName)||node.style.textDecorationLine?.includes("line-through"))style.strike=true;
+   const color=safeColor(node.style.color);
+   const highlight=safeColor(node.style.backgroundColor);
+   const size=safeSize(node.style.fontSize);
+   const font=safeFont(node.style.fontFamily);
+   if(color)style.color=color;
+   if(highlight)style.shading={type:ShadingType.CLEAR,fill:highlight};
+   if(size)style.size=Math.round(size*2);
+   if(font)style.font=font;
+   return style;
+  }
+  function runs(node,inherited={}){
+   if(node.nodeType===3){
+    if(!node.nodeValue)return [];
+    return [new TextRun({text:node.nodeValue,...inherited})];
+   }
    if(node.nodeType!==1)return [];
    if(node.tagName==="BR")return [new TextRun({break:1})];
-   const copy={...style};
-   if(["B","STRONG"].includes(node.tagName))copy.bold=true;
-   if(["I","EM"].includes(node.tagName))copy.italics=true;
-   if(node.tagName==="U")copy.underline=true;
-   return [...node.childNodes].flatMap(child=>runs(child,copy));
+   if(["TABLE","UL","OL"].includes(node.tagName))return [];
+   const next=runStyle(node,inherited);
+   return [...node.childNodes].flatMap(child=>runs(child,next));
   }
-  function para(node,extra={}){
-   const content=runs(node);
-   paragraphs.push(new Paragraph({...extra,children:content.length?content:[new TextRun("")]}));
+  function paragraph(node,settings={},forced={}){
+   const alignment={left:AlignmentType.LEFT,center:AlignmentType.CENTER,right:AlignmentType.RIGHT,justify:AlignmentType.JUSTIFIED};
+   const align=node?.style?.textAlign;
+   const options={...settings};
+   if(align&&alignment[align])options.alignment=alignment[align];
+   const parts=runs(node,forced);
+   return new Paragraph({...options,children:parts.length?parts:[new TextRun({text:""})]});
   }
-  function addBlocks(node){
+  function makeTable(tableNode){
+   const rows=[...tableNode.querySelectorAll("tr")].filter(tr=>tr.closest("table")===tableNode).slice(0,100);
+   if(!rows.length)return null;
+   const cellsOf=tr=>[...tr.children].filter(td=>["TD","TH"].includes(td.tagName)).slice(0,8);
+   const count=Math.max(1,...rows.map(tr=>cellsOf(tr).length));
+   const width=9000;
+   const base=Math.floor(width/count);
+   const widths=Array.from({length:count},(_,i)=>i===count-1?width-base*(count-1):base);
+   const line={style:BorderStyle.SINGLE,size:5,color:"C8D0DB"};
+   const borders={top:line,bottom:line,left:line,right:line};
+   const wordRows=rows.map((tr,rowIndex)=>{
+    const cells=cellsOf(tr);
+    const isHead=rowIndex===0 && cells.some(c=>c.tagName==="TH");
+    const result=widths.map((w,i)=>{
+     const cell=cells[i];
+     const label=cell||document.createElement("td");
+     const isHeader=cell?.tagName==="TH";
+     const fill=safeColor(label.style?.backgroundColor)||(isHeader?"E8EFF9":"");
+     return new TableCell({
+      width:{size:w,type:WidthType.DXA},
+      borders,
+      margins:{top:95,bottom:95,left:125,right:125},
+      shading:fill?{type:ShadingType.CLEAR,fill}:undefined,
+      children:[paragraph(label,{},isHeader?{bold:true}:{})]
+     });
+    });
+    return new TableRow({children:result,tableHeader:isHead,cantSplit:true});
+   });
+   return new Table({
+    width:{size:width,type:WidthType.DXA},
+    columnWidths:widths,
+    rows:wordRows
+   });
+  }
+  function addList(list,level=0){
+   const isNumbered=list.tagName==="OL";
+   for(const li of [...list.children].filter(x=>x.tagName==="LI")){
+    const textHolder=document.createElement("div");
+    textHolder.style.textAlign=li.style.textAlign;
+    for(const part of [...li.childNodes]){
+     if(part.nodeType===1 && ["UL","OL"].includes(part.tagName))continue;
+     textHolder.appendChild(part.cloneNode(true));
+    }
+    elements.push(paragraph(textHolder,
+     isNumbered?{numbering:{reference:"trummplaner-numbering",level:Math.min(level,2)}}:{bullet:{level:Math.min(level,2)}}));
+    for(const nested of [...li.children].filter(n=>["UL","OL"].includes(n.tagName)))addList(nested,level+1);
+   }
+  }
+  function addBlock(node){
    if(node.nodeType===3){
-    if(node.nodeValue.trim())paragraphs.push(new Paragraph({text:node.nodeValue}));
+    if(node.nodeValue.trim())elements.push(new Paragraph({children:runs(node)}));
     return;
    }
    if(node.nodeType!==1)return;
    const tag=node.tagName;
-   if(["H1","H2","H3"].includes(tag)){
-    para(node,{heading:tag==="H1"?HeadingLevel.HEADING_1:tag==="H2"?HeadingLevel.HEADING_2:HeadingLevel.HEADING_3});
-   }else if(tag==="P"||tag==="BLOCKQUOTE"||tag==="LI"){
-    para(node,tag==="LI"?{bullet:{level:0}}:{});
-   }else if(tag==="UL"||tag==="OL"||tag==="DIV"){
-    for(const child of node.childNodes)addBlocks(child);
-   }else para(node);
+   if(tag==="TABLE"){
+    const table=makeTable(node);
+    if(table)elements.push(table);
+   }else if(["OL","UL"].includes(tag)){
+    addList(node);
+   }else if(tag==="HR"){
+    elements.push(new Paragraph({border:{bottom:{style:BorderStyle.SINGLE,color:"B5BDCA",size:7,space:1}},children:[new TextRun({text:" "})]}));
+   }else if(["H1","H2","H3"].includes(tag)){
+    elements.push(paragraph(node,{heading:tag==="H1"?HeadingLevel.HEADING_1:tag==="H2"?HeadingLevel.HEADING_2:HeadingLevel.HEADING_3}));
+   }else if(tag==="DIV" && [...node.children].some(x=>["P","DIV","H1","H2","H3","UL","OL","TABLE","HR"].includes(x.tagName))){
+    for(const child of [...node.childNodes])addBlock(child);
+   }else{
+    elements.push(paragraph(node));
+   }
   }
-  for(const node of container.childNodes)addBlocks(node);
-  if(!paragraphs.length)paragraphs.push(new Paragraph({text:""}));
-  const doc=new Document({creator:"TrummPlaner",title,sections:[{children:paragraphs}]});
+  for(const node of [...container.childNodes])addBlock(node);
+  if(!elements.length)elements.push(new Paragraph({text:""}));
+  const levels=Array.from({length:3},(_,i)=>({
+   level:i,format:"decimal",text:"%"+(i+1)+".",alignment:AlignmentType.LEFT,
+   style:{paragraph:{indent:{left:(i+1)*720,hanging:320}}}
+  }));
+  const doc=new Document({
+   creator:"TrummPlaner",title,
+   numbering:{config:[{reference:"trummplaner-numbering",levels}]},
+   sections:[{children:elements}]
+  });
   return await Packer.toBlob(doc);
  }
  function downloadBlob(blob,fileName){
