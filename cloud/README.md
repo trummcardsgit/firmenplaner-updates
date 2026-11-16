@@ -1,32 +1,45 @@
-# TrummPlaner Cloud
+# TrummPlaner Cloud PWA (1.3)
 
-## Web-App / Smartphone
+Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
-Eine erste Online-Version wird über eine öffentliche Supabase Edge Function ausgeliefert:
+Das GitHub-Pages-Deployment laeuft automatisch aus `.github/workflows/deploy-cloud.yml` und stellt `cloud/public` bereit. Benutzerkonten und Daten liegen ausschliesslich in Supabase `ilmwoapvcluoravpsrjv`. Die alte lokale FirmenPlaner-Version bleibt unabhaengig bestehen.
 
-https://ilmwoapvcluoravpsrjv.supabase.co/functions/v1/trummplaner-site/
+## Aktuelle Funktionen
 
-Der Endpunkt liefert ausschließlich die statischen Dateien aus `cloud/public` (GitHub) und keine Benutzerdaten. Die App nutzt Supabase Auth und zwei per Row-Level Security geschützte Tabellen: `tp_companies` und `tp_entries`. Die Anwendung benötigt kein lokales Command-Fenster.
+- Einladungspflicht mit Administratorfunktion; keine oeffentliche Registrierung.
+- Firmen, Aufgaben, Notizen, Problemloesungen und erweiterte Suche.
+- Aufgabenliste mit **Firmen-Dropdown**, standardmaessig Filter **Offen**; Statusfilter ist umschaltbar.
+- **Projekte**: je Firma Projekte mit Namen, Kurzbeschreibung, Status, formatierten Projektnotizen und Dateianhaengen.
+- **Word-Dokumente**: Dokument in der PWA erstellen, bearbeiten und als echte DOCX-Datei speichern/exportieren. Import vorhandener DOCX und Verknuepfung mit Aufgaben/Notizen/Projekten. Der Import und Export unterstuetzt grundlegende Textformatierung, Ueberschriften und Listen; komplexe Word-Layouts, Tabellen, Bilder, Seitenlayouts, Kommentare, Makros und Aenderungsverfolgung bleiben nicht vollstaendig erhalten.
+- Dateien lassen sich als geschuetzte Anhaenge zu bestehenden Aufgaben/Notizen oder Projekten hochladen (15 MB je Datei).
+- Web-Push mit im Hintergrund laufendem Supabase-Cron; pro Geraet einmalige Anmeldung und Rechtefreigabe notwendig. iPhone-Push benoetigt eine zum Home-Bildschirm hinzugefuegte PWA.
 
-## Login konfigurieren (einmalig)
+## Datenbanken und Speicher
 
-Im Supabase-Dashboard des Projekts `ilmwoapvcluoravpsrjv` unter Authentication > URL Configuration:
+- `tp_projects`, `tp_documents`, `tp_attachments` mit nutzerbezogenem RLS.
+- Supabase Storage Bucket `tp-private-files`, **nicht oeffentlich**, private user-ID-Unterverzeichnisse mit SELECT/INSERT/UPDATE/DELETE-Policies. Keine Download-Links ohne Authentifizierung.
+- Speicherschutz je Benutzer. Die Daten sind **nicht** automatisch mit anderen eingeladenen Personen geteilt; ein gemeinsames Team-Modell waere ein eigenes spaeteres Update.
+- Beim neuen Aufgabeneintrag muessen Aufgaben/Notizen zuerst gespeichert werden. Danach im Dialog **Bearbeiten / Dateien** oeffnen und Word-Dokumente oder Anhaenge anlegen.
+- DOCX-Bearbeitung nutzt lazy-loaded, fest versionierte Bibliotheken `docx@9.15.3` und `mammoth@1.13.0`. Importiertes HTML wird vor Darstellung und Speicherung auf eine sichere Teilmenge begrenzt.
+- Dateioperationen nutzen nur den Supabase Publishable Key und den Benutzer-JWT; niemals Service-Role-Key im Browser.
 
-- **Site URL:** `https://ilmwoapvcluoravpsrjv.supabase.co/functions/v1/trummplaner-site/`
-- **Redirect URLs:** `https://ilmwoapvcluoravpsrjv.supabase.co/functions/v1/trummplaner-site/**`
+## Einmaliger Browser-Test nach dem Release
 
-Dann ein neues E-Mail-Konto anlegen und den Bestätigungslink öffnen. Bei einem Wechsel zu GitHub Pages beide URLs ergänzen.
+1. Als bestehender Benutzer anmelden. Eine Firma oeffnen.
+2. In **Aufgaben** die Firma im Dropdown waehlen: nur offene Aufgaben der Firma anzeigen. Statusfilter pruefen.
+3. In **Projekte** ein Projekt `Umstellung` einer Firma zuordnen, Text und Status speichern.
+4. Projekt erneut oeffnen, Datei anhaengen und auf **Herunterladen** pruefen.
+5. Im Projekt neues Word-Dokument erzeugen, formatieren und speichern. Unter **Word-Dokumente** wieder oeffnen und die DOCX-Datei herunterladen.
+6. Aus einer vorhandenen DOCX-Datei ein neues Dokument importieren, pruefen, speichern und exportieren.
+7. Eine Aufgabe/Notiz bearbeiten und ein Word-Dokument bzw. eine Datei anhaengen.
 
-## GitHub Pages (bevorzugtes, späteres statisches Hosting)
+Die Datenbank- und Server-Sicherheitspruefungen sowie GitHub-Actions-Syntaxchecks sind gelaufen. Eine vollstaendige interaktive Browser-DOCX-Roundtrip-Pruefung steht noch aus und muss am Endgeraet erfolgen.
 
-Die GitHub-Pages-Workflowdatei ist unter `.github/workflows/deploy-cloud.yml` eingerichtet. Die Bereitstellung schlägt derzeit fehl, weil GitHub Pages unter Settings > Pages > Build and deployment > Source noch nicht auf `GitHub Actions` gestellt wurde. Das kann nur jemand mit Repository-Administrationsrechten im GitHub-Webinterface einschalten.
+## Offene Themen
 
-Nach Aktivierung sollte die Website unter https://trummcardsgit.github.io/firmenplaner-updates/ erreichbar sein. Die Cloud-Dateien liegen im eigenen Verzeichnis und berühren die bisherige lokale App nicht.
+- Import der bisherigen lokalen Aufgaben.
+- Gemeinsame Projekte und Dokumente fuer mehrere eingeladene Mitarbeiter (bisher Benutzerisolation).
+- Offline-Bearbeitung mit synchronisierten Konflikten.
+- Umfassender Test des Dokumenteditors auf unterschiedlichen Mobilbrowsern.
 
-## Noch nicht fertig
-
-- Hintergrund-Push bei geschlossener App (separater Push-Sender mit VAPID und Terminplanung nötig).
-- Import der alten lokalen Aufgaben in Supabase.
-- Umfassender Browser-/Gerätetest und Offline-Schreibsynchronisierung.
-
-**Sicherheit:** Niemals Service-Role-Keys, Passwörter, lokale `data/`-Dateien oder echte Firmendaten ins GitHub-Repository laden. `config.js` enthält ausschließlich einen öffentlichen Supabase-Publishable-Key.
+**Sicherheit**: Keine lokalen Datenbankdateien, Passwoerter, Firmendaten oder Supabase-Service-Role-Schluessel in GitHub laden.
