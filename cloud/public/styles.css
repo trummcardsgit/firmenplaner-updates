@@ -347,3 +347,51 @@ dialog.tp-doc-preview-dialog[open]{
  .tp-preview-content{font-size:14px}
  .tp-preview-footer{font-size:10px}
 }
+
+
+/* Word editor: cell-level right-click context menu (also opened by long press). */
+.tp-table-context-menu[hidden]{display:none!important}
+#tp-document-dialog .tp-table-context-menu{
+ position:fixed;z-index:4000;box-sizing:border-box;
+ width:min(282px,calc(100vw - 16px));max-height:calc(100dvh - 16px);
+ overflow-y:auto;overscroll-behavior:contain;padding:7px;
+ color:#26344b;background:#fff;border:1px solid #c7d5e5;
+ border-radius:12px;box-shadow:0 15px 50px #13233f55;
+ font:13px/1.4 Arial,Helvetica,sans-serif;outline:none;
+}
+.tp-table-context-heading{
+ padding:11px 10px 9px;background:#edf3fa;color:#225c9e;
+ border-radius:7px;font-size:10px;letter-spacing:1.25px;
+ font-weight:800;text-align:left
+}
+.tp-table-context-section{
+ color:#6e7b8d;font-size:10px;letter-spacing:.7px;
+ text-transform:uppercase;font-weight:700;padding:9px 11px 4px
+}
+#tp-document-dialog .tp-table-context-menu button{
+ box-sizing:border-box;width:100%;display:block;text-align:left;
+ border:0;border-radius:6px;background:transparent;color:#283a52;
+ font:12px/1.3 Arial,Helvetica,sans-serif;padding:8px 12px;
+ white-space:normal;min-height:32px
+}
+#tp-document-dialog .tp-table-context-menu button:hover,
+#tp-document-dialog .tp-table-context-menu button:focus-visible{
+ background:#e8f1fd;color:#1654a0;outline:1px solid #b1cdee
+}
+#tp-document-dialog .tp-table-context-menu button.tp-table-danger{color:#b13d3e}
+#tp-document-dialog .tp-table-context-menu button.tp-table-danger:hover,
+#tp-document-dialog .tp-table-context-menu button.tp-table-danger:focus-visible{
+ color:#9b232b;background:#fff0f0;outline-color:#efb5b5
+}
+.tp-table-context-divider{height:1px;margin:7px 4px;background:#e2e7ef}
+#tp-document-dialog .tp-table-context-menu .tp-table-delete-all{
+ font-weight:700;padding-top:10px;padding-bottom:10px
+}
+#tp-document-dialog #tp-document-body td,
+#tp-document-dialog #tp-document-body th{cursor:text}
+#tp-document-dialog #tp-document-body td:focus-within,
+#tp-document-dialog #tp-document-body th:focus-within{outline:1px solid #bed4f4}
+@media(max-width:650px){
+ #tp-document-dialog .tp-table-context-menu{max-height:calc(100dvh - 80px);font-size:14px}
+ #tp-document-dialog .tp-table-context-menu button{font-size:14px;min-height:39px;padding:10px 12px}
+}
