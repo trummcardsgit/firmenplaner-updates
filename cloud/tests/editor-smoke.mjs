@@ -45,6 +45,41 @@ assert.match(styles,/dialog\.tp-document-fullscreen\[open\]\s*\{[^}]*height:100d
 assert.match(styles,/#tp-document-dialog #tp-document-body/s,
  "Editor surface must be styled as a document sheet");
 
+// A project can open a read-only Word preview without starting the editor.
+const previewDialog=editorView.getElementById("tp-doc-preview-dialog");
+assert.ok(previewDialog,"Project Word preview dialog should exist");
+assert.ok(editorView.getElementById("tp-project-attachments"),"Project attachments must exist");
+for(const selector of ["#tp-preview-title","#tp-preview-content","#tp-preview-download",
+ "#tp-preview-close","#tp-preview-close-top"]){
+ assert.ok(previewDialog.querySelector(selector),"Read-only preview missing "+selector);
+}
+assert.equal(previewDialog.querySelectorAll("[contenteditable]").length,0,
+ "Read-only preview must never expose an editable content surface");
+assert.doesNotMatch(previewDialog.outerHTML,/\bdata-format=|\bid="tp-document-save"/i,
+ "Read-only preview must not include editing tools");
+assert.match(styles,/dialog\.tp-doc-preview-dialog\[open\]/,
+ "Project preview must be styled as a document viewer");
+
+const previewState={
+ user:{id:"test-user"},companies:[],entries:[],projects:[],solutions:[],
+ documents:[{id:"doc-test",project_id:"project-test",entry_id:null,title:"Umstellung"}],
+ attachments:[
+  {id:"file-docx",project_id:"project-test",entry_id:null,file_name:"Plan.docx",file_size:1500},
+  {id:"file-pdf",project_id:"project-test",entry_id:null,file_name:"Handbuch.pdf",file_size:2500}
+ ]
+};
+const testFeatures=createFeatures({
+ db:{},state:previewState,esc:x=>String(x),fmt:x=>String(x),
+ notice:()=>{},fail:e=>{throw e},refresh:async()=>{},company:()=> "Musterfirma"
+});
+const previewButtons=testFeatures.attached("project","project-test");
+assert.match(previewButtons,/data-doc-preview="doc-test"/,
+ "TrummPlaner Word documents must have a preview button in projects");
+assert.match(previewButtons,/data-file-preview="file-docx"/,
+ "Uploaded DOCX attachments must have a preview button in projects");
+assert.doesNotMatch(previewButtons,/data-file-preview="file-pdf"/,
+ "Unsupported PDFs should not advertise Word preview");
+
 const sample=[
  '<h1 style="text-align:center">Test-Dokument</h1>',
  '<p><span style="color:#ff0000;font-size:14pt;font-family:Arial">Roter Text</span> und <span style="background-color:#fff1a8">markiert</span>.</p>',
