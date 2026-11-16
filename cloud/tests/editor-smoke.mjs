@@ -35,9 +35,9 @@ const sample=[
 const cleaned=features.cleanHtml(sample);
 assert.match(cleaned,/<table>/i,"Table should remain editable");
 assert.match(cleaned,/<th/i,"Table headers should remain editable");
-assert.match(cleaned,/color:\s*#FF0000/i,"Text color should survive sanitization");
+assert.match(cleaned,/color:\s*(?:#FF0000|rgb\(255,\s*0,\s*0\))/i,"Text color should survive sanitization");
 assert.match(cleaned,/font-size:\s*14pt/i,"Font size should survive sanitization");
-assert.match(cleaned,/background-color:\s*#FFF1A8/i,"Highlight should survive sanitization");
+assert.match(cleaned,/background-color:\s*(?:#FFF1A8|rgb\(255,\s*241,\s*168\))/i,"Highlight should survive sanitization");
 assert.doesNotMatch(cleaned,/<script|<img|onerror/ig,"Dangerous HTML must be removed");
 
 const blob=await features.toWord("Test-Dokument",cleaned);
