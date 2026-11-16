@@ -43,18 +43,69 @@
   <label>Dokumentname *<input id="tp-document-title" maxlength="180" required placeholder="z. B. Umstellung – Dokumentation"></label>
   <label>Zuordnung<select id="tp-document-link"></select></label>
  </div>
- <div class="tp-editor-toolbar" role="toolbar" aria-label="Word-Formatierung">
-  <button type="button" data-format="bold"><strong>Fett</strong></button>
-  <button type="button" data-format="italic"><em>Kursiv</em></button>
-  <button type="button" data-format="underline"><u>Unterstrichen</u></button>
-  <button type="button" data-format="h1">Titel</button>
-  <button type="button" data-format="h2">Überschrift</button>
-  <button type="button" data-format="p">Absatz</button>
-  <button type="button" data-format="ul">• Liste</button>
-  <button type="button" data-format="ol">1. Liste</button>
+ <div class="tp-editor-toolbar tp-word-toolbar" role="toolbar" aria-label="Word-Formatierung">
+  <div class="tp-toolbar-group">
+   <button type="button" data-format="bold" title="Fett"><strong>B</strong></button>
+   <button type="button" data-format="italic" title="Kursiv"><em>I</em></button>
+   <button type="button" data-format="underline" title="Unterstrichen"><u>U</u></button>
+   <button type="button" data-format="strikeThrough" title="Durchgestrichen"><s>S</s></button>
+  </div>
+  <div class="tp-toolbar-group">
+   <label class="tp-toolbar-control">Schrift
+    <select data-font-family aria-label="Schriftart">
+     <option value="">Schriftart</option>
+     <option value="Arial">Arial</option>
+     <option value="Calibri">Calibri</option>
+     <option value="Georgia">Georgia</option>
+     <option value="Times New Roman">Times New Roman</option>
+     <option value="Verdana">Verdana</option>
+     <option value="Courier New">Courier New</option>
+    </select>
+   </label>
+   <label class="tp-toolbar-control">Größe
+    <select data-font-size aria-label="Schriftgröße">
+     <option value="">Größe</option><option value="1">8 pt</option><option value="2">10 pt</option>
+     <option value="3">12 pt</option><option value="4">14 pt</option><option value="5">18 pt</option>
+     <option value="6">24 pt</option><option value="7">36 pt</option>
+    </select>
+   </label>
+   <label class="tp-toolbar-control">Textfarbe
+    <input data-color="fore" type="color" value="#202124" aria-label="Schriftfarbe wählen">
+   </label>
+   <label class="tp-toolbar-control">Markieren
+    <input data-color="highlight" type="color" value="#fff1a8" aria-label="Hintergrundfarbe für Text wählen">
+   </label>
+  </div>
+  <div class="tp-toolbar-group">
+   <button type="button" data-format="h1" title="Titel">H1</button>
+   <button type="button" data-format="h2" title="Zwischenüberschrift">H2</button>
+   <button type="button" data-format="p" title="Normaler Absatz">Absatz</button>
+   <button type="button" data-format="ul" title="Aufzählung">• Liste</button>
+   <button type="button" data-format="ol" title="Nummerierte Liste">1. Liste</button>
+  </div>
+  <div class="tp-toolbar-group">
+   <button type="button" data-format="justifyLeft" title="Linksbündig">≡ Links</button>
+   <button type="button" data-format="justifyCenter" title="Zentriert">≡ Mitte</button>
+   <button type="button" data-format="justifyRight" title="Rechtsbündig">≡ Rechts</button>
+   <button type="button" data-format="justifyFull" title="Blocksatz">≡ Block</button>
+  </div>
+  <div class="tp-toolbar-group">
+   <label class="tp-toolbar-control">Zeilen
+    <select data-table-rows aria-label="Tabellenzeilen">
+     <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+    </select>
+   </label>
+   <label class="tp-toolbar-control">Spalten
+    <select data-table-cols aria-label="Tabellenspalten">
+     <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+    </select>
+   </label>
+   <button type="button" data-format="table" title="Tabelle an Cursorposition einfügen">▦ Tabelle</button>
+   <button type="button" data-format="rule" title="Trennlinie einfügen">— Linie</button>
+  </div>
  </div>
  <div id="tp-document-body" class="tp-rich-editor tp-page-editor" contenteditable="true" role="textbox" aria-label="Dokumenttext" aria-multiline="true" data-placeholder="Hier das Word-Dokument direkt bearbeiten …"></div>
- <p class="muted" style="margin-top:10px">Bearbeitbare Word-Dateien (.docx). Grundformatierungen werden unterstützt; komplexe Word-Layouts, Kopf-/Fußzeilen, Makros und Änderungsverfolgung werden nicht vollständig übernommen.</p>
+ <p class="muted" style="margin-top:10px">Tabellen, Farben, Schriftgrößen, Überschriften, Listen und Textausrichtung werden im DOCX-Export berücksichtigt. Komplexe Word-Layouts, Bilder, Kopf-/Fußzeilen, Makros und Änderungsverfolgung werden nicht vollständig übernommen.</p>
  <div class="modal-actions"><button id="tp-document-export" type="button" class="subtle">DOCX herunterladen</button><button type="button" class="subtle" data-close>Schließen</button><button id="tp-document-save" type="button" class="primary">Dokument speichern</button></div>
 </dialog>
 <script src="./config.js"></script><script type="module" src="./app.js"></script></body></html>
