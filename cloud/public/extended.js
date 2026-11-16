@@ -170,6 +170,8 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   $("tp-document-link").innerHTML=selectParent(link);
   $("tp-document-body").innerHTML=cleanHtml(doc.content_html||"<p></p>");
   $("tp-document-dialog").showModal();
+  $("tp-document-dialog").dispatchEvent(new Event("tp-word-open"));
+  $("tp-document-body").focus();
  }
  const libraries={};
  function loadScript(src,check){
@@ -338,8 +340,10 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   if(upload.error)throw new Error("Dokumenttext gespeichert, aber DOCX-Datei konnte nicht hochgeladen werden: "+upload.error.message);
   const u=await db.from("tp_documents").update({storage_path:path}).eq("id",docId);
   if(u.error)throw u.error;
-  $("tp-document-dialog").close();
+  $("tp-document-id").value=docId;
+  viewState.doc=docId;
   await refresh();
+  $("tp-document-dialog").dispatchEvent(new Event("tp-word-saved"));
   if(data.entry_id)setEntryAttachments(data.entry_id);
   if(data.project_id&&$("tp-project-dialog").open)$("tp-project-attachments").innerHTML=attached("project",data.project_id);
   notice("Word-Dokument gespeichert und privat abgelegt.");
@@ -355,6 +359,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   openDoc(null,type,key);
   $("tp-document-title").value=file.name.replace(/\.docx$/i,"").slice(0,180);
   $("tp-document-body").innerHTML=cleanHtml(result.value);
+  $("tp-document-dialog").dispatchEvent(new Event("tp-word-imported"));
   const lost=result.messages?.filter(m=>m.type==="warning").length||0;
   notice(lost?"DOCX importiert. "+lost+" Formatierungswarnung(en). Bitte Inhalt prüfen.":"DOCX importiert. Du kannst den Inhalt jetzt bearbeiten und speichern.");
  }
@@ -459,11 +464,89 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   $("tp-project-attachments")?.addEventListener("click",handleClick);
   $("tp-document-save").addEventListener("click",async()=>{
    $("tp-document-save").disabled=true;
-   try{await saveDocument();}catch(error){fail(error)}finally{$("tp-document-save").disabled=false;}
+   setWordStatus("Wird gespeichert …");
+   try{await saveDocument();}catch(error){setWordDirty(true);fail(error)}finally{$("tp-document-save").disabled=false;}
   });
   $("tp-document-export").addEventListener("click",async()=>{
    try{const title=$("tp-document-title").value.trim()||"Dokument";const blob=await toWord(title,$("tp-document-body").innerHTML);downloadBlob(blob,title.replace(/[\\/:*?"<>|]/g,"_")+".docx");}catch(e){fail(e)}
   });
+  const wordDialog=$("tp-document-dialog");
+  const wordEditor=$("tp-document-body");
+  const wordPaper=$("tp-word-paper");
+  let wordDirty=false;
+  function updateWordCount(){
+   const str=wordEditor.innerText||wordEditor.textContent||"";
+   const words=str.trim().match(/\S+/g)?.length||0;
+   const count=$("tp-word-count");
+   if(count)count.textContent=words+" Wörter · "+str.length+" Zeichen";
+  }
+  function setWordStatus(message){
+   $("tp-word-save-state").textContent=message;
+  }
+  function setWordDirty(value){
+   wordDirty=!!value;
+   setWordStatus(wordDirty?"● Nicht gespeichert":$("tp-document-id").value?"✓ Gespeichert":"Neues Dokument");
+   updateWordCount();
+  }
+  function switchRibbon(name){
+   const allowed=["file","home","insert","layout","view"];
+   if(!allowed.includes(name))name="home";
+   wordDialog.querySelectorAll("[data-ribbon-tab]").forEach(tab=>{
+    const on=tab.dataset.ribbonTab===name;
+    tab.classList.toggle("is-active",on);
+    tab.setAttribute("aria-selected",String(on));
+    tab.tabIndex=on?0:-1;
+   });
+   wordDialog.querySelectorAll("[data-ribbon-panel]").forEach(panel=>{
+    panel.hidden=panel.dataset.ribbonPanel!==name;
+   });
+  }
+  function setWordZoom(value){
+   const z=Math.max(60,Math.min(140,Number(value)||100));
+   wordPaper.style.zoom=z+"%";
+   $("tp-word-zoom").value=String(z);
+   $("tp-word-zoom-value").textContent=z+" %";
+  }
+  function closeWordEditor(){
+   if(wordDirty&&!confirm("Du hast ungespeicherte Änderungen. Möchtest du den Dokumenteditor wirklich verlassen?"))return;
+   wordDialog.close();
+   wordDirty=false;
+  }
+  wordDialog.addEventListener("tp-word-open",()=>{
+   switchRibbon("home");
+   setWordZoom(100);
+   lastEditor=null;lastRange=null;
+   setWordDirty(false);
+  });
+  wordDialog.addEventListener("tp-word-imported",()=>setWordDirty(true));
+  wordDialog.addEventListener("tp-word-saved",()=>setWordDirty(false));
+  wordEditor.addEventListener("input",()=>setWordDirty(true));
+  $("tp-document-title").addEventListener("input",()=>setWordDirty(true));
+  $("tp-document-link").addEventListener("change",()=>setWordDirty(true));
+  $("tp-word-close").addEventListener("click",closeWordEditor);
+  wordDialog.addEventListener("cancel",event=>{
+   event.preventDefault();
+   closeWordEditor();
+  });
+  wordDialog.addEventListener("keydown",event=>{
+   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){
+    event.preventDefault();
+    $("tp-document-save").click();
+   }
+  });
+  wordDialog.addEventListener("click",event=>{
+   const tab=event.target.closest("[data-ribbon-tab]");
+   if(tab){switchRibbon(tab.dataset.ribbonTab);return;}
+   const action=event.target.closest("[data-word-action]");
+   if(!action)return;
+   const name=action.dataset.wordAction;
+   if(name==="save")$("tp-document-save").click();
+   if(name==="export")$("tp-document-export").click();
+   if(name==="zoom-in")setWordZoom(Number($("tp-word-zoom").value)+10);
+   if(name==="zoom-out")setWordZoom(Number($("tp-word-zoom").value)-10);
+   if(name==="zoom-reset")setWordZoom(100);
+  });
+  $("tp-word-zoom").addEventListener("input",event=>setWordZoom(event.target.value));
   $("tp-project-save").addEventListener("click",async()=>{
    $("tp-project-save").disabled=true;
    try{await saveProject();}catch(error){fail(error)}finally{$("tp-project-save").disabled=false;}
@@ -536,6 +619,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    else if(cmd==="ul")document.execCommand("insertUnorderedList",false,null);
    else if(cmd==="ol")document.execCommand("insertOrderedList",false,null);
    else document.execCommand(cmd,false,null);
+   if(dialog===wordDialog)setWordDirty(true);
    rememberSelection();
   }
   for(const dialog of dialogs){
@@ -560,6 +644,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
     }else if(input.matches("[data-font-family]")){
      if(fonts.includes(input.value))document.execCommand("fontName",false,input.value);
     }
+    if(dialog===wordDialog)setWordDirty(true);
     rememberSelection();
     if(input.matches("select"))input.selectedIndex=0;
    });
