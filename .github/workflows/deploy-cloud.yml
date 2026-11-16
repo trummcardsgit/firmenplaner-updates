@@ -31,6 +31,7 @@ jobs:
         run: |
           npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund docx@9.15.3 jsdom@26.1.0 jszip@3.10.1
           node cloud/tests/editor-smoke.mjs
+          node cloud/tests/table-editor-smoke.mjs
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
