@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import * as docx from "docx";
 import JSZip from "jszip";
 import {JSDOM} from "jsdom";
+import {readFileSync} from "node:fs";
 import {createFeatures} from "../public/extended.js";
 
 const dom=new JSDOM("<!doctype html><html><head></head><body></body></html>",{
@@ -22,6 +23,27 @@ const features=createFeatures({
  refresh:async()=>{},
  company:()=> "Musterfirma"
 });
+
+// Full-viewport Word-like workspace must exist in the published HTML.
+const markup=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
+const styles=readFileSync(new URL("../public/styles.css",import.meta.url),"utf8");
+const editorView=new JSDOM(markup).window.document;
+const editorDialog=editorView.getElementById("tp-document-dialog");
+assert.ok(editorDialog,"Full-page editor dialog must exist");
+assert.ok(editorDialog.classList.contains("tp-document-fullscreen"),"Editor must use the fullscreen workspace");
+for(const tab of ["file","home","insert","layout","view"]){
+ assert.ok(editorDialog.querySelector('[data-ribbon-tab="'+tab+'"]'),"Missing ribbon tab: "+tab);
+ assert.ok(editorDialog.querySelector('[data-ribbon-panel="'+tab+'"]'),"Missing ribbon content: "+tab);
+}
+for(const selector of ["#tp-word-close","#tp-document-title","#tp-document-save","#tp-document-export",
+ "#tp-word-paper","#tp-document-body","#tp-word-count","#tp-word-zoom","#tp-word-zoom-value",
+ "[data-format='table']","[data-font-family]","[data-font-size]","[data-color='fore']","[data-color='highlight']"]){
+ assert.ok(editorDialog.querySelector(selector),"Missing editor functionality: "+selector);
+}
+assert.match(styles,/dialog\.tp-document-fullscreen\[open\]\s*\{[^}]*height:100dvh/s,
+ "Opened Word workspace must occupy full viewport");
+assert.match(styles,/#tp-document-dialog #tp-document-body/s,
+ "Editor surface must be styled as a document sheet");
 
 const sample=[
  '<h1 style="text-align:center">Test-Dokument</h1>',
