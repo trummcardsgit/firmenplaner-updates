@@ -116,8 +116,8 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   const files=validFiles().filter(x=>parent(x,type,key));
   let html='<div class="tp-toolbar"><button type="button" class="subtle" data-doc-new="'+type+':'+key+'">+ Word-Dokument</button><button type="button" class="subtle" data-doc-import="'+type+':'+key+'">DOCX bearbeiten</button><button type="button" class="subtle" data-file-upload="'+type+':'+key+'">+ Datei anhängen</button></div>';
   if(!docs.length&&!files.length)html+='<p class="muted">Noch keine Dateien angehängt.</p>';
-  for(const d of docs)html+='<div class="tp-file"><span>📝 '+esc(d.title)+'.docx</span><div><button type="button" class="subtle" data-doc-open="'+d.id+'">Bearbeiten</button><button type="button" class="subtle" data-doc-download="'+d.id+'">DOCX</button></div></div>';
-  for(const f of files)html+='<div class="tp-file"><span>📎 '+esc(f.file_name)+' · '+Math.ceil(f.file_size/1024)+' KB</span><div><button type="button" class="subtle" data-file-download="'+f.id+'">Herunterladen</button><button type="button" class="subtle danger" data-file-delete="'+f.id+'">Löschen</button></div></div>';
+  for(const d of docs)html+='<div class="tp-file"><span>📝 '+esc(d.title)+'.docx</span><div><button type="button" class="subtle tp-preview-button" data-doc-preview="'+d.id+'">👁 Vorschau</button><button type="button" class="subtle" data-doc-open="'+d.id+'">Bearbeiten</button><button type="button" class="subtle" data-doc-download="'+d.id+'">DOCX</button></div></div>';
+  for(const f of files)html+='<div class="tp-file"><span>📎 '+esc(f.file_name)+' · '+Math.ceil(f.file_size/1024)+' KB</span><div>'+(f.file_name.toLowerCase().endsWith(".docx")?'<button type="button" class="subtle tp-preview-button" data-file-preview="'+f.id+'">👁 Vorschau</button>':'')+'<button type="button" class="subtle" data-file-download="'+f.id+'">Herunterladen</button><button type="button" class="subtle danger" data-file-delete="'+f.id+'">Löschen</button></div></div>';
   return html;
  }
  function setEntryAttachments(entryId){
@@ -389,6 +389,37 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   if(type==="project")$("tp-project-attachments").innerHTML=attached(type,key);
   notice("Datei sicher angehängt.");
  }
+ function showDocumentPreview(title,html,source,kind,recordId){
+  const dialog=$("tp-doc-preview-dialog");
+  if(!dialog)throw new Error("Die Vorschau-Oberfläche ist nicht verfügbar. Bitte TrummPlaner neu laden.");
+  $("tp-preview-title").textContent=title;
+  $("tp-preview-subtitle").textContent="Nur ansehen · keine Bearbeitung";
+  $("tp-preview-source").textContent=source;
+  $("tp-preview-content").innerHTML=cleanHtml(html||"");
+  if(!$("tp-preview-content").textContent.trim()&&!$("tp-preview-content").querySelector("table")){
+   $("tp-preview-content").textContent="Dieses Dokument enthält keinen darstellbaren Text.";
+  }
+  const download=$("tp-preview-download");
+  download.dataset.previewKind=kind;
+  download.dataset.previewId=recordId;
+  download.hidden=false;
+  $("tp-preview-scroll").scrollTop=0;
+  dialog.showModal();
+ }
+ function previewStoredWord(row){
+  if(!row)throw new Error("Word-Dokument nicht gefunden.");
+  showDocumentPreview(row.title+".docx",row.content_html||"","TrummPlaner-Dokument", "doc",row.id);
+ }
+ async function previewAttachedWord(row){
+  if(!row||!row.file_name.toLowerCase().endsWith(".docx"))throw new Error("Für diese Datei ist keine Word-Vorschau verfügbar.");
+  const {data,error}=await db.storage.from(BUCKET).download(row.storage_path);
+  if(error)throw error;
+  await loadScript(SCRIPT_MAMMOTH,()=>!!window.mammoth?.convertToHtml);
+  const converted=await window.mammoth.convertToHtml({arrayBuffer:await data.arrayBuffer()});
+  showDocumentPreview(row.file_name,converted.value||"","Angehängte DOCX-Datei","file",row.id);
+  const warningCount=converted.messages?.filter(m=>m.type==="warning").length||0;
+  if(warningCount)notice("Die Vorschau zeigt den Dokumentinhalt; einzelne Word-Layoutdetails können abweichen.");
+ }
  async function downloadFile(row){
   const data=await db.storage.from(BUCKET).download(row.storage_path);
   if(data.error)throw data.error;
@@ -446,6 +477,8 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    if(d.projectOpen){openProject(validProjects().find(x=>x.id===d.projectOpen));return;}
    if("docNew" in d){const v=splitLink(d.docNew);openDoc(null,v.type,v.key);return;}
    if("docImport" in d){const v=splitLink(d.docImport);await importWord(v.type,v.key);return;}
+   if(d.docPreview){const doc=validDocs().find(x=>x.id===d.docPreview);if(doc)previewStoredWord(doc);return;}
+   if(d.filePreview){const file=validFiles().find(x=>x.id===d.filePreview);if(file)await previewAttachedWord(file);return;}
    if(d.docOpen){const doc=validDocs().find(x=>x.id===d.docOpen);if(doc)openDoc(doc);return;}
    if(d.docDownload){const doc=validDocs().find(x=>x.id===d.docDownload);if(doc)await downloadDocument(doc);return;}
    if(d.docDelete){const doc=validDocs().find(x=>x.id===d.docDelete);if(doc)await deleteDocument(doc);return;}
@@ -462,6 +495,32 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   });
   $("entry-attachments")?.addEventListener("click",handleClick);
   $("tp-project-attachments")?.addEventListener("click",handleClick);
+  // Project remains open beneath the read-only preview.
+  const previewDialog=$("tp-doc-preview-dialog");
+  const closePreview=()=>previewDialog.close();
+  $("tp-preview-close-top").addEventListener("click",closePreview);
+  $("tp-preview-close").addEventListener("click",closePreview);
+  previewDialog.addEventListener("close",()=>{
+   $("tp-preview-content").replaceChildren();
+   const button=$("tp-preview-download");
+   delete button.dataset.previewKind;
+   delete button.dataset.previewId;
+  });
+  $("tp-preview-download").addEventListener("click",async()=>{
+   const button=$("tp-preview-download");
+   button.disabled=true;
+   try{
+    if(button.dataset.previewKind==="doc"){
+     const doc=validDocs().find(d=>d.id===button.dataset.previewId);
+     if(!doc)throw new Error("Dokument nicht mehr vorhanden.");
+     await downloadDocument(doc);
+    }else if(button.dataset.previewKind==="file"){
+     const file=validFiles().find(f=>f.id===button.dataset.previewId);
+     if(!file)throw new Error("Anhang nicht mehr vorhanden.");
+     await downloadFile(file);
+    }
+   }catch(error){fail(error)}finally{button.disabled=false;}
+  });
   $("tp-document-save").addEventListener("click",async()=>{
    $("tp-document-save").disabled=true;
    setWordStatus("Wird gespeichert …");
