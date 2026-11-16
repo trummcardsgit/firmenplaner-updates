@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.3.3)
+# TrummPlaner Cloud PWA (1.3.4)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -12,6 +12,8 @@ Das GitHub-Pages-Deployment laeuft automatisch aus `.github/workflows/deploy-clo
 - **Projekte**: je Firma Projekte mit Namen, Kurzbeschreibung, Status, formatierten Projektnotizen und Dateianhaengen.
   Im Projekt lassen sich eigene Word-Dokumente und hochgeladene `.docx`-Anhaenge mit **Vorschau** als schreibgeschuetzte Blattansicht oeffnen. Der Vorschau-Dialog ermoeglicht Lesen, Scrollen, Download und Schliessen ohne Bearbeitung. Hochgeladene DOCX-Dateien werden clientseitig mit Mammoth in sichere HTML-Ansicht konvertiert; Bilder, komplexe Layouts und spezielle Word-Elemente koennen dabei abweichen.
 - **Word-Dokumente**: Dokument in der PWA erstellen, bearbeiten und als echte DOCX-Datei speichern/exportieren.
+  Tabellen lassen sich im Vollbildeditor per **Rechtsklick auf eine Zelle** bearbeiten; auf Touch-Geraeten oeffnet laengeres Druecken das Kontextmenue. Verfuegbar: Zeilen oberhalb/unterhalb einfuegen oder loeschen, Spalten links/rechts einfuegen oder loeschen, einzelne Zellen einfuegen/leeren/loeschen und ganze Tabellen entfernen. Bis 20 Spalten und 200 Zeilen je Tabelle werden auch nach DOCX exportiert. Einzelzellenaktionen koennen unterschiedlich lange Zeilen erzeugen; der Export fuellt fehlende Zellen auf.
+
   Der Editor oeffnet eine **vollstaendige Vollbild-Arbeitsflaeche** mit blauem Dokumentkopf, Registerkarten Datei/Start/Einfuegen/Layout/Ansicht, formatierbarer A4-Blattansicht, Wortzaehlung, Zoom, Cloudspeicherung und DOCX-Export. Strg+S speichert; Zurueck/ESC fragt bei ungespeicherten Aenderungen nach. Import vorhandener DOCX und Verknuepfung mit Aufgaben/Notizen/Projekten. Der Import und Export unterstuetzt grundlegende Textformatierung, Ueberschriften und Listen; komplexe Word-Layouts, Tabellen, Bilder, Seitenlayouts, Kommentare, Makros und Aenderungsverfolgung bleiben nicht vollstaendig erhalten.
 - Dateien lassen sich als geschuetzte Anhaenge zu bestehenden Aufgaben/Notizen oder Projekten hochladen (15 MB je Datei).
 - Web-Push mit im Hintergrund laufendem Supabase-Cron; pro Geraet einmalige Anmeldung und Rechtefreigabe notwendig. iPhone-Push benoetigt eine zum Home-Bildschirm hinzugefuegte PWA.
