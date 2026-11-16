@@ -40,8 +40,35 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   for(const e of state.entries)h+='<option value="entry:'+e.id+'"'+(value==="entry:"+e.id?' selected':'')+'>Aufgabe/Notiz: '+esc(company(e.company_id)+" · "+e.title)+'</option>';
   return h;
  }
- const blocked=new Set(["SCRIPT","STYLE","IFRAME","OBJECT","EMBED","SVG","MATH","FORM","INPUT","META","LINK","IMG","VIDEO","AUDIO"]);
- const allowed=new Set(["P","DIV","BR","B","STRONG","I","EM","U","H1","H2","H3","UL","OL","LI","BLOCKQUOTE","SPAN"]);
+ const blocked=new Set(["SCRIPT","STYLE","IFRAME","OBJECT","EMBED","SVG","MATH","FORM","INPUT","META","LINK","IMG","VIDEO","AUDIO","CANVAS","BASE"]);
+ const allowed=new Set(["P","DIV","BR","B","STRONG","I","EM","U","S","STRIKE","H1","H2","H3","UL","OL","LI","BLOCKQUOTE","SPAN","FONT","TABLE","THEAD","TBODY","TFOOT","TR","TH","TD","HR"]);
+ const fonts=["Arial","Calibri","Georgia","Times New Roman","Verdana","Courier New"];
+ const fontSizes=[8,10,12,14,18,24,36];
+ function safeColor(raw){
+  if(!raw)return "";
+  const value=String(raw).trim();
+  if(/^#[\da-f]{6}$/i.test(value))return value.slice(1).toUpperCase();
+  if(/^#[\da-f]{3}$/i.test(value))return [...value.slice(1)].map(c=>(c+c).toUpperCase()).join("");
+  const rgb=value.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(0(?:\.\d+)?|1(?:\.0+)?))?\s*\)$/i);
+  if(rgb){
+   if(rgb[4]!==undefined&&Number(rgb[4])<1)return "";
+   const parts=rgb.slice(1,4).map(Number);
+   if(parts.some(v=>v>255))return "";
+   return parts.map(v=>v.toString(16).padStart(2,"0").toUpperCase()).join("");
+  }
+  return "";
+ }
+ function safeSize(raw){
+  const match=String(raw||"").trim().match(/^(\d+(?:\.\d+)?)\s*(pt|px)$/i);
+  if(!match)return null;
+  const pt=Number(match[1])*(match[2].toLowerCase()==="px"?0.75:1);
+  if(pt<7||pt>72)return null;
+  return Math.round(pt*2)/2;
+ }
+ function safeFont(raw){
+  const name=String(raw||"").split(",")[0].trim().replace(/^['"]|['"]$/g,"");
+  return fonts.find(x=>x.toLowerCase()===name.toLowerCase())||"";
+ }
  function cleanHtml(raw){
   const parsed=new DOMParser().parseFromString(String(raw||""),"text/html");
   const target=document.createElement("div");
@@ -50,7 +77,29 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    if(node.nodeType!==1)return;
    if(blocked.has(node.tagName))return;
    if(!allowed.has(node.tagName)){for(const x of [...node.childNodes])append(x,to);return;}
-   const child=document.createElement(node.tagName.toLowerCase());
+   const tag=node.tagName==="FONT"?"span":node.tagName.toLowerCase();
+   const child=document.createElement(tag);
+   const color=safeColor(node.style.color||node.getAttribute("color"));
+   const background=safeColor(node.style.backgroundColor||node.getAttribute("bgcolor"));
+   const rawSize=node.tagName==="FONT"&&node.getAttribute("size")
+     ?fontSizes[Math.max(0,Math.min(6,Number(node.getAttribute("size"))-1))]
+     :null;
+   const size=rawSize||safeSize(node.style.fontSize);
+   const font=safeFont(node.style.fontFamily||node.getAttribute("face"));
+   if(color)child.style.color="#"+color;
+   if(background)child.style.backgroundColor="#"+background;
+   if(size)child.style.fontSize=size+"pt";
+   if(font)child.style.fontFamily=font.includes(" ")?"'"+font+"'":font;
+   if(/^(bold|[6-9]00)$/i.test(node.style.fontWeight))child.style.fontWeight="bold";
+   if(node.style.fontStyle==="italic")child.style.fontStyle="italic";
+   if(node.style.textDecorationLine?.includes("underline"))child.style.textDecoration="underline";
+   if(node.style.textDecorationLine?.includes("line-through"))child.style.textDecoration="line-through";
+   if(["P","DIV","H1","H2","H3","TD","TH"].includes(node.tagName)&&["left","center","right","justify"].includes(node.style.textAlign))
+    child.style.textAlign=node.style.textAlign;
+   if(tag==="table"){
+    const caption=node.getAttribute("aria-label");
+    if(caption)child.setAttribute("aria-label",caption.slice(0,120));
+   }
    for(const x of [...node.childNodes])append(x,child);
    to.appendChild(child);
   }
