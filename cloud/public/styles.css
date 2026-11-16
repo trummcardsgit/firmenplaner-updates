@@ -32,3 +32,35 @@
  .bottom-nav{justify-content:flex-start}
  .bottom-nav button{min-width:65px}
 }
+
+
+/* Optional solution transfer */
+.tp-solution-option{display:flex;align-items:center;gap:12px;flex-direction:row;border:1px solid #6b562b;background:#2e281d;padding:15px;border-radius:12px;margin-bottom:15px;color:#ffe0a6;font-size:14px}
+.tp-solution-option input[type="checkbox"]{width:20px;height:20px;flex:0 0 auto;accent-color:#e9bb59}
+#solution-fields{margin-top:4px}
+#solution-skip-note{font-size:13px;line-height:1.5}
+
+/* Enhanced Word toolbar */
+.tp-word-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:7px;padding:10px}
+.tp-toolbar-group{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.tp-toolbar-group+.tp-toolbar-group{border-top:1px solid #414450;padding-top:8px}
+.tp-editor-toolbar .tp-toolbar-control{display:flex;align-items:center;gap:7px;white-space:nowrap;margin:0;padding:0;color:#c9cad4;font-size:12px;font-weight:500}
+.tp-editor-toolbar select{min-width:63px;width:auto;max-width:185px;padding:7px 9px;font-size:12px;border-radius:7px}
+.tp-editor-toolbar input[type="color"]{width:36px;height:29px;padding:2px;background:#2c303b;border:1px solid #626574;border-radius:7px;cursor:pointer}
+.tp-word-toolbar button[data-format="table"]{background:#4b371d;color:#ffdf9b;border-color:#a7823b}
+.tp-rich-editor table{border-collapse:collapse;width:100%;margin:14px 0;font-size:inherit;table-layout:fixed}
+.tp-rich-editor th,.tp-rich-editor td{border:1px solid #848c9b;min-width:48px;padding:8px;vertical-align:top;overflow-wrap:anywhere}
+.tp-rich-editor th{background-color:#e6edf6;color:#1b2433;font-weight:700}
+.tp-rich-editor td{background-color:transparent}
+.tp-rich-editor hr{border:0;border-top:1px solid #aeb6c7;margin:16px 0}
+.tp-page-editor th,.tp-page-editor td{border-color:#bac0ca}
+.tp-page-editor th{background-color:#e6edf6}
+.tp-page-editor [style*="background-color"]{border-radius:2px}
+@media(max-width:680px){
+ .tp-word-toolbar{padding:7px}
+ .tp-toolbar-group{gap:5px}
+ .tp-editor-toolbar .tp-toolbar-control{font-size:11px}
+ .tp-editor-toolbar select{max-width:130px}
+ .tp-rich-editor table{font-size:12px}
+ .tp-rich-editor th,.tp-rich-editor td{min-width:35px;padding:5px}
+}
