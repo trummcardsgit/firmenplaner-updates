@@ -570,7 +570,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    });
   }
  }
- return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,attached,optionCompanies,
+ return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,toWord,attached,optionCompanies,
   get taskCompany(){return viewState.taskCompany;},
   set taskCompany(value){viewState.taskCompany=value||"";},
   get projectCompany(){return viewState.projectCompany;},
