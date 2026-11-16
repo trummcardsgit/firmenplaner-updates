@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.3)
+# TrummPlaner Cloud PWA (1.3.2)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -10,7 +10,8 @@ Das GitHub-Pages-Deployment laeuft automatisch aus `.github/workflows/deploy-clo
 - Firmen, Aufgaben, Notizen, Problemloesungen und erweiterte Suche.
 - Aufgabenliste mit **Firmen-Dropdown**, standardmaessig Filter **Offen**; Statusfilter ist umschaltbar.
 - **Projekte**: je Firma Projekte mit Namen, Kurzbeschreibung, Status, formatierten Projektnotizen und Dateianhaengen.
-- **Word-Dokumente**: Dokument in der PWA erstellen, bearbeiten und als echte DOCX-Datei speichern/exportieren. Import vorhandener DOCX und Verknuepfung mit Aufgaben/Notizen/Projekten. Der Import und Export unterstuetzt grundlegende Textformatierung, Ueberschriften und Listen; komplexe Word-Layouts, Tabellen, Bilder, Seitenlayouts, Kommentare, Makros und Aenderungsverfolgung bleiben nicht vollstaendig erhalten.
+- **Word-Dokumente**: Dokument in der PWA erstellen, bearbeiten und als echte DOCX-Datei speichern/exportieren.
+  Der Editor oeffnet eine **vollstaendige Vollbild-Arbeitsflaeche** mit blauem Dokumentkopf, Registerkarten Datei/Start/Einfuegen/Layout/Ansicht, formatierbarer A4-Blattansicht, Wortzaehlung, Zoom, Cloudspeicherung und DOCX-Export. Strg+S speichert; Zurueck/ESC fragt bei ungespeicherten Aenderungen nach. Import vorhandener DOCX und Verknuepfung mit Aufgaben/Notizen/Projekten. Der Import und Export unterstuetzt grundlegende Textformatierung, Ueberschriften und Listen; komplexe Word-Layouts, Tabellen, Bilder, Seitenlayouts, Kommentare, Makros und Aenderungsverfolgung bleiben nicht vollstaendig erhalten.
 - Dateien lassen sich als geschuetzte Anhaenge zu bestehenden Aufgaben/Notizen oder Projekten hochladen (15 MB je Datei).
 - Web-Push mit im Hintergrund laufendem Supabase-Cron; pro Geraet einmalige Anmeldung und Rechtefreigabe notwendig. iPhone-Push benoetigt eine zum Home-Bildschirm hinzugefuegte PWA.
 
