@@ -151,7 +151,7 @@
      </label>
      <button type="button" data-format="table" class="tp-ribbon-highlight" title="Tabelle an der Cursorposition einfügen">▦ Tabelle einfügen</button>
     </div>
-    <span class="tp-ribbon-group-label">Tabellen</span>
+    <span class="tp-ribbon-group-label">Tabellen · Rechtsklick zum Bearbeiten</span>
    </div>
    <div class="tp-ribbon-group">
     <div class="tp-ribbon-controls"><button type="button" data-format="rule">— Trennlinie</button></div>
@@ -224,6 +224,27 @@
    <span id="tp-word-zoom-value">100 %</span>
    <button type="button" data-word-action="zoom-in" aria-label="Zoom vergrößern">+</button>
   </div>
+ </div>
+
+ <div id="tp-table-context-menu" class="tp-table-context-menu" role="menu" aria-label="Tabellen bearbeiten" tabindex="-1" hidden>
+  <div class="tp-table-context-heading">▦ TABELLE BEARBEITEN</div>
+  <div class="tp-table-context-section">Zeilen</div>
+  <button type="button" role="menuitem" data-table-action="row-above">↥ Zeile darüber einfügen</button>
+  <button type="button" role="menuitem" data-table-action="row-below">↧ Zeile darunter einfügen</button>
+  <button type="button" role="menuitem" data-table-action="row-delete" class="tp-table-danger">✕ Zeile löschen</button>
+  <div class="tp-table-context-divider"></div>
+  <div class="tp-table-context-section">Spalten</div>
+  <button type="button" role="menuitem" data-table-action="col-left">← Spalte links einfügen</button>
+  <button type="button" role="menuitem" data-table-action="col-right">→ Spalte rechts einfügen</button>
+  <button type="button" role="menuitem" data-table-action="col-delete" class="tp-table-danger">✕ Spalte löschen</button>
+  <div class="tp-table-context-divider"></div>
+  <div class="tp-table-context-section">Einzelne Zelle</div>
+  <button type="button" role="menuitem" data-table-action="cell-left">← Zelle davor einfügen</button>
+  <button type="button" role="menuitem" data-table-action="cell-right">→ Zelle danach einfügen</button>
+  <button type="button" role="menuitem" data-table-action="cell-clear">⌫ Zelleninhalt leeren</button>
+  <button type="button" role="menuitem" data-table-action="cell-delete" class="tp-table-danger">✕ Zelle löschen</button>
+  <div class="tp-table-context-divider"></div>
+  <button type="button" role="menuitem" data-table-action="table-delete" class="tp-table-danger tp-table-delete-all">▤ Ganze Tabelle löschen</button>
  </div>
 </dialog>
 <script src="./config.js"></script><script type="module" src="./app.js"></script></body></html>
