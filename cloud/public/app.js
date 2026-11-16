@@ -86,14 +86,27 @@ function solutionResults(){
  '<div style="border-left:3px solid #e2af48;padding:12px;background:#242630;border-radius:9px"><strong>✔ Lösung</strong><p style="margin:8px 0 0;white-space:pre-wrap">'+esc(s.solution_text)+'</p></div>'+
  '</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');
 }
+function toggleSolutionFields(){
+ const enabled=$("solution-save-to-library").checked;
+ $("solution-fields").classList.toggle("hidden",!enabled);
+ $("solution-skip-note").classList.toggle("hidden",enabled);
+ $("solution-text").required=enabled;
+ $("solution-confirm").textContent=enabled?"Erledigen & Lösung speichern":"Nur erledigen";
+}
+$("solution-save-to-library").addEventListener("change",()=>{
+ toggleSolutionFields();
+ if($("solution-save-to-library").checked)$("solution-text").focus();
+});
 function openResolution(entry){
  if(!entry)return;
  $("solution-entry-id").value=entry.id;
  $("solution-problem-title").textContent=entry.title;
  $("solution-problem-description").textContent=entry.description||"";
- $("solution-text").value=state.solutions.find(s=>s.source_entry_id===entry.id)?.solution_text||"";
+ const previousSolution=state.solutions.find(s=>s.source_entry_id===entry.id);
+ $("solution-text").value=previousSolution?.solution_text||"";
+ $("solution-save-to-library").checked=!!previousSolution;
+ toggleSolutionFields();
  $("solution-dialog").showModal();
- $("solution-text").focus();
 }
 function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' offene Aufgaben</span><div class="actions"><button data-company-edit="'+c.id+'">Bearbeiten</button><button data-company-delete="'+c.id+'" class="danger">Löschen</button></div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
 function settings(){
@@ -195,16 +208,29 @@ $("content").addEventListener("submit",async event=>{
 });
 $("solution-form").addEventListener("submit",async event=>{
  event.preventDefault();
- const entryId=$("solution-entry-id").value,solution=$("solution-text").value.trim();
- if(solution.length<3)return notice("Bitte mindestens drei Zeichen für die Lösung eingeben.");
+ const entryId=$("solution-entry-id").value;
+ const saveSolution=$("solution-save-to-library").checked;
+ const solution=$("solution-text").value.trim();
+ if(saveSolution&&solution.length<3)return notice("Bitte mindestens drei Zeichen für die Lösung eingeben.");
  const submit=event.target.querySelector('button[type="submit"]');
  submit.disabled=true;
  try{
-  const {error}=await db.rpc("tp_complete_task",{p_entry_id:entryId,p_solution:solution});
-  if(error)throw error;
+  if(saveSolution){
+   const {error}=await db.rpc("tp_complete_task",{p_entry_id:entryId,p_solution:solution});
+   if(error)throw error;
+  }else{
+   const {data,error}=await db.from("tp_entries")
+    .update({status:"done",updated_at:new Date().toISOString()})
+    .eq("id",entryId).eq("owner_id",state.user.id).eq("kind","task")
+    .select("id").single();
+   if(error)throw error;
+   if(!data)throw new Error("Aufgabe wurde nicht gefunden.");
+  }
   $("solution-dialog").close();
   await load();
-  notice("Aufgabe erledigt. Die Lösung wurde gespeichert und ist jetzt durchsuchbar.");
+  notice(saveSolution
+   ?"Aufgabe erledigt. Die Lösung ist jetzt in der Lösungsdatenbank durchsuchbar."
+   :"Aufgabe erledigt – keine neue Lösung gespeichert.");
  }catch(err){fail(err)}
  finally{submit.disabled=false;}
 });
