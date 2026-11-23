@@ -35,10 +35,10 @@ export function installDictation(root=document, host=window){
     status.textContent="Zum Sprachwechsel bitte erst stoppen und erneut diktieren.";
    }
   });
-  context.dialog?.addEventListener("close",()=>{if(active===context)stop({abort:true,message:"Diktat beendet."});});
+  context.dialog?.addEventListener("close",()=>{if(active?.fieldId===context.fieldId)stop({abort:true,message:"Diktat beendet."});});
   if(fieldId==="solution-text"){
    root.getElementById("solution-save-to-library")?.addEventListener("change",event=>{
-    if(!event.target.checked&&active===context)stop({abort:true,message:"Diktat beendet."});
+    if(!event.target.checked&&active?.fieldId===context.fieldId)stop({abort:true,message:"Diktat beendet."});
    });
   }
  }
