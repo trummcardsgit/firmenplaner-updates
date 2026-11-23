@@ -1,5 +1,6 @@
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
+import {installDictation} from "./dictation.js";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
@@ -312,6 +313,7 @@ db.auth.onAuthStateChange((event,session)=>{
  }
 });
 features.init();
+installDictation(document,window);
 window.addEventListener("tp-refresh-view",()=>render());
 db.auth.getUser().then(r=>showApp(r.data.user||null)).catch(fail);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(console.warn);
