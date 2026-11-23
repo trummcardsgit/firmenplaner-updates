@@ -56,7 +56,7 @@ pending.shift()();
 const second=MockRecognizer.instances.at(-1);
 assert.notEqual(first,second);
 second.emit([{text:"Neuer Absatz",final:true}]);
-second.emit([{text:"Papier nachgefüllt",final:true}]);
+second.emit([{text:"Neuer Absatz",final:true},{text:"Papier nachgefüllt",final:true}]);
 assert.match(entry.value,/\n\nPapier nachgefüllt/);
 assert.equal(inputCount,3);
 entryButton.click();
