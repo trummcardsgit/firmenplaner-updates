@@ -1,5 +1,5 @@
-const CACHE="trummplaner-pwa-v1.3.4";
-const ASSETS=["./","./index.html","./styles.css","./app.js","./extended.js","./table-editor.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp"];
+const CACHE="trummplaner-pwa-v1.3.5";
+const ASSETS=["./","./index.html","./styles.css","./app.js","./extended.js","./table-editor.js","./dictation.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
