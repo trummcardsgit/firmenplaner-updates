@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.3.4)
+# TrummPlaner Cloud PWA (1.3.5)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -9,6 +9,8 @@ Das GitHub-Pages-Deployment laeuft automatisch aus `.github/workflows/deploy-clo
 - Einladungspflicht mit Administratorfunktion; keine oeffentliche Registrierung.
 - Firmen, Aufgaben, Notizen, Problemloesungen und erweiterte Suche.
 - Aufgabenliste mit **Firmen-Dropdown**, standardmaessig Filter **Offen**; Statusfilter ist umschaltbar.
+- **Spracheingabe/Diktieren** in Aufgaben- und Notizbeschreibungen sowie optionalen Problemloesungen: Browser-Web-Speech-API mit `de-AT` oder `de-DE`, vorlaeufiger Erkennung, finaler Textergaenzung, Sprechpausen-Fortsetzung, Mikrofonfehlern und Schutz vor Absenden waehrend einer Aufnahme. Keine Audio-Dateien in Supabase. Die Audio-Verarbeitung kann je nach Browser durch einen externen Spracherkennungsdienst erfolgen; die Genauigkeit insbesondere bei Dialekt ist nicht garantiert. Fallback ist die eingebaute Diktierfunktion der Smartphone-Tastatur.
+
 - **Projekte**: je Firma Projekte mit Namen, Kurzbeschreibung, Status, formatierten Projektnotizen und Dateianhaengen.
   Im Projekt lassen sich eigene Word-Dokumente und hochgeladene `.docx`-Anhaenge mit **Vorschau** als schreibgeschuetzte Blattansicht oeffnen. Der Vorschau-Dialog ermoeglicht Lesen, Scrollen, Download und Schliessen ohne Bearbeitung. Hochgeladene DOCX-Dateien werden clientseitig mit Mammoth in sichere HTML-Ansicht konvertiert; Bilder, komplexe Layouts und spezielle Word-Elemente koennen dabei abweichen.
 - **Word-Dokumente**: Dokument in der PWA erstellen, bearbeiten und als echte DOCX-Datei speichern/exportieren.
