@@ -395,3 +395,53 @@ dialog.tp-doc-preview-dialog[open]{
  #tp-document-dialog .tp-table-context-menu{max-height:calc(100dvh - 80px);font-size:14px}
  #tp-document-dialog .tp-table-context-menu button{font-size:14px;min-height:39px;padding:10px 12px}
 }
+
+
+/* Voice dictation for task descriptions and solutions */
+.tp-dictation{
+ grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;
+ gap:8px 13px;margin:3px 0 13px;padding:10px 12px;
+ border:1px solid #3c5261;border-radius:11px;background:#19232d;
+}
+.tp-dictation .tp-dictation-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;
+ min-height:39px;border:1px solid #4c85bb;border-radius:9px;
+ padding:8px 15px;background:#264b70;color:#e4f2ff;
+ font-size:13px;font-weight:700;cursor:pointer
+}
+.tp-dictation .tp-dictation-button:hover{background:#32658f}
+.tp-dictation .tp-dictation-button:focus-visible{outline:2px solid #a7d6ff;outline-offset:2px}
+.tp-dictation .tp-dictation-button.is-recording{
+ background:#7d273b;color:#fff;border-color:#ee8490;
+ box-shadow:0 0 0 3px #9c263d22
+}
+.tp-dictation .tp-dictation-button.is-recording .tp-dictation-icon{animation:tp-microphone-pulse 1.25s ease-in-out infinite}
+.tp-dictation .tp-dictation-button:disabled{cursor:not-allowed;opacity:.58}
+.tp-dictation-icon{font-size:18px;line-height:1}
+.tp-dictation .tp-dictation-language{
+ display:inline-flex;flex-direction:row;gap:7px;align-items:center;
+ margin:0;color:#bacbd6;font-size:12px;font-weight:500;white-space:nowrap
+}
+.tp-dictation .tp-dictation-language select{
+ width:auto;max-width:205px;min-height:36px;padding:7px 9px;
+ border:1px solid #5c7284;border-radius:8px;background:#222f3e;
+ color:#f1f5ff;font-size:12px
+}
+.tp-dictation-state{min-width:125px;flex:1;color:#aed5eb;font-size:12px;line-height:1.45}
+.tp-dictation-state.tp-dictation-error{color:#ffb1ae;font-weight:600}
+.tp-dictation-live{
+ flex:0 0 100%;min-height:0;color:#f0d58a;font-size:13px;line-height:1.4;
+ font-style:italic;white-space:pre-wrap;overflow-wrap:anywhere
+}
+.tp-dictation-live:empty{display:none}
+@keyframes tp-microphone-pulse{0%,100%{opacity:1}50%{opacity:.48}}
+@media(max-width:680px){
+ .tp-dictation{align-items:stretch;gap:8px;padding:10px}
+ .tp-dictation .tp-dictation-language{flex:1;justify-content:flex-start}
+ .tp-dictation .tp-dictation-language select{max-width:172px}
+ .tp-dictation-state{flex:0 0 100%}
+ .tp-dictation .tp-dictation-button{min-width:112px}
+}
+@media(prefers-reduced-motion:reduce){
+ .tp-dictation .tp-dictation-button.is-recording .tp-dictation-icon{animation:none}
+}
