@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.0)
+# TrummPlaner Cloud PWA (1.5.1)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -52,3 +52,7 @@ Die Datenbank- und Server-Sicherheitspruefungen sowie GitHub-Actions-Syntaxcheck
 - Umfassender Test des Dokumenteditors auf unterschiedlichen Mobilbrowsern.
 
 **Sicherheit**: Keine lokalen Datenbankdateien, Passwoerter, Firmendaten oder Supabase-Service-Role-Schluessel in GitHub laden.
+
+## Fix 1.5.1: Projektauswahl im Aufgabenformular
+
+Das Dropdown `Projekt (optional)` laedt die aktuellen Projekte bei jedem Oeffnen einer Aufgabe und jedem Firmenwechsel direkt und nutzerbezogen aus Supabase. Es zeigt den Ladezustand, einen klaren Hinweis bei fehlenden Projekten und ignoriert veraltete Antworten nach schnellem Firmenwechsel. Die vorhandenen Projekte und Aufgaben werden nicht veraendert.
