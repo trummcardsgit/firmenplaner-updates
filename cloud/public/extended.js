@@ -5,14 +5,59 @@ const DOCX_MIME="application/vnd.openxmlformats-officedocument.wordprocessingml.
 const SCRIPT_DOCX="https://cdn.jsdelivr.net/npm/docx@9.15.3/dist/index.iife.js";
 const SCRIPT_MAMMOTH="https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.js";
 
-export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
+export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,openTask=()=>{},showProjectTasks=()=>{}}){
  const $=id=>document.getElementById(id);
- const viewState={taskCompany:"",projectCompany:"",project:null,doc:null};
+ const viewState={taskCompany:"",taskProject:"",projectCompany:"",project:null,doc:null};
  const id=()=>state.user?.id;
  const parent= (row,type,key)=>type==="entry"?row.entry_id===key:row.project_id===key;
  const validDocs=()=>state.documents||[];
  const validFiles=()=>state.attachments||[];
  const validProjects=()=>state.projects||[];
+ function projectName(projectId){
+  return validProjects().find(p=>p.id===projectId)?.name||"Nicht mehr zugeordnet";
+ }
+ function projectOptions(companyId="",selected=""){
+  const projects=validProjects().filter(p=>!companyId||p.company_id===companyId)
+   .sort((a,b)=>company(a.company_id).localeCompare(company(b.company_id),"de")||a.name.localeCompare(b.name,"de"));
+  return '<option value=""'+(!selected?' selected':'')+'>Alle Projekte</option>'+
+   '<option value="__none__"'+(selected==="__none__"?' selected':'')+'>Ohne Projekt</option>'+
+   projects.map(p=>'<option value="'+esc(p.id)+'"'+(p.id===selected?' selected':'')+'>'+
+    esc(companyId?p.name:company(p.company_id)+" · "+p.name)+'</option>').join("");
+ }
+ function projectTaskRows(projectId){
+  return (state.entries||[]).filter(e=>e.kind==="task"&&e.project_id===projectId);
+ }
+ function renderProjectTasks(projectId){
+  if(!projectId)return '<p class="muted">Speichere zuerst das Projekt, um ihm Aufgaben zuzuordnen.</p>';
+  const tasks=projectTaskRows(projectId)
+   .sort((a,b)=>(a.status==="done")-(b.status==="done")||(a.due_at||"9999").localeCompare(b.due_at||"9999"));
+  const open=tasks.filter(t=>t.status!=="done").length;
+  let html='<div class="tp-project-task-summary"><strong>'+open+' offen</strong><span>'+
+    (tasks.length-open)+' erledigt · '+tasks.length+' insgesamt</span></div>';
+  if(!tasks.length)html+='<p class="muted">Hier sind noch keine Aufgaben verknüpft. Lege eine neue Aufgabe an oder ordne eine bestehende Aufgabe diesem Projekt zu.</p>';
+  for(const e of tasks){
+   html+='<div class="tp-project-task-row">'+
+    '<span class="tp-project-task-status'+(e.status==="done"?" is-done":"")+'">'+(e.status==="done"?"✓":"○")+'</span>'+
+    '<div class="tp-project-task-info"><strong>'+esc(e.title)+'</strong>'+
+    '<span class="muted">'+(e.status==="done"?"Erledigt":"Offen")+
+    (e.due_at?" · Fällig "+esc(fmt(e.due_at)):"")+'</span></div>'+
+    '<button type="button" class="subtle" data-project-task-edit="'+esc(e.id)+'">Bearbeiten</button>'+
+   '</div>';
+  }
+  html+='<button type="button" class="subtle tp-project-all-tasks" data-project-task-filter="'+esc(projectId)+'">Alle Projektaufgaben anzeigen</button>';
+  return html;
+ }
+ function updateProjectTaskPanel(projectId){
+  const tasksBox=$("tp-project-tasks");
+  if(!tasksBox)return;
+  tasksBox.innerHTML=renderProjectTasks(projectId);
+  const addButton=$("tp-project-new-task");
+  if(addButton){
+   addButton.disabled=!projectId;
+   addButton.title=projectId?"Neue Aufgabe für dieses Projekt":"Bitte Projekt zuerst speichern";
+  }
+ }
+
 
  async function load(){
   if(!id())return;
@@ -23,6 +68,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   ]);
   for(const r of [pr,doc,file])if(r.error)throw r.error;
   state.projects=pr.data||[];state.documents=doc.data||[];state.attachments=file.data||[];
+  if($("tp-project-dialog")?.open)updateProjectTaskPanel($("tp-project-id").value);
  }
  function optionCompanies(selected,allLabel="Alle Firmen"){
   let html='<option value="">'+esc(allLabel)+'</option>';
@@ -131,9 +177,11 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   if(!list.length)return html+'<div class="empty">Hier gibt es noch kein Projekt. Lege dein erstes Projekt an.</div>';
   for(const p of list){
    const count=validDocs().filter(d=>d.project_id===p.id).length+validFiles().filter(f=>f.project_id===p.id).length;
+   const tasks=projectTaskRows(p.id);
+   const openTasks=tasks.filter(t=>t.status==="open").length;
    html+='<div class="item"><div class="meta"><span class="pill gold">'+esc(company(p.company_id))+'</span><span class="pill">'+esc({active:"Aktiv",paused:"Pausiert",done:"Abgeschlossen"}[p.status]||p.status)+'</span></div>';
    html+='<h3>'+esc(p.name)+'</h3><p>'+esc(p.summary||htmlText(p.content_html).slice(0,200)||"Noch keine Projektnotizen")+'</p>';
-   html+='<div class="actions"><button type="button" data-project-open="'+p.id+'">Projekt öffnen</button><span class="muted">'+count+' Dokumente/Dateien</span></div></div>';
+   html+='<div class="actions"><button type="button" data-project-open="'+p.id+'">Projekt öffnen</button><span class="tp-project-count">'+openTasks+' offene Aufgaben</span><span class="muted">'+tasks.length+' Aufgaben · '+count+' Dokumente/Dateien</span></div></div>';
   }
   return html;
  }
@@ -160,6 +208,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   $("tp-project-status").value=p.status||"active";
   $("tp-project-body").innerHTML=cleanHtml(p.content_html||"");
   $("tp-project-attachments").innerHTML=attached("project",p.id);
+  updateProjectTaskPanel(p.id||"");
   $("tp-project-dialog").showModal();
  }
  function openDoc(item,attachmentType="",attachmentId=""){
@@ -463,12 +512,30 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   $("tp-project-id").value=result.data.id;
   $("tp-project-attachments").innerHTML=attached("project",result.data.id);
   await refresh();
+  updateProjectTaskPanel(result.data.id);
   notice("Projekt gespeichert. Du kannst jetzt Word-Dokumente und Dateien anhängen.");
  }
  function splitLink(value){
   if(!value)return {type:"",key:""};
   const pos=value.indexOf(":");
   return {type:value.slice(0,pos),key:value.slice(pos+1)};
+ }
+ function handleProjectTaskClick(event){
+  const button=event.target.closest("button");
+  if(!button)return;
+  const pId=$("tp-project-id").value;
+  if(!pId)return;
+  const project=validProjects().find(p=>p.id===pId);
+  if(!project)return;
+  if("projectTaskNew" in button.dataset){
+   openTask({companyId:project.company_id,projectId:pId});
+  }else if(button.dataset.projectTaskEdit){
+   const entry=projectTaskRows(pId).find(t=>t.id===button.dataset.projectTaskEdit);
+   if(entry)openTask({entryId:entry.id,projectId:pId,companyId:project.company_id});
+  }else if(button.dataset.projectTaskFilter){
+   $("tp-project-dialog").close();
+   showProjectTasks({companyId:project.company_id,projectId:pId});
+  }
  }
  async function handleClick(event){
   const el=event.target.closest("button");if(!el)return;
@@ -496,6 +563,8 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
   });
   $("entry-attachments")?.addEventListener("click",handleClick);
   $("tp-project-attachments")?.addEventListener("click",handleClick);
+  $("tp-project-tasks")?.addEventListener("click",handleProjectTaskClick);
+  $("tp-project-new-task")?.addEventListener("click",handleProjectTaskClick);
   // Project remains open beneath the read-only preview.
   const previewDialog=$("tp-doc-preview-dialog");
   const closePreview=()=>previewDialog.close();
@@ -819,9 +888,11 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company}){
    });
   }
  }
- return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,toWord,attached,optionCompanies,
+ return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,toWord,attached,optionCompanies,projectOptions,projectName,
   get taskCompany(){return viewState.taskCompany;},
   set taskCompany(value){viewState.taskCompany=value||"";},
+  get taskProject(){return viewState.taskProject;},
+  set taskProject(value){viewState.taskProject=value||"";},
   get projectCompany(){return viewState.projectCompany;},
   set projectCompany(value){viewState.projectCompany=value||"";}
  };
