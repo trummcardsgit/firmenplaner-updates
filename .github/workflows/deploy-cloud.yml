@@ -35,6 +35,7 @@ jobs:
           node cloud/tests/table-editor-smoke.mjs
           node cloud/tests/dictation-smoke.mjs
           node cloud/tests/project-tasks-smoke.mjs
+          node cloud/tests/task-project-selector-smoke.mjs
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
