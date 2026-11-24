@@ -516,10 +516,19 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   updateProjectTaskPanel(result.data.id);
   notice("Projekt gespeichert. Du kannst jetzt Word-Dokumente und Dateien anhängen.");
  }
- async function deleteProject(projectId){
-  const project=validProjects().find(p=>p.id===projectId);
-  if(!project)throw new Error("Das Projekt wurde nicht gefunden. Bitte die Seite neu laden.");
-  // Check current server data, not the possibly outdated local project snapshot.
+ let deletionTarget=null;
+ let deletionRequest=0;
+ function showDeletionError(message){
+  const element=$("tp-project-delete-error");
+  element.textContent=message;
+  element.classList.remove("hidden");
+ }
+ function closeDeleteDialog(){
+  deletionRequest++;
+  deletionTarget=null;
+  $("tp-project-delete-dialog").close();
+ }
+ async function projectDeletionCounts(projectId){
   const [files,tasks,docs]=await Promise.all([
    db.from("tp_attachments").select("id,file_name").eq("owner_id",id()).eq("project_id",projectId),
    db.from("tp_entries").select("id",{count:"exact",head:true}).eq("owner_id",id()).eq("project_id",projectId),
@@ -528,34 +537,81 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   if(files.error)throw files.error;
   if(tasks.error)throw tasks.error;
   if(docs.error)throw docs.error;
-  if(files.data?.length){
-   const names=files.data.slice(0,3).map(f=>f.file_name).join(", ");
-   throw new Error("Dieses Projekt hat noch "+files.data.length+" Dateianhang/Dateianhänge ("+names+"). "+
-    "Bitte diese zuerst im Projekt herunterladen oder löschen. So gehen keine Dateien versehentlich verloren.");
-  }
-  const taskCount=tasks.count||0;
-  const docCount=docs.count||0;
-  const warning="Projekt „"+project.name+"“ wirklich endgültig löschen?\n\n"+
-   "Firma: "+company(project.company_id)+"\n"+
-   taskCount+" verknüpfte Aufgabe(n) bleiben erhalten und werden zu „Ohne Projekt“.\n"+
-   docCount+" Word-Dokument(e) bleiben im Reiter „Word-Dokumente“ erhalten, aber ohne Projektzuordnung.\n\n"+
-   "Nur die Projektinformationen und Projektnotizen werden endgültig gelöscht.";
-  if(!confirm(warning))return false;
-  const buttons=[...document.querySelectorAll("[data-project-delete]")].filter(b=>b.dataset.projectDelete===projectId);
-  if($("tp-project-id").value===projectId)buttons.push($("tp-project-delete"));
-  buttons.forEach(b=>b.disabled=true);
+  return {files:files.data||[],tasks:tasks.count||0,docs:docs.count||0};
+ }
+ // First click always opens a visible in-app confirmation. Native confirm() may
+ // be blocked on installed PWAs, making project deletion appear nonfunctional.
+ async function deleteProject(projectId){
+  const project=validProjects().find(p=>p.id===projectId);
+  if(!project)throw new Error("Das Projekt wurde nicht gefunden. Bitte TrummPlaner neu laden.");
+  const request=++deletionRequest;
+  deletionTarget=projectId;
+  $("tp-project-delete-name").textContent="„"+project.name+"“ · "+company(project.company_id);
+  $("tp-project-delete-description").textContent="Ich prüfe die zugehörigen Aufgaben, Word-Dokumente und Dateianhänge …";
+  $("tp-project-delete-details").textContent="";
+  $("tp-project-delete-error").classList.add("hidden");
+  $("tp-project-delete-confirm").disabled=true;
+  const dialog=$("tp-project-delete-dialog");
+  if(!dialog.open)dialog.showModal();
   try{
+   const counts=await projectDeletionCounts(projectId);
+   if(request!==deletionRequest||!dialog.open)return false;
+   $("tp-project-delete-description").textContent=
+    "Die Projektinformationen und Projektnotizen werden endgültig gelöscht. Aufgaben und Word-Dokumente bleiben erhalten.";
+   $("tp-project-delete-details").innerHTML=
+    '<strong>'+counts.tasks+' Aufgabe(n)</strong> bleiben unter „Ohne Projekt“ erhalten.<br>'+
+    '<strong>'+counts.docs+' Word-Dokument(e)</strong> bleiben unter „Word-Dokumente“ erhalten.<br>'+
+    '<strong>'+counts.files.length+' Dateianhang/Dateianhänge</strong> vorhanden.';
+   if(counts.files.length){
+    const names=counts.files.slice(0,3).map(f=>f.file_name).join(", ");
+    showDeletionError("Das Projekt enthält noch "+counts.files.length+" Dateianhang/Dateianhänge"+
+     (names?" ("+names+")":"")+". Bitte diese erst herunterladen oder löschen. "+
+     "Erst danach kann das Projekt sicher entfernt werden.");
+   }else{
+    $("tp-project-delete-confirm").disabled=false;
+   }
+   return true;
+  }catch(error){
+   if(request===deletionRequest&&dialog.open)
+    showDeletionError("Die Löschprüfung ist fehlgeschlagen: "+(error?.message||String(error)));
+   return false;
+  }
+ }
+ async function commitProjectDeletion(){
+  const projectId=deletionTarget;
+  const project=validProjects().find(p=>p.id===projectId);
+  const dialog=$("tp-project-delete-dialog");
+  if(!project||!dialog.open)throw new Error("Bitte das Projekt erneut auswählen.");
+  const button=$("tp-project-delete-confirm");
+  if(button.disabled)return false;
+  button.disabled=true;
+  button.textContent="Wird gelöscht …";
+  $("tp-project-delete-error").classList.add("hidden");
+  try{
+   // Repeat the attachment check to protect against files added after opening.
+   const counts=await projectDeletionCounts(projectId);
+   if(counts.files.length)throw new Error("Das Projekt enthält inzwischen Dateianhänge. Bitte diese zuerst entfernen.");
    const result=await db.from("tp_projects").delete().eq("id",projectId).eq("owner_id",id()).select("id");
    if(result.error)throw result.error;
-   if(!result.data?.length)throw new Error("Projekt wurde nicht gelöscht. Es wurde möglicherweise bereits entfernt.");
-   if($("tp-project-id").value===projectId&&$("tp-project-dialog").open)$("tp-project-dialog").close();
+   if(!result.data?.length)throw new Error("Projekt wurde nicht gelöscht. Bitte deine Berechtigungen prüfen oder die Seite neu laden.");
+   deletionTarget=null;
+   deletionRequest++;
+   dialog.close();
+   if($("tp-project-id").value===projectId&&$("tp-project-dialog").open)
+    $("tp-project-dialog").close();
    if(viewState.taskProject===projectId)viewState.taskProject="";
    if(viewState.project===projectId)viewState.project=null;
    await refresh();
-   notice("Projekt „"+project.name+"“ gelöscht. Verknüpfte Aufgaben und Word-Dokumente wurden behalten.");
+   notice("Projekt „"+project.name+"“ gelöscht. Aufgaben und Word-Dokumente sind weiterhin vorhanden.");
    return true;
+  }catch(error){
+   showDeletionError("Löschen nicht möglich: "+(error?.message||String(error)));
+   return false;
   }finally{
-   buttons.forEach(b=>b.disabled=false);
+   button.textContent="Projekt endgültig löschen";
+   if(dialog.open&&!$("tp-project-delete-error").classList.contains("hidden"))
+    button.disabled=true;
+   else if(dialog.open)button.disabled=false;
   }
  }
  function splitLink(value){
@@ -730,6 +786,15 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
    if(name==="zoom-reset")setWordZoom(100);
   });
   $("tp-word-zoom").addEventListener("input",event=>setWordZoom(event.target.value));
+  $("tp-project-delete-cancel").addEventListener("click",closeDeleteDialog);
+  $("tp-project-delete-close").addEventListener("click",closeDeleteDialog);
+  $("tp-project-delete-dialog").addEventListener("cancel",event=>{
+   event.preventDefault();
+   closeDeleteDialog();
+  });
+  $("tp-project-delete-confirm").addEventListener("click",async()=>{
+   await commitProjectDeletion();
+  });
   $("tp-project-delete").addEventListener("click",async()=>{
    const idValue=$("tp-project-id").value;
    if(!idValue)return;
