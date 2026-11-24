@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.4.2)
+# TrummPlaner Cloud PWA (1.5.0)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -9,6 +9,9 @@ Das GitHub-Pages-Deployment laeuft automatisch aus `.github/workflows/deploy-clo
 - Einladungspflicht mit Administratorfunktion; keine oeffentliche Registrierung.
 - Firmen, Aufgaben, Notizen, Problemloesungen und erweiterte Suche.
 - Aufgabenliste mit **Firmen-Dropdown**, standardmaessig Filter **Offen**; Statusfilter ist umschaltbar.
+- **Projektverknuepfung fuer Aufgaben** (1.5.0): Bei Aufgaben kann optional ein Projekt der ausgewaehlten Firma zugeordnet werden. Notizen bleiben projektunabhaengig. Die Aufgabenliste kann gleichzeitig nach Firma, Projekt (einschliesslich Ohne Projekt), Status und Suchbegriff filtern. Im Projekt sind alle zugehoerigen offenen und erledigten Aufgaben mit Schnellaktionen zum Anlegen, Bearbeiten und Anzeigen sichtbar.
+- Datenbankschutz: `tp_entries.project_id` ist optional und referenziert per zusammengesetztem Fremdschluessel ein Projekt desselben Benutzers und derselben Firma. Beim Loeschen eines Projekts bleiben Aufgaben bestehen und ihre Projektzuordnung wird entfernt.
+
 - **Spracheingabe/Diktieren** in Aufgaben- und Notizbeschreibungen sowie optionalen Problemloesungen: Browser-Web-Speech-API mit `de-AT` oder `de-DE`, vorlaeufiger Erkennung, finaler Textergaenzung, Sprechpausen-Fortsetzung, Mikrofonfehlern und Schutz vor Absenden waehrend einer Aufnahme. Keine Audio-Dateien in Supabase. Die Audio-Verarbeitung kann je nach Browser durch einen externen Spracherkennungsdienst erfolgen; die Genauigkeit insbesondere bei Dialekt ist nicht garantiert. Fallback ist die eingebaute Diktierfunktion der Smartphone-Tastatur.
 
 - **Projekte**: je Firma Projekte mit Namen, Kurzbeschreibung, Status, formatierten Projektnotizen und Dateianhaengen.
