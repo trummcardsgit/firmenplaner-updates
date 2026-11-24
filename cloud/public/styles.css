@@ -445,3 +445,35 @@ dialog.tp-doc-preview-dialog[open]{
 @media(prefers-reduced-motion:reduce){
  .tp-dictation .tp-dictation-button.is-recording .tp-dictation-icon{animation:none}
 }
+
+
+/* Linked project tasks and compound company/project filters */
+.tp-task-filter-toolbar select{min-width:170px;max-width:270px}
+.tp-task-filter-toolbar #task-project-filter{border-color:#66502d;background:#26231f;color:#f2ddb0}
+.tp-task-filter-toolbar input{flex:1;min-width:165px}
+.tp-project-count{padding:5px 10px;border:1px solid #8b6934;border-radius:30px;background:#35291c;color:#f5d293;font-size:12px;font-weight:700}
+.tp-project-tasks-panel{border-color:#53506b}
+.tp-project-tasks-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.tp-project-tasks-heading h3{margin:0 0 6px}
+.tp-project-tasks-heading p{margin:0}
+.tp-project-tasks-heading button{flex:0 0 auto}
+.tp-project-task-summary{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:9px 11px;margin-bottom:12px;border-radius:9px;background:#252b32;color:#ccd1de;font-size:12px}
+.tp-project-task-summary strong{color:#f5c96b}
+.tp-project-task-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #414151}
+.tp-project-task-row:last-of-type{border-bottom:0}
+.tp-project-task-status{color:#dfa948;font-size:21px;line-height:1}
+.tp-project-task-status.is-done{color:#61bfa2}
+.tp-project-task-info{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.tp-project-task-info>strong{font-size:13px}
+.tp-project-task-info>.muted{font-size:11px}
+.tp-project-task-row .subtle{flex:0 0 auto;font-size:12px;padding:8px 11px}
+.tp-project-all-tasks{margin-top:14px}
+@media(max-width:680px){
+ .tp-task-filter-toolbar{align-items:stretch}
+ .tp-task-filter-toolbar select{flex:1 1 calc(50% - 6px);min-width:130px;max-width:none}
+ .tp-task-filter-toolbar input{flex:1 1 100%;max-width:none}
+ .tp-project-tasks-heading button{width:100%}
+ .tp-project-task-row{flex-wrap:wrap;gap:8px}
+ .tp-project-task-info{flex-basis:calc(100% - 42px)}
+ .tp-project-task-row .subtle{margin-left:28px}
+}
