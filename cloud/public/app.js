@@ -1,6 +1,7 @@
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
+import {createTaskProjectSelector} from "./task-projects.js";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
@@ -162,20 +163,17 @@ const projectFilter=$("task-project-filter");if(projectFilter){projectFilter.val
  });}
 }
 function openCompany(c){$("company-id").value=c?.id||"";$("company-name").value=c?.name||"";$("company-contact").value=c?.contact||"";$("company-phone").value=c?.phone||"";$("company-email").value=c?.email||"";$("company-editor").showModal();}
-function updateEntryProjectSelect(selectedId=""){
- const companyId=$("entry-company").value;
- const kind=$("entry-kind").value;
- const projects=state.projects||[];
- const filtered=projects.filter(p=>p.company_id===companyId);
- const selection=selectedId||"";
- $("entry-project-field").classList.toggle("hidden",kind!=="task");
- $("entry-project").disabled=kind!=="task";
- $("entry-project").innerHTML='<option value="">Ohne Projekt</option>'+filtered.map(p=>
-  '<option value="'+esc(p.id)+'"'+(p.id===selection?' selected':'')+'>'+esc(p.name)+'</option>'
- ).join("");
- if(kind==="task")$("entry-project").value=filtered.some(p=>p.id===selection)?selection:"";
- else $("entry-project").value="";
-}
+const taskProjectSelector=createTaskProjectSelector({
+ db,
+ companySelect:$("entry-company"),
+ kindSelect:$("entry-kind"),
+ projectSelect:$("entry-project"),
+ projectField:$("entry-project-field"),
+ hint:$("entry-project-hint"),
+ ownerId:()=>state.user?.id,
+ submitButton:$("entry-form").querySelector('button.primary'),
+ onError:fail
+});
 function openEntry(e){
  if(!state.companies.length){nav("companies");notice("Bitte zuerst eine Firma anlegen.");return;}
  const x=e||{};
@@ -185,7 +183,7 @@ function openEntry(e){
  $("entry-description").value=x.description||"";
  $("entry-company").innerHTML=state.companies.map(c=>'<option value="'+c.id+'">'+esc(c.name)+"</option>").join("");
  $("entry-company").value=x.company_id||state.companies[0].id;
- updateEntryProjectSelect(x.project_id||"");
+ taskProjectSelector.refresh(x.project_id||"");
  $("entry-priority").value=x.priority||"normal";
  $("entry-status").value=x.status||"open";
  $("entry-due").value=inDate(x.due_at);
@@ -194,8 +192,8 @@ function openEntry(e){
  features.setEntryAttachments(x.id||null);
  $("editor").showModal();
 }
-$("entry-company").addEventListener("change",()=>updateEntryProjectSelect($("entry-project").value));
-$("entry-kind").addEventListener("change",()=>updateEntryProjectSelect($("entry-project").value));
+$(`entry-company`).addEventListener("change",()=>taskProjectSelector.refresh());
+$(`entry-kind`).addEventListener("change",()=>taskProjectSelector.refresh($("entry-project").value));
 $("new-entry").addEventListener("click",()=>openEntry());
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
 $("content").addEventListener("click",async event=>{const b=event.target.closest("button");if(!b)return;try{
