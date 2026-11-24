@@ -1,4 +1,4 @@
-const CACHE="trummplaner-pwa-v1.4.0";
+const CACHE="trummplaner-pwa-v1.4.1";
 const ASSETS=["./","./index.html","./styles.css","./app.js","./extended.js","./table-editor.js","./dictation.js","./outlook.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
@@ -9,6 +9,12 @@ self.addEventListener("activate",event=>{
 self.addEventListener("fetch",event=>{
  const req=event.request;
  if(req.method!=="GET" || new URL(req.url).origin!==location.origin)return;
+ // OAuth callback URLs include one-time codes. Never save query strings in Cache Storage.
+ const u=new URL(req.url);
+ if(req.mode==="navigate" && u.search){
+  event.respondWith(fetch(req,{cache:"no-store"}).catch(()=>caches.match("./index.html")));
+  return;
+ }
  event.respondWith(fetch(req).then(res=>{
   if(res.ok){const copy=res.clone();caches.open(CACHE).then(cache=>cache.put(req,copy));}
   return res;
