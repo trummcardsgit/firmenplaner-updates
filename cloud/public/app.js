@@ -1,7 +1,6 @@
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
-import {createOutlook} from "./outlook.js";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
@@ -19,7 +18,6 @@ let toastTimer,installPrompt;
 function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),6000);}
 function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
 const features=createFeatures({db,state,esc,fmt,notice,fail,refresh:load,company});
-const outlook=createOutlook({db,state,escapeHtml:esc,notice,fail,refreshView:render,showSettings:()=>nav("settings")});
 async function load(){
  if(!state.user)return;
  const [a,b,adminStatus,sol,pushDevices]=await Promise.all([
@@ -45,9 +43,7 @@ async function load(){
   state.invites=invites.data||[];
  }else state.invites=[];
  await features.load();
- if(state.isAdmin)await outlook.loadStatus();
  render();
- if(state.isAdmin)await outlook.finishRedirect();
 }
 function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];}}
 async function login(){
@@ -63,7 +59,7 @@ async function login(){
 }
 $("auth-form").addEventListener("submit",e=>{e.preventDefault();login()});
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
-function nav(view){state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();if(view==="settings"&&state.isAdmin)outlook.loadStatus().then(render).catch(fail);}
+function nav(view){state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function chip(value,extra){return '<span class="pill '+(extra||"")+'">'+esc(value)+"</span>";}
 function row(e){let meta=chip(company(e.company_id),"gold")+chip(e.kind==="note"?"Notiz":"Aufgabe");
@@ -134,7 +130,7 @@ function settings(){
  '<p class="install-tip">iPhone: zuerst TrummPlaner über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
  const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
- return own+admin+outlook.panel()+password+reminder+install+backup;
+ return own+admin+password+reminder+install+backup;
 }
 function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];$("new-entry").style.display=["settings","solutions","projects","documents"].includes(state.view)?"none":"block";
@@ -142,7 +138,7 @@ $("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}
 const firmFilter=$("task-company-filter");if(firmFilter){firmFilter.value=features.taskCompany;firmFilter.addEventListener("change",e=>{features.taskCompany=e.target.value;state.filter="open";render()});}
-if(state.view==="settings"&&state.isAdmin)outlook.bind();}
+}
 function openCompany(c){$("company-id").value=c?.id||"";$("company-name").value=c?.name||"";$("company-contact").value=c?.contact||"";$("company-phone").value=c?.phone||"";$("company-email").value=c?.email||"";$("company-editor").showModal();}
 function openEntry(e){if(!state.companies.length){nav("companies");notice("Bitte zuerst eine Firma anlegen.");return;}const x=e||{};$("entry-id").value=x.id||"";$("entry-kind").value=x.kind||"task";$("entry-title").value=x.title||"";$("entry-description").value=x.description||"";$("entry-company").innerHTML=state.companies.map(c=>'<option value="'+c.id+'">'+esc(c.name)+"</option>").join("");$("entry-company").value=x.company_id||state.companies[0].id;$("entry-priority").value=x.priority||"normal";$("entry-status").value=x.status||"open";$("entry-due").value=inDate(x.due_at);$("entry-remind").value=inDate(x.remind_at);$("entry-heading").textContent=x.id?"Eintrag bearbeiten":"Neuen Eintrag erstellen";features.setEntryAttachments(x.id||null);$("editor").showModal();}
 $("new-entry").addEventListener("click",()=>openEntry());
