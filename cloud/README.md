@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.2)
+# TrummPlaner Cloud PWA (1.5.3)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -63,3 +63,11 @@ Das Dropdown `Projekt (optional)` laedt die aktuellen Projekte bei jedem Oeffnen
 - Vor dem Entfernen werden die aktuell gespeicherten Projektanhänge direkt in Supabase geprüft. Sind Dateianhänge vorhanden, wird die Löschung verweigert, bis die Dateien einzeln heruntergeladen oder entfernt wurden. So gehen die hochgeladenen Dateien nicht durch das CASCADE-Löschen der Datenbankeinträge unbemerkt verloren.
 - Verknüpfte Aufgaben bleiben erhalten und werden **Ohne Projekt**. Word-Dokumente bleiben im Reiter **Word-Dokumente** und verlieren nur die Projektzuordnung. Die Projektnotizen selbst werden gelöscht.
 - Es werden nur selbst angelegte Projekte gelöscht (`owner_id` und bestehende RLS-DELETE-Policy). Die Bedienung ist sowohl am Desktop als auch mobil möglich.
+
+## 1.5.3: Projekt-Löschdialog zuverlässiger
+
+- Ein eigenes Bestätigungsfenster statt `window.confirm` (Browser/PWA können native Dialoge blockieren).
+- Das Fenster zeigt die aktuell aus Supabase ermittelten Zahlen der verknüpften Aufgaben, Word-Dokumente und Dateianhänge sowie Fehlermeldungen direkt im Fenster an.
+- Löschen muss explizit im neuen Fenster bestätigt werden; vor der endgültigen Löschung wird nochmals auf vorhandene Dateianhänge geprüft.
+- Bereits verknüpfte Aufgaben und Word-Dokumente bleiben erhalten, der Bezug zum Projekt wird durch die bestehenden FK-Regeln entfernt.
+- Test umfasst Klick auf „Projekt löschen“ in der Übersicht und im Projektfenster, Abbruch, Fehlermeldung und erfolgreichen Datenbank-Aufruf.
