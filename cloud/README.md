@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.4.0)
+# TrummPlaner Cloud PWA (1.4.2)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -49,16 +49,3 @@ Die Datenbank- und Server-Sicherheitspruefungen sowie GitHub-Actions-Syntaxcheck
 - Umfassender Test des Dokumenteditors auf unterschiedlichen Mobilbrowsern.
 
 **Sicherheit**: Keine lokalen Datenbankdateien, Passwoerter, Firmendaten oder Supabase-Service-Role-Schluessel in GitHub laden.
-
-## Outlook-Unterordner-Import (1.4.0)
-
-- In **Einstellungen → Outlook-Unterordner** als Administrator Microsoft 365 / Exchange Online einrichten.
-- **Microsoft Entra**: App registrieren, Single Tenant, Plattform `Web`, Redirect `https://trummcardsgit.github.io/firmenplaner-updates/`.
-- Delegated Microsoft Graph permissions `Mail.Read`, `User.Read` und `offline_access` (optional Admin-Consent).
-- Ein Client Secret als **Wert** in der Admin-PWA einmalig eingeben; Client-Secret und Microsoft Refresh-Token liegen ausschliesslich in serverseitigen, fuer Nutzer nicht lesbaren Supabase-Tabellen. **Niemals Zugangsdaten im GitHub-Code speichern.**
-- Auf **Mit Microsoft anmelden** klicken und die Zustimmung erteilen; dann Unterordner und Zielfirma waehlen.
-- Der automatische Cronjob `trummplaner-outlook-every-5-minutes` laeuft auch bei geschlossener PWA. Der erste Delta-Lauf erstellt einen Ausgangsstand und ueberspringt vorhandene E-Mails (neue Nachrichten waehrend dieses Laufs werden nach Aenderungsdatum beruecksichtigt). Danach werden neue E-Mails des Ordners als offene Aufgaben importiert.
-- Aufgaben enthalten Betreff, Absender, Eingangsdatum, Nachrichtentext und Outlook-Link. Anhaenge werden **nicht** automatisch heruntergeladen; sie bleiben in Outlook abrufbar. Keine Nachrichten werden geloescht oder verschoben.
-- Doppelte Aufgaben werden mit einem eindeutigen Microsoft-Message-ID-Schluessel in `tp_outlook_imports` verhindert. Der E-Mail-Zugriff erfolgt als angemeldeter Nutzer mit `Mail.Read` (die Microsoft-Berechtigung selbst kann das ganze eigene Postfach umfassen, TrummPlaner fragt nur den ausgewählten Ordner ab).
-- Funktionen: Ordner laden, Zielfirma auswaehlen, Sofortabgleich, Pausieren/Fortsetzen, Postfach trennen, Statusanzeige.
-- **Nicht unterstuetzt:** lokaler Exchange-Server ohne Graph, Shared-Mailbox-Sonderberechtigungen, vollstaendige Mails mit Anhängen, Mehrfach-Mailboxen. Ein reales Outlook-Konto konnte noch nicht verbunden oder end-to-end getestet werden; dazu fehlen Microsoft-Anwendungs-ID, Mandanten-ID, Client Secret und Nutzerfreigabe.
