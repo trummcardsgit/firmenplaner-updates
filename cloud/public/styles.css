@@ -492,3 +492,25 @@ dialog.tp-doc-preview-dialog[open]{
  .tp-project-actions{flex-wrap:wrap}
  .tp-project-actions #tp-project-delete{flex:1 1 100%;margin-right:0}
 }
+
+
+/* Project deletion confirmation stays visible even if browser-native confirms are blocked */
+dialog.tp-project-delete-dialog{
+ width:min(510px,calc(100vw - 26px));max-width:calc(100vw - 26px);
+ max-height:calc(100dvh - 26px);overflow:auto;padding:24px;
+ border:1px solid #71464e;border-radius:16px;background:#1f222e;color:#f1f3f8;
+ box-shadow:0 30px 90px #050912bb
+}
+dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
+.tp-project-delete-name{padding:12px 14px;border:1px solid #505263;border-radius:9px;background:#282b38;font-weight:700;overflow-wrap:anywhere}
+.tp-project-delete-details{margin:15px 0;padding:14px;border-radius:9px;background:#263039;color:#dce5ed;line-height:1.9;font-size:13px}
+.tp-project-delete-details strong{color:#f2cd8a}
+.tp-project-delete-error{margin:12px 0;border:1px solid #b45f65;background:#542b34;padding:11px;border-radius:9px;color:#ffe3e4;font-size:13px;white-space:pre-wrap}
+#tp-project-delete-confirm{background:#9b3745;color:#fff;border:1px solid #c9606c}
+#tp-project-delete-confirm:hover:not(:disabled){background:#b34555}
+#tp-project-delete-confirm:disabled{opacity:.55}
+@media(max-width:650px){
+ dialog.tp-project-delete-dialog{padding:16px}
+ dialog.tp-project-delete-dialog .modal-actions{flex-direction:column-reverse}
+ dialog.tp-project-delete-dialog .modal-actions button{width:100%}
+}
