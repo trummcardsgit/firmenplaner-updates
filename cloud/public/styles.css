@@ -481,3 +481,14 @@ dialog.tp-doc-preview-dialog[open]{
 /* Project selection live database feedback */
 #entry-project-hint.tp-project-hint{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:#b8c9de}
 #entry-project:disabled{opacity:.75}
+
+
+/* Project removal: distinguish destructive action and preserve mobile layout */
+.tp-project-actions #tp-project-delete{margin-right:auto;border-color:#8e3948;color:#ffb4ba;background:#38202b}
+.tp-project-actions #tp-project-delete:hover{background:#562c39}
+.actions [data-project-delete]{border-color:#7c3947;color:#f5a3af;background:transparent}
+.actions [data-project-delete]:hover{background:#4a2432}
+@media(max-width:680px){
+ .tp-project-actions{flex-wrap:wrap}
+ .tp-project-actions #tp-project-delete{flex:1 1 100%;margin-right:0}
+}
