@@ -477,3 +477,7 @@ dialog.tp-doc-preview-dialog[open]{
  .tp-project-task-info{flex-basis:calc(100% - 42px)}
  .tp-project-task-row .subtle{margin-left:28px}
 }
+
+/* Project selection live database feedback */
+#entry-project-hint.tp-project-hint{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:#b8c9de}
+#entry-project:disabled{opacity:.75}
