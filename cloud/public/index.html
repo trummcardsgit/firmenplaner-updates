@@ -54,6 +54,18 @@
  <div class="modal-actions tp-project-actions"><button id="tp-project-delete" type="button" class="subtle danger" title="Dieses Projekt löschen">Projekt löschen</button><button type="button" class="subtle" data-close>Schließen</button><button id="tp-project-save" type="button" class="primary">Projekt speichern</button></div>
 </dialog>
 
+<dialog id="tp-project-delete-dialog" class="tp-project-delete-dialog" aria-labelledby="tp-project-delete-title" aria-modal="true">
+ <div class="modal-header"><h2 id="tp-project-delete-title">Projekt endgültig löschen?</h2><button type="button" class="close" id="tp-project-delete-close" aria-label="Schließen">×</button></div>
+ <p id="tp-project-delete-name" class="tp-project-delete-name"></p>
+ <p id="tp-project-delete-description">Ich prüfe die zugehörigen Aufgaben, Word-Dokumente und Dateianhänge …</p>
+ <div id="tp-project-delete-details" class="tp-project-delete-details" role="status" aria-live="polite"></div>
+ <p id="tp-project-delete-error" class="tp-project-delete-error hidden" role="alert"></p>
+ <div class="modal-actions">
+  <button id="tp-project-delete-cancel" type="button" class="subtle">Abbrechen</button>
+  <button id="tp-project-delete-confirm" type="button" class="subtle danger" disabled>Projekt endgültig löschen</button>
+ </div>
+</dialog>
+
 <dialog id="tp-doc-preview-dialog" class="tp-doc-preview-dialog" aria-label="Word-Dokumentvorschau" aria-modal="true" aria-labelledby="tp-preview-title">
  <div class="tp-preview-topbar">
   <div class="tp-preview-heading">
