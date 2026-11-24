@@ -181,7 +181,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
    const openTasks=tasks.filter(t=>t.status==="open").length;
    html+='<div class="item"><div class="meta"><span class="pill gold">'+esc(company(p.company_id))+'</span><span class="pill">'+esc({active:"Aktiv",paused:"Pausiert",done:"Abgeschlossen"}[p.status]||p.status)+'</span></div>';
    html+='<h3>'+esc(p.name)+'</h3><p>'+esc(p.summary||htmlText(p.content_html).slice(0,200)||"Noch keine Projektnotizen")+'</p>';
-   html+='<div class="actions"><button type="button" data-project-open="'+p.id+'">Projekt öffnen</button><span class="tp-project-count">'+openTasks+' offene Aufgaben</span><span class="muted">'+tasks.length+' Aufgaben · '+count+' Dokumente/Dateien</span></div></div>';
+   html+='<div class="actions"><button type="button" data-project-open="'+p.id+'">Projekt öffnen</button><button type="button" class="subtle danger" data-project-delete="'+p.id+'">Projekt löschen</button><span class="tp-project-count">'+openTasks+' offene Aufgaben</span><span class="muted">'+tasks.length+' Aufgaben · '+count+' Dokumente/Dateien</span></div></div>';
   }
   return html;
  }
@@ -201,6 +201,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   const p=item||{};
   viewState.project=p.id||null;
   $("tp-project-id").value=p.id||"";
+  $("tp-project-delete").classList.toggle("hidden",!p.id);
   $("tp-project-name").value=p.name||"";
   $("tp-project-company-choice").innerHTML=optionCompanies(p.company_id||viewState.projectCompany||state.companies[0].id,"Firma auswählen");
   if(!$("tp-project-company-choice").value)$("tp-project-company-choice").value=state.companies[0].id;
@@ -515,6 +516,48 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   updateProjectTaskPanel(result.data.id);
   notice("Projekt gespeichert. Du kannst jetzt Word-Dokumente und Dateien anhängen.");
  }
+ async function deleteProject(projectId){
+  const project=validProjects().find(p=>p.id===projectId);
+  if(!project)throw new Error("Das Projekt wurde nicht gefunden. Bitte die Seite neu laden.");
+  // Check current server data, not the possibly outdated local project snapshot.
+  const [files,tasks,docs]=await Promise.all([
+   db.from("tp_attachments").select("id,file_name").eq("owner_id",id()).eq("project_id",projectId),
+   db.from("tp_entries").select("id",{count:"exact",head:true}).eq("owner_id",id()).eq("project_id",projectId),
+   db.from("tp_documents").select("id",{count:"exact",head:true}).eq("owner_id",id()).eq("project_id",projectId)
+  ]);
+  if(files.error)throw files.error;
+  if(tasks.error)throw tasks.error;
+  if(docs.error)throw docs.error;
+  if(files.data?.length){
+   const names=files.data.slice(0,3).map(f=>f.file_name).join(", ");
+   throw new Error("Dieses Projekt hat noch "+files.data.length+" Dateianhang/Dateianhänge ("+names+"). "+
+    "Bitte diese zuerst im Projekt herunterladen oder löschen. So gehen keine Dateien versehentlich verloren.");
+  }
+  const taskCount=tasks.count||0;
+  const docCount=docs.count||0;
+  const warning="Projekt „"+project.name+"“ wirklich endgültig löschen?\n\n"+
+   "Firma: "+company(project.company_id)+"\n"+
+   taskCount+" verknüpfte Aufgabe(n) bleiben erhalten und werden zu „Ohne Projekt“.\n"+
+   docCount+" Word-Dokument(e) bleiben im Reiter „Word-Dokumente“ erhalten, aber ohne Projektzuordnung.\n\n"+
+   "Nur die Projektinformationen und Projektnotizen werden endgültig gelöscht.";
+  if(!confirm(warning))return false;
+  const buttons=[...document.querySelectorAll("[data-project-delete]")].filter(b=>b.dataset.projectDelete===projectId);
+  if($("tp-project-id").value===projectId)buttons.push($("tp-project-delete"));
+  buttons.forEach(b=>b.disabled=true);
+  try{
+   const result=await db.from("tp_projects").delete().eq("id",projectId).eq("owner_id",id()).select("id");
+   if(result.error)throw result.error;
+   if(!result.data?.length)throw new Error("Projekt wurde nicht gelöscht. Es wurde möglicherweise bereits entfernt.");
+   if($("tp-project-id").value===projectId&&$("tp-project-dialog").open)$("tp-project-dialog").close();
+   if(viewState.taskProject===projectId)viewState.taskProject="";
+   if(viewState.project===projectId)viewState.project=null;
+   await refresh();
+   notice("Projekt „"+project.name+"“ gelöscht. Verknüpfte Aufgaben und Word-Dokumente wurden behalten.");
+   return true;
+  }finally{
+   buttons.forEach(b=>b.disabled=false);
+  }
+ }
  function splitLink(value){
   if(!value)return {type:"",key:""};
   const pos=value.indexOf(":");
@@ -543,6 +586,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   try{
    if("projectNew" in d){openProject(null);return;}
    if(d.projectOpen){openProject(validProjects().find(x=>x.id===d.projectOpen));return;}
+   if(d.projectDelete){await deleteProject(d.projectDelete);return;}
    if("docNew" in d){const v=splitLink(d.docNew);openDoc(null,v.type,v.key);return;}
    if("docImport" in d){const v=splitLink(d.docImport);await importWord(v.type,v.key);return;}
    if(d.docPreview){const doc=validDocs().find(x=>x.id===d.docPreview);if(doc)previewStoredWord(doc);return;}
@@ -686,6 +730,11 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
    if(name==="zoom-reset")setWordZoom(100);
   });
   $("tp-word-zoom").addEventListener("input",event=>setWordZoom(event.target.value));
+  $("tp-project-delete").addEventListener("click",async()=>{
+   const idValue=$("tp-project-id").value;
+   if(!idValue)return;
+   try{await deleteProject(idValue)}catch(error){fail(error)}
+  });
   $("tp-project-save").addEventListener("click",async()=>{
    $("tp-project-save").disabled=true;
    try{await saveProject();}catch(error){fail(error)}finally{$("tp-project-save").disabled=false;}
