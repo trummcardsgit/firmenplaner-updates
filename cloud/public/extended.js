@@ -937,7 +937,7 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
    });
   }
  }
- return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,toWord,attached,optionCompanies,projectOptions,projectName,
+ return {load,init,projectsPage,documentsPage,setEntryAttachments,cleanHtml,toWord,attached,optionCompanies,projectOptions,projectName,deleteProject,
   get taskCompany(){return viewState.taskCompany;},
   set taskCompany(value){viewState.taskCompany=value||"";},
   get taskProject(){return viewState.taskProject;},
