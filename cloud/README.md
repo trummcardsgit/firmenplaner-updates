@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.1)
+# TrummPlaner Cloud PWA (1.5.2)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -56,3 +56,10 @@ Die Datenbank- und Server-Sicherheitspruefungen sowie GitHub-Actions-Syntaxcheck
 ## Fix 1.5.1: Projektauswahl im Aufgabenformular
 
 Das Dropdown `Projekt (optional)` laedt die aktuellen Projekte bei jedem Oeffnen einer Aufgabe und jedem Firmenwechsel direkt und nutzerbezogen aus Supabase. Es zeigt den Ladezustand, einen klaren Hinweis bei fehlenden Projekten und ignoriert veraltete Antworten nach schnellem Firmenwechsel. Die vorhandenen Projekte und Aufgaben werden nicht veraendert.
+
+## 1.5.2: Projekte sicher löschen
+
+- Projekte lassen sich in der Projektübersicht oder im Projektfenster über **Projekt löschen** entfernen; eine Sicherheitsabfrage nennt Firma und Zahl der Aufgaben und Word-Dokumente.
+- Vor dem Entfernen werden die aktuell gespeicherten Projektanhänge direkt in Supabase geprüft. Sind Dateianhänge vorhanden, wird die Löschung verweigert, bis die Dateien einzeln heruntergeladen oder entfernt wurden. So gehen die hochgeladenen Dateien nicht durch das CASCADE-Löschen der Datenbankeinträge unbemerkt verloren.
+- Verknüpfte Aufgaben bleiben erhalten und werden **Ohne Projekt**. Word-Dokumente bleiben im Reiter **Word-Dokumente** und verlieren nur die Projektzuordnung. Die Projektnotizen selbst werden gelöscht.
+- Es werden nur selbst angelegte Projekte gelöscht (`owner_id` und bestehende RLS-DELETE-Policy). Die Bedienung ist sowohl am Desktop als auch mobil möglich.
