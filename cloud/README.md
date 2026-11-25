@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.6.1)
+# TrummPlaner Cloud PWA (1.7.0)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -93,3 +93,14 @@ Unter **Erinnern am** stehen die gleichen Schnellbuttons wie bei der Fälligkeit
 ## 1.6.1: Eigene Neon-Menüicons
 
 Die Navigation verwendet jetzt die acht eigens für TrummPlaner gestalteten Vice-City-Sunset-Icons. Jeder Menüpunkt besitzt sein passendes Motiv: Skyline (Übersicht), Checkliste (Aufgaben), Notizblatt (Notizen), Lösungsbuch (Lösungen), Projektmappe (Projekte), Stift und Dokument (Word-Dokumente), Bürogebäude (Firmen), Zahnrad (Einstellungen). Sie erscheinen sowohl in der Desktop-Seitenleiste als auch in der Smartphone-Navigation. Die Originalbilder wurden mit transparentem Hintergrund zu einem kleinen WebP-Sprite mit acht Kacheln à 48 × 48 Pixel verkleinert (ca. 10 KB) und unter `icons/nav-vicecity.webp` abgelegt. Tastaturbedienung, Navigation und Beschriftungen bleiben unverändert; Icons sind dekorativ mit `aria-hidden`. Service Worker v1.6.1 speichert die Grafik für den Offlinebetrieb. Neuer CI-Test `neon-menu-icons-smoke.mjs` prüft alle acht Desktop- und Mobil-Zuordnungen.
+
+## 1.7.0: Karriere, XP, Prestige und Prestige-Meister
+
+- Jeder Benutzer startet bei **Level 1**; die persönliche **Karriere** ist über einen eigenen Desktop- und Smartphone-Menüpunkt sowie über das Dashboard erreichbar.
+- Eine neu abgeschlossene Aufgabe bringt **einmalig zufällig 75–250 XP**. Die Vergabe erfolgt automatisch durch einen geschützten Supabase-Postgres-Trigger – unabhängig davon, ob die Aufgabe per Direktabschluss, Lösung speichern oder im Editor erledigt wird. Bereits abgeschlossene Aufgaben aus der Vergangenheit werden **nicht rückwirkend** vergütet.
+- XP werden serverseitig in `tp_game_profiles` und in einem unveränderlichen, nutzerbezogenen Ereignisprotokoll `tp_game_xp_events` gespeichert. `unique(owner_id,entry_id)` verhindert doppelte XP beim erneuten Öffnen/Abschließen derselben Aufgabe. Löscht man eine Aufgabe, bleiben die bereits verdienten XP erhalten.
+- Im normalen Rang: **Level 1–55**. Die XP-Anforderung pro Level ist `150 + 12 * (Level - 1)`. Level 55 schaltet den freiwilligen, bestätigungspflichtigen Prestigewechsel frei. Es gibt **Prestige 1–10**; jedes Prestige beginnt erneut bei Level 1. Insgesamt verdiente XP und Prestige-Abzeichen bleiben erhalten.
+- Nach **Prestige 10 auf Level 55** ist der freiwillige Übergang zu **Prestige-Meister** möglich. Dort werden die Level **1–1000** mit der XP-Formel `250 + 5 * (Level - 1)` erreicht. Mit Erreichen des jeweiligen Maximallevels bleibt das Level stehen; Lifetime-XP steigen weiterhin.
+- Das Spielerprofil gehört nur dem angemeldeten Benutzer. Die Tabellen sind via RLS und SQL-Rechten schreibgeschützt für Browser-Nutzer. Der Spielstand lässt sich nicht über den Web-Client bearbeiten. Die Prestige-RPC `tp_game_enter_prestige()` verlangt `auth.uid()` und überprüft Level 55 innerhalb einer Datenbanktransaktion.
+- Der neue Menüpunkt **Karriere** zeigt Level, XP bis zur nächsten Stufe, zehn Prestige-Abzeichen, Prestige-Meister, erfolgreich abgeschlossene Aufgaben, den Verlauf der letzten XP und das Bestätigungsfenster für Prestige. Beim Abschluss erscheint eine XP-Animation.
+
