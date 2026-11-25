@@ -24,6 +24,7 @@ jobs:
       - name: App-Code pruefen
         run: |
           node --check cloud/public/app.js
+          node --check cloud/public/game-progression.js
           node --check cloud/public/extended.js
           node --check cloud/public/dictation.js
           node --check cloud/public/due-presets.js
@@ -40,6 +41,7 @@ jobs:
           node cloud/tests/project-delete-smoke.mjs
           node cloud/tests/due-presets-smoke.mjs
           node cloud/tests/vice-city-theme-smoke.mjs
+          node cloud/tests/game-progression-smoke.mjs
           node cloud/tests/neon-menu-icons-smoke.mjs
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
