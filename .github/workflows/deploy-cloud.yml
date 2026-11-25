@@ -40,6 +40,7 @@ jobs:
           node cloud/tests/project-delete-smoke.mjs
           node cloud/tests/due-presets-smoke.mjs
           node cloud/tests/vice-city-theme-smoke.mjs
+          node cloud/tests/neon-menu-icons-smoke.mjs
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
