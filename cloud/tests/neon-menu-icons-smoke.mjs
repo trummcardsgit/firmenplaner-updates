@@ -67,3 +67,5 @@ style.textContent=theme;
 doc.head.appendChild(style);
 assert.ok(style.sheet.cssRules.length>50);
 console.log("Neon-Menueicons erfolgreich: 8 richtige Motive plus Karriere auf Desktop und Handy, Labels erhalten, WebP 384x48, PWA-Cache.");
+
+const custom=read("game-progression.css");for(const view of [...views,"career"]){const path="icons/nav-"+view+".webp";assert.ok(custom.includes(path));assert.ok(sw.includes(path));const bytes=readFileSync(new URL(path,root));assert.equal(bytes.subarray(0,4).toString(),"RIFF");assert.equal(bytes.subarray(8,12).toString(),"WEBP");}

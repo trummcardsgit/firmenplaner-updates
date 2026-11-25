@@ -28,7 +28,8 @@ export function playerRank(record=null){
  return {stage,prestige,level,cap,atCap,needed,current,percent,lifetime,done,title,ready,next};
 }
 const fmtNumber=n=>new Intl.NumberFormat("de-AT").format(n);
-const icon=(p)=>p.stage==="master"?"👑":p.prestige>=8?"💠":p.prestige>=4?"🏅":"✦";
+const emblem=n=>'<img class="tp-rank-art" src="./icons/prestige-'+n+'.webp" alt="" width="72" height="72">';
+const icon=p=>p.stage==="master"?emblem("master"):p.prestige>0?emblem(p.prestige):'<img class="tp-rank-art" src="./icons/nav-career.webp" alt="" width="48" height="48">';
 export function careerCard(record=null){
  const p=playerRank(record);
  return '<button type="button" data-open-career class="tp-game-mini">'+
@@ -51,7 +52,7 @@ export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(
  const badges=Array.from({length:10},(_,i)=>{
   const n=i+1,unlocked=p.prestige>=n;
   return '<span class="tp-prestige-badge'+(unlocked?' unlocked':'')+'" aria-label="Prestige '+n+
-   (unlocked?' freigeschaltet':' gesperrt')+'" title="Prestige '+n+'">'+(unlocked?'✦':'◇')+
+   (unlocked?' freigeschaltet':' gesperrt')+'" title="Prestige '+n+'">'+emblem(n)+
    '<b>'+n+'</b></span>';
  }).join("");
  const headline=p.stage==="master"?"Der Weg zu Level 1000":
@@ -83,7 +84,7 @@ export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(
   '<div class="tp-game-panel"><div class="tp-game-panel-heading"><h3>Prestige-Reise</h3><span>10 Prestige-Stufen</span></div>'+
     '<p>Jeweils bis Level 55 aufsteigen, dann freiwillig das nächste Prestige starten.</p>'+
     '<div class="tp-prestige-badges">'+badges+'</div>'+
-    '<div class="tp-game-master-badge'+(p.stage==="master"?' unlocked':'')+'"><span aria-hidden="true">👑</span>'+
+    '<div class="tp-game-master-badge'+(p.stage==="master"?' unlocked':'')+'"><span aria-hidden="true">'+emblem("master")+'</span>'+
      '<div><strong>Prestige-Meister</strong><small>Nach Prestige 10 · Level 55–1000</small></div>'+
      (p.stage==="master"?'<span>FREIGESCHALTET</span>':'<span>GESPERRT</span>')+'</div></div>'+
   '<div class="tp-game-panel"><div class="tp-game-panel-heading"><h3>Letzte XP-Belohnungen</h3>'+

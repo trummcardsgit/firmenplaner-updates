@@ -17,7 +17,7 @@ assert.ok(doc.getElementById("tp-prestige-confirm"));
 assert.ok(doc.getElementById("tp-xp-reward"));
 assert.match(sw,/game-progression\.js/);
 assert.match(sw,/game-progression\.css/);
-assert.match(sw,/v1\.7\.0/);
+assert.match(sw,/v1\.7\.1/);
 assert.match(app,/db\.from\("tp_game_profiles"\)/);
 assert.match(app,/db\.from\("tp_game_xp_events"\)/);
 assert.match(app,/db\.rpc\("tp_game_enter_prestige"\)/);
@@ -81,7 +81,11 @@ assert.match(careerPage({stage:"master",prestige:10,level:1000}),/höchste Ausze
 assert.doesNotMatch(careerPage(null),/id="tp-enter-prestige"/);
 const malicious=careerPage(null,[{entry_title:'<img src=x onerror=alert(1)>',xp:75,rank_after:1,rank_before:1,awarded_at:"2026-11-25"}],
  x=>String(x).replace(/</g,"&lt;").replace(/>/g,"&gt;"),x=>x);
-assert.doesNotMatch(malicious,/<img/);
+assert.doesNotMatch(malicious,/<img[^>]*onerror=/);
 const style=doc.createElement("style");style.textContent=css;doc.head.appendChild(style);
 assert.ok(style.sheet.cssRules.length>=20,"Stylesheet should parse into CSS rules");
 console.log("XP & Prestige smoke passed: L1-55, ten Prestige ranks, Master 1000, award history, safe rendering, app integration, mobile nav, PWA assets.");
+
+for(const rank of [...Array.from({length:10},(_,i)=>i+1),"master"]){const path="icons/prestige-"+rank+".webp";assert.ok(page.includes(path));assert.ok(sw.includes(path));const bytes=readFileSync(new URL("../public/"+path,import.meta.url));assert.equal(bytes.subarray(0,4).toString(),"RIFF");assert.equal(bytes.subarray(8,12).toString(),"WEBP");}
+assert.match(careerCard({prestige:7,level:1}),/prestige-7\.webp/);
+assert.match(careerCard({stage:"master",prestige:10,level:55}),/prestige-master\.webp/);
