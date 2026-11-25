@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.6.0)
+# TrummPlaner Cloud PWA (1.6.1)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -89,3 +89,7 @@ Unter **Erinnern am** stehen die gleichen Schnellbuttons wie bei der Fälligkeit
 - Eigenständiges Stylesheet `cloud/public/vice-city-theme.css` nach `styles.css` geladen; so können Stile bei Bedarf später ohne Eingriff in die Anwendungslogik angepasst oder rückgängig gemacht werden.
 - PWA-Hintergrund- und Browser-Farben auf das neue Design abgestimmt; zusätzliche Datei wird offline im Service Worker zwischengespeichert.
 - CI-Smoketest kontrolliert Stilregeln, Navigation, Login, PWA-Metadaten, bestehenden Eingabefelder und den unberührten Word-Arbeitsbereich.
+
+## 1.6.1: Eigene Neon-Menüicons
+
+Die Navigation verwendet jetzt die acht eigens für TrummPlaner gestalteten Vice-City-Sunset-Icons. Jeder Menüpunkt besitzt sein passendes Motiv: Skyline (Übersicht), Checkliste (Aufgaben), Notizblatt (Notizen), Lösungsbuch (Lösungen), Projektmappe (Projekte), Stift und Dokument (Word-Dokumente), Bürogebäude (Firmen), Zahnrad (Einstellungen). Sie erscheinen sowohl in der Desktop-Seitenleiste als auch in der Smartphone-Navigation. Die Originalbilder wurden mit transparentem Hintergrund zu einem kleinen WebP-Sprite mit acht Kacheln à 48 × 48 Pixel verkleinert (ca. 10 KB) und unter `icons/nav-vicecity.webp` abgelegt. Tastaturbedienung, Navigation und Beschriftungen bleiben unverändert; Icons sind dekorativ mit `aria-hidden`. Service Worker v1.6.1 speichert die Grafik für den Offlinebetrieb. Neuer CI-Test `neon-menu-icons-smoke.mjs` prüft alle acht Desktop- und Mobil-Zuordnungen.
