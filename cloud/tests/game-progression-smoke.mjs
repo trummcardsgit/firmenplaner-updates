@@ -60,6 +60,8 @@ const first=playerRank({stage:"normal",prestige:1,level:1});
 assert.equal(first.title,"Prestige 1");
 const master=playerRank({stage:"master",prestige:10,level:985,xp_in_level:350});
 assert.equal(master.cap,1000);
+assert.equal(playerRank({stage:"master",prestige:10,level:55}).level,55);
+assert.match(careerPage({stage:"master",prestige:10,level:55}),/Level 55/);
 assert.equal(master.title,"Prestige-Meister");
 assert.equal(master.ready,false);
 assert.equal(playerRank({stage:"master",prestige:10,level:1000}).percent,100);
