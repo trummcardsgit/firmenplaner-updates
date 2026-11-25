@@ -44,7 +44,7 @@ assert.ok(doc.querySelector('#nav button[data-view="dashboard"]').classList.cont
 assert.ok(doc.querySelector('.bottom-nav button[data-view="dashboard"]').classList.contains("active"));
 assert.ok(theme.includes('url("./icons/nav-vicecity.webp")'),"CSS must reference image file");
 assert.ok(sw.includes('"./icons/nav-vicecity.webp"'),"PWA offline assets must include icon strip");
-assert.ok(sw.includes('trummplaner-pwa-v1.6.1'),"PWA cache must be versioned");
+assert.match(sw,/const CACHE="trummplaner-pwa-v\d+\.\d+\.\d+"/,"PWA cache must be versioned");
 
 const webp=readFileSync(new URL("icons/nav-vicecity.webp",root));
 assert.ok(webp.length>1000&&webp.length<20000,"Sprite should be reasonably optimized");
