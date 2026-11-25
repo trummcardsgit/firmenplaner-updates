@@ -7,7 +7,21 @@
  <label class="tp-dictation-language">Sprache <select data-dictation-lang="entry-description" aria-label="Sprache für Diktat auswählen"><option value="de-AT" selected>Deutsch (Österreich)</option><option value="de-DE">Deutsch (Deutschland)</option></select></label>
  <span class="tp-dictation-state" data-dictation-status="entry-description" role="status" aria-live="polite">Bereit · Mikrofon starten</span>
  <span class="tp-dictation-live" data-dictation-interim="entry-description" aria-live="off"></span>
- </div><label>Priorität<select id="entry-priority"><option value="normal">Normal</option><option value="high">Hoch</option><option value="low">Niedrig</option></select></label><input id="entry-status" type="hidden" value="open"><label>Fällig am<input type="datetime-local" id="entry-due"></label><label>Erinnern am<input type="datetime-local" id="entry-remind"></label></div><div class="panel" style="margin-top:12px"><h3>Anhänge und Word-Dokumente</h3><div id="entry-attachments"></div></div><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
+ </div><label>Priorität<select id="entry-priority"><option value="normal">Normal</option><option value="high">Hoch</option><option value="low">Niedrig</option></select></label><input id="entry-status" type="hidden" value="open"><div id="tp-due-field" class="wide tp-due-field">
+ <label for="entry-due">Fällig am</label>
+ <input type="datetime-local" id="entry-due" aria-describedby="tp-due-hint">
+ <div id="tp-due-presets" class="tp-due-presets" role="group" aria-label="Fälligkeit schnell auswählen">
+  <button type="button" data-due-preset="today" aria-pressed="false">Heute</button>
+  <button type="button" data-due-preset="tomorrow" aria-pressed="false">Morgen</button>
+  <button type="button" data-due-preset="threeDays" aria-pressed="false">3 Tage</button>
+  <button type="button" data-due-preset="oneWeek" aria-pressed="false">1 Woche</button>
+  <button type="button" data-due-preset="twoWeeks" aria-pressed="false">2 Wochen</button>
+  <button type="button" data-due-preset="month" aria-pressed="false">1 Monat</button>
+  <button type="button" data-due-preset="none" aria-pressed="false" class="tp-due-clear">Ohne Datum</button>
+ </div>
+ <small id="tp-due-hint" class="tp-due-hint" aria-live="polite">Schnellauswahl jeweils 17:00 Uhr, oder Datum und Uhrzeit oben selbst festlegen.</small>
+</div>
+<label id="entry-remind-field">Erinnern am<input type="datetime-local" id="entry-remind"></label></div><div class="panel" style="margin-top:12px"><h3>Anhänge und Word-Dokumente</h3><div id="entry-attachments"></div></div><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
 <dialog id="company-editor"><form id="company-form"><div class="modal-header"><h2>Firma</h2><button type="button" class="close" data-close>×</button></div><input type="hidden" id="company-id"><label>Firmenname *<input id="company-name" required maxlength="160"></label><label>Ansprechpartner<input id="company-contact"></label><label>Telefon<input id="company-phone"></label><label>E-Mail<input type="email" id="company-email"></label><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
 <dialog id="solution-dialog" aria-labelledby="solution-heading">
 <form id="solution-form">
