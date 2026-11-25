@@ -21,8 +21,14 @@ const labels={
 const views=Object.keys(labels);
 const desktop=doc.querySelectorAll("#nav button[data-view]");
 const mobile=doc.querySelectorAll(".bottom-nav button[data-view]");
-assert.equal(desktop.length,8);
-assert.equal(mobile.length,8);
+assert.equal(desktop.length,9,"Eight original sections plus Karriere");
+assert.equal(mobile.length,9,"Eight original sections plus mobile Karriere");
+for(const [root,label] of [["#nav","Karriere"],[".bottom-nav","Rang"]]){
+ const career=doc.querySelector(root+' button[data-view="career"]');
+ assert.ok(career,"Karriere entry missing");
+ assert.ok(career.querySelector(".tp-game-nav-glyph"),"Career has its own rank icon");
+ assert.equal(career.textContent.trim(),"✦"+label);
+}
 for(const [index,view] of views.entries()){
  const d=doc.querySelector('#nav button[data-view="'+view+'"]');
  const m=doc.querySelector('.bottom-nav button[data-view="'+view+'"]');
@@ -60,4 +66,4 @@ const style=doc.createElement("style");
 style.textContent=theme;
 doc.head.appendChild(style);
 assert.ok(style.sheet.cssRules.length>50);
-console.log("Neon-Menueicons erfolgreich: 8 richtige Motive auf Desktop und Handy, Labels erhalten, WebP 384x48, PWA-Cache.");
+console.log("Neon-Menueicons erfolgreich: 8 richtige Motive plus Karriere auf Desktop und Handy, Labels erhalten, WebP 384x48, PWA-Cache.");
