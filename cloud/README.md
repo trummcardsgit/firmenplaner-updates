@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.5)
+# TrummPlaner Cloud PWA (1.6.0)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -80,3 +80,12 @@ Im Formular für neue und bestehende Aufgaben gibt es direkt unter dem genauen F
 ## 1.5.5: Erinnerungsdatum per Schnellwahl
 
 Unter **Erinnern am** stehen die gleichen Schnellbuttons wie bei der Fälligkeit: Heute, Morgen, 3 Tage, 1 Woche, 2 Wochen, 1 Monat und Ohne Erinnerung. Die Schnellwahl setzt das lokale Datum jeweils auf 17:00 Uhr; genaue Datums- und Zeiteingaben bleiben möglich. Fälligkeit und Erinnerung werden unabhängig voneinander verändert. Aufgrund der vorhandenen Speichervalidierung benötigt eine gesetzte Erinnerung auch einen Fälligkeitstermin; das wird direkt als Hinweis angezeigt. Notizen blenden die Terminfelder aus. Die bestehenden Daten bleiben unverändert.
+
+## 1.6.0: Vice City Sunset Design
+
+- Neue originale **GTA-VI-inspirierte Miami-Sonnenuntergangspalette**: Pink (#FF6BB6), Lavendel (#B38CF4), Koralle (#FF927C), Abendgold (#FFD08F) und Türkis (#73E3DC) auf dunkelviolettem Hintergrund.
+- Farbverläufe und subtile Leuchteffekte für Desktop-Sidebar, Dashboard-Header, Kennzahlen-Karten, Buttons, Aufgaben, Projekte, Listen, Formulare, Anmeldeseite und mobile Navigation.
+- Alle bisherigen App-Funktionen und Daten bleiben unverändert; es werden keinerlei GTA-Logos, Bilder oder sonstige fremde Medien eingebettet. Das Wort-Dokument selbst bleibt weiß und gut bearbeitbar, nur die App-Leisten und die Vorschau erhalten das neue Farbschema.
+- Eigenständiges Stylesheet `cloud/public/vice-city-theme.css` nach `styles.css` geladen; so können Stile bei Bedarf später ohne Eingriff in die Anwendungslogik angepasst oder rückgängig gemacht werden.
+- PWA-Hintergrund- und Browser-Farben auf das neue Design abgestimmt; zusätzliche Datei wird offline im Service Worker zwischengespeichert.
+- CI-Smoketest kontrolliert Stilregeln, Navigation, Login, PWA-Metadaten, bestehenden Eingabefelder und den unberührten Word-Arbeitsbereich.
