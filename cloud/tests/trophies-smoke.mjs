@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {JSDOM} from "jsdom";
+import {trophyCabinet,toggleFavorite} from "../public/trophies.js";
+const read=p=>readFileSync(new URL("../public/"+p,import.meta.url),"utf8");
+const manifest=JSON.parse(read("icons/trophies/manifest.json"));
+assert.equal(manifest.length,50);
+assert.equal(new Set(manifest.map(t=>t.src)).size,50);
+const ts=manifest.map(t=>({...t,description:"Test",target:10,progress:3,xp_reward:50,category:t.id<41?"tasks":"secret",unlocked_at:t.id<5?"2026-11-25T12:00:00Z":null,title:t.id>=41?"???":t.title}));
+const dom=new JSDOM(trophyCabinet(ts,"all","all",[1,2,3]));
+const doc=dom.window.document;
+assert.equal(doc.querySelectorAll(".tp-trophy-card").length,50);
+assert.equal(doc.querySelectorAll(".tp-trophy-card.won").length,4);
+assert.equal(doc.querySelectorAll(".tp-trophy-unknown").length,10);
+assert.equal(doc.querySelectorAll(".tp-trophy-showcase img").length,3);
+assert.equal(new JSDOM(trophyCabinet(ts,"unlocked")).window.document.querySelectorAll(".tp-trophy-card").length,4);
+assert.equal(new JSDOM(trophyCabinet(ts,"locked")).window.document.querySelectorAll(".tp-trophy-card").length,46);
+assert.deepEqual(toggleFavorite([1,2,3],4,ts),[1,2,3]);
+assert.deepEqual(toggleFavorite([1,2,3],2,ts),[1,3]);
+assert.deepEqual(toggleFavorite([],5,ts),[]);
+assert.deepEqual(toggleFavorite([],1,ts),[1]);
+assert.ok(!trophyCabinet([{...ts[0],title:"<script>alert(1)</script>"}]).includes("<script>"));
+for(const t of manifest){assert.match(read(t.src.slice(2)),/<svg /);assert.ok(read("sw.js").includes(t.src))}
+assert.match(read("app.js"),/db\.rpc\("tp_sync_trophies"\)/);
+assert.match(read("game-progression.js"),/trophies\+/);
+console.log("Trophy cabinet: 50 assets, filters, secret achievements, showcase, escaping and integration passed.");

@@ -41,7 +41,7 @@ export function careerCard(record=null){
    fmtNumber(p.current)+" / "+fmtNumber(p.needed)+" XP zum nächsten Level")+'</span></span>'+
   '<span class="tp-game-mini-arrow" aria-hidden="true">›</span></button>';
 }
-export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(x)){
+export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(x),trophies=""){
  const p=playerRank(record);
  const entries=(events||[]).slice(0,18).map(ev=>{
   const raised=Number(ev.rank_after)>Number(ev.rank_before);
@@ -87,6 +87,7 @@ export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(
     '<div class="tp-game-master-badge'+(p.stage==="master"?' unlocked':'')+'"><span aria-hidden="true">'+emblem("master")+'</span>'+
      '<div><strong>Prestige-Meister</strong><small>Nach Prestige 10 · Level 55–1000</small></div>'+
      (p.stage==="master"?'<span>FREIGESCHALTET</span>':'<span>GESPERRT</span>')+'</div></div>'+
+  trophies+
   '<div class="tp-game-panel"><div class="tp-game-panel-heading"><h3>Letzte XP-Belohnungen</h3>'+
    '<span>Einmal pro Aufgabe</span></div>'+
    (entries||'<p class="tp-game-empty">Noch keine XP gesammelt. Schließe deine nächste Aufgabe ab und starte deine Karriere!</p>')+
