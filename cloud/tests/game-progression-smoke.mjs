@@ -72,7 +72,7 @@ const page=careerPage(advance,history,x=>String(x).replaceAll("<","&lt;"),x=>x);
 assert.match(page,/Netzwerkdrucker eingerichtet/);
 assert.match(page,/\+150 XP/);
 assert.match(page,/Levelaufstieg!/);
-assert.equal((page.match(/class="tp-prestige-badge/g)||[]).length,10);
+assert.equal((page.match(/class="tp-prestige-badge(?: unlocked)?"/g)||[]).length,10);
 assert.match(careerPage({stage:"normal",prestige:0,level:55}),/tp-enter-prestige/);
 assert.match(careerPage({stage:"normal",prestige:10,level:55}),/Prestige-Meister freischalten/);
 assert.match(careerPage({stage:"master",prestige:10,level:1000}),/höchste Auszeichnung/);
