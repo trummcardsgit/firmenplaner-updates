@@ -84,7 +84,7 @@ export function careerPage(record=null,events=[],esc=x=>String(x),fmt=x=>String(
     '<p>Jeweils bis Level 55 aufsteigen, dann freiwillig das nächste Prestige starten.</p>'+
     '<div class="tp-prestige-badges">'+badges+'</div>'+
     '<div class="tp-game-master-badge'+(p.stage==="master"?' unlocked':'')+'"><span aria-hidden="true">👑</span>'+
-     '<div><strong>Prestige-Meister</strong><small>Nach Prestige 10 · Level 1–1000</small></div>'+
+     '<div><strong>Prestige-Meister</strong><small>Nach Prestige 10 · Level 55–1000</small></div>'+
      (p.stage==="master"?'<span>FREIGESCHALTET</span>':'<span>GESPERRT</span>')+'</div></div>'+
   '<div class="tp-game-panel"><div class="tp-game-panel-heading"><h3>Letzte XP-Belohnungen</h3>'+
    '<span>Einmal pro Aufgabe</span></div>'+
