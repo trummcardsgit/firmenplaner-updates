@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.4)
+# TrummPlaner Cloud PWA (1.5.5)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -76,3 +76,7 @@ Das Dropdown `Projekt (optional)` laedt die aktuellen Projekte bei jedem Oeffnen
 
 Im Formular für neue und bestehende Aufgaben gibt es direkt unter dem genauen Fälligkeitsdatum die Schnellbuttons **Heute**, **Morgen**, **3 Tage**, **1 Woche**, **2 Wochen**, **1 Monat** und **Ohne Datum**. Bei einer Schnellwahl wird das jeweilige lokale Kalenderdatum auf **17:00 Uhr** gesetzt. Der Monatsbutton berücksichtigt unterschiedliche Monatslängen (31. Januar → 28./29. Februar). Individuelle Datums- und Zeitangaben sind unverändert möglich und überschreiben die Schnellwahl. Bestehende Aufgaben übernehmen weiterhin ihren gespeicherten Termin; Erinnerungen werden nicht automatisch geändert. Notizen zeigen keine Aufgaben-Fälligkeit an.
 
+
+## 1.5.5: Erinnerungsdatum per Schnellwahl
+
+Unter **Erinnern am** stehen die gleichen Schnellbuttons wie bei der Fälligkeit: Heute, Morgen, 3 Tage, 1 Woche, 2 Wochen, 1 Monat und Ohne Erinnerung. Die Schnellwahl setzt das lokale Datum jeweils auf 17:00 Uhr; genaue Datums- und Zeiteingaben bleiben möglich. Fälligkeit und Erinnerung werden unabhängig voneinander verändert. Aufgrund der vorhandenen Speichervalidierung benötigt eine gesetzte Erinnerung auch einen Fälligkeitstermin; das wird direkt als Hinweis angezeigt. Notizen blenden die Terminfelder aus. Die bestehenden Daten bleiben unverändert.
