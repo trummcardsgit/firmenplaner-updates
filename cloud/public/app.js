@@ -38,7 +38,7 @@ function openPrestigeDialog(){
  if(!p.ready)return notice("Prestige wird erst ab Level 55 freigeschaltet.");
  $("tp-prestige-dialog-title").textContent=p.next+"?";
  $("tp-prestige-dialog-message").textContent=p.prestige===10
-  ?"Du hast Prestige 10 auf Level 55 geschafft! Jetzt wird Prestige-Meister freigeschaltet. Starte dort wieder auf Level 1 und steige bis Level 1000 auf. Gesamt-XP, Abzeichen und Aufgaben bleiben erhalten."
+  ?"Du hast Prestige 10 auf Level 55 geschafft! Jetzt wird Prestige-Meister freigeschaltet. Dein Level bleibt bei 55 und wächst danach ohne weiteren Prestige-Reset bis Level 1000. Gesamt-XP, Abzeichen und Aufgaben bleiben erhalten."
   :"Du startest Prestige "+(p.prestige+1)+" wieder auf Level 1. Gesammelte Gesamt-XP, abgeschlossene Aufgaben und bisherige Prestige-Abzeichen bleiben erhalten. Diesen Schritt kannst du nicht rückgängig machen.";
  $("tp-prestige-dialog").showModal();
 }
