@@ -28,8 +28,8 @@ export function playerRank(record=null){
  return {stage,prestige,level,cap,atCap,needed,current,percent,lifetime,done,title,ready,next};
 }
 const fmtNumber=n=>new Intl.NumberFormat("de-AT").format(n);
-const emblem=n=>'<img class="tp-rank-art" src="./icons/prestige-'+n+'.webp" alt="" width="72" height="72">';
-const icon=p=>p.stage==="master"?emblem("master"):p.prestige>0?emblem(p.prestige):'<img class="tp-rank-art" src="./icons/nav-career.webp" alt="" width="48" height="48">';
+const emblem=n=>'<img class="tp-rank-art" src="./icons/hd-prestige-'+n+'.svg" alt="" width="72" height="72">';
+const icon=p=>p.stage==="master"?emblem("master"):p.prestige>0?emblem(p.prestige):'<img class="tp-rank-art" src="./icons/hd-career.svg" alt="" width="48" height="48">';
 export function careerCard(record=null){
  const p=playerRank(record);
  return '<button type="button" data-open-career class="tp-game-mini">'+

@@ -17,7 +17,7 @@ assert.ok(doc.getElementById("tp-prestige-confirm"));
 assert.ok(doc.getElementById("tp-xp-reward"));
 assert.match(sw,/game-progression\.js/);
 assert.match(sw,/game-progression\.css/);
-assert.match(sw,/v1\.7\.2/);
+assert.match(sw,/v1\.7\.3/);
 assert.match(app,/db\.from\("tp_game_profiles"\)/);
 assert.match(app,/db\.from\("tp_game_xp_events"\)/);
 assert.match(app,/db\.rpc\("tp_game_enter_prestige"\)/);
@@ -86,11 +86,14 @@ const style=doc.createElement("style");style.textContent=css;doc.head.appendChil
 assert.ok(style.sheet.cssRules.length>=20,"Stylesheet should parse into CSS rules");
 console.log("XP & Prestige smoke passed: L1-55, ten Prestige ranks, Master 1000, award history, safe rendering, app integration, mobile nav, PWA assets.");
 
-for(const rank of [...Array.from({length:10},(_,i)=>i+1),"master"]){const path="icons/prestige-"+rank+".webp";assert.ok(page.includes(path));assert.ok(sw.includes(path));const bytes=readFileSync(new URL("../public/"+path,import.meta.url));assert.equal(bytes.subarray(0,4).toString(),"RIFF");assert.equal(bytes.subarray(8,12).toString(),"WEBP");}
-assert.match(careerCard({prestige:7,level:1}),/prestige-7\.webp/);
-assert.match(careerCard({stage:"master",prestige:10,level:55}),/prestige-master\.webp/);
+for(const rank of [...Array.from({length:10},(_,i)=>i+1),"master"]){const path="icons/hd-prestige-"+rank+".svg";assert.ok(page.includes(path));assert.ok(sw.includes(path));const svg=read(path);assert.match(svg,/<svg /);assert.match(svg,/viewBox="0 0 256 256"/);}
+assert.match(careerCard({prestige:7,level:1}),/prestige-7\.svg/);
+assert.match(careerCard({stage:"master",prestige:10,level:55}),/prestige-master\.svg/);
 
 assert.ok(doc.getElementById("page-menu-art"),"Header artwork present");
 assert.ok(app.includes('const menuArt=$("page-menu-art")'),"Header changes with navigation");
 assert.ok(css.includes(".app-shell>.main{flex:1 1 0%"),"Main occupies remaining available width");
 assert.ok(css.includes(".tp-game-career{width:100%;margin-inline:auto}"),"Career centered");
+
+for(const view of ["dashboard","tasks","notes","career","solutions","projects","documents","companies","settings"]){const path="icons/hd-"+view+".svg";assert.ok(sw.includes(path));assert.match(read(path),/<svg /);}
+assert.match(doc.getElementById("page-menu-art").src,/hd-dashboard\.svg/);assert.ok(app.includes('"./icons/hd-"+state.view+".svg"'));
