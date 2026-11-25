@@ -1,0 +1,302 @@
+[
+  {
+    "id": 1,
+    "title": "Der erste Schritt",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-1.svg"
+  },
+  {
+    "id": 2,
+    "title": "Jetzt geht’s los",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-2.svg"
+  },
+  {
+    "id": 3,
+    "title": "Fleißiges Bienchen",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-3.svg"
+  },
+  {
+    "id": 4,
+    "title": "Arbeitstier",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-4.svg"
+  },
+  {
+    "id": 5,
+    "title": "Die Maschine",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-5.svg"
+  },
+  {
+    "id": 6,
+    "title": "Unaufhaltsam",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-6.svg"
+  },
+  {
+    "id": 7,
+    "title": "Der Terminator",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-7.svg"
+  },
+  {
+    "id": 8,
+    "title": "Legende der Arbeit",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-8.svg"
+  },
+  {
+    "id": 9,
+    "title": "Multitasking-Monster",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-9.svg"
+  },
+  {
+    "id": 10,
+    "title": "Absoluter Ausnahmezustand",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-10.svg"
+  },
+  {
+    "id": 11,
+    "title": "Pünktlich wie die Feuerwehr",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-11.svg"
+  },
+  {
+    "id": 12,
+    "title": "Der Zeitreisende",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-12.svg"
+  },
+  {
+    "id": 13,
+    "title": "In letzter Sekunde",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-13.svg"
+  },
+  {
+    "id": 14,
+    "title": "Besser spät als nie",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-14.svg"
+  },
+  {
+    "id": 15,
+    "title": "Altlastenbeseitigung",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-15.svg"
+  },
+  {
+    "id": 16,
+    "title": "Frühaufsteher",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-16.svg"
+  },
+  {
+    "id": 17,
+    "title": "Nachteule",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-17.svg"
+  },
+  {
+    "id": 18,
+    "title": "Freitag, Feierabend!",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-18.svg"
+  },
+  {
+    "id": 19,
+    "title": "Deadline-Dominator",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-19.svg"
+  },
+  {
+    "id": 20,
+    "title": "Meister der Zeit",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-20.svg"
+  },
+  {
+    "id": 21,
+    "title": "Geistesblitz",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-21.svg"
+  },
+  {
+    "id": 22,
+    "title": "Das wandelnde Lexikon",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-22.svg"
+  },
+  {
+    "id": 23,
+    "title": "Sherlock Holmes",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-23.svg"
+  },
+  {
+    "id": 24,
+    "title": "Problem? Welches Problem?",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-24.svg"
+  },
+  {
+    "id": 25,
+    "title": "IT-Gott",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-25.svg"
+  },
+  {
+    "id": 26,
+    "title": "Projektmanager",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-26.svg"
+  },
+  {
+    "id": 27,
+    "title": "Mission erfüllt",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-27.svg"
+  },
+  {
+    "id": 28,
+    "title": "Generaldirektor",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-28.svg"
+  },
+  {
+    "id": 29,
+    "title": "Der Schriftsteller",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-29.svg"
+  },
+  {
+    "id": 30,
+    "title": "Dokumentationslegende",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-30.svg"
+  },
+  {
+    "id": 31,
+    "title": "Vom Tellerwäscher zum Millionär",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-31.svg"
+  },
+  {
+    "id": 32,
+    "title": "Kein Anfänger mehr",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-32.svg"
+  },
+  {
+    "id": 33,
+    "title": "Bereit für mehr",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-33.svg"
+  },
+  {
+    "id": 34,
+    "title": "Eine neue Ära",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-34.svg"
+  },
+  {
+    "id": 35,
+    "title": "Veteran",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-35.svg"
+  },
+  {
+    "id": 36,
+    "title": "Elite der Elite",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-36.svg"
+  },
+  {
+    "id": 37,
+    "title": "Prestige-Meister",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-37.svg"
+  },
+  {
+    "id": 38,
+    "title": "Die halbe Ewigkeit",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-38.svg"
+  },
+  {
+    "id": 39,
+    "title": "Endgegner",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-39.svg"
+  },
+  {
+    "id": 40,
+    "title": "XP-Millionär",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-40.svg"
+  },
+  {
+    "id": 41,
+    "title": "Hast du es schon neu gestartet?",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-41.svg"
+  },
+  {
+    "id": 42,
+    "title": "Der Druckerflüsterer",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-42.svg"
+  },
+  {
+    "id": 43,
+    "title": "Netzwerk-Ninja",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-43.svg"
+  },
+  {
+    "id": 44,
+    "title": "Glückspilz",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-44.svg"
+  },
+  {
+    "id": 45,
+    "title": "Pechvogel",
+    "rarity": "bronze",
+    "src": "./icons/trophies/trophy-45.svg"
+  },
+  {
+    "id": 46,
+    "title": "Jackpot",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-46.svg"
+  },
+  {
+    "id": 47,
+    "title": "Speedrun",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-47.svg"
+  },
+  {
+    "id": 48,
+    "title": "Das Imperium",
+    "rarity": "gold",
+    "src": "./icons/trophies/trophy-48.svg"
+  },
+  {
+    "id": 49,
+    "title": "Feierabend-Boss",
+    "rarity": "silver",
+    "src": "./icons/trophies/trophy-49.svg"
+  },
+  {
+    "id": 50,
+    "title": "Mr. TrummPlaner",
+    "rarity": "platinum",
+    "src": "./icons/trophies/trophy-50.svg"
+  }
+]
