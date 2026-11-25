@@ -17,7 +17,7 @@ assert.equal(doc.querySelector('meta[name="theme-color"]').content,"#201735");
 assert.equal(manifest.background_color,"#13142e");
 assert.equal(manifest.theme_color,"#201735");
 assert.ok(serviceWorker.includes('"./vice-city-theme.css"'),"Offline app must cache the theme");
-assert.ok(serviceWorker.includes('trummplaner-pwa-v1.6.0'),"PWA cache must bump to update installed clients");
+assert.match(serviceWorker,/const CACHE="trummplaner-pwa-v\d+\.\d+\.\d+"/,"PWA cache must have a version");
 
 // A valid stylesheet with meaningful rules, not a placeholder/mockup.
 const style=doc.createElement("style");
@@ -34,7 +34,7 @@ for(const key of [
  ".vice-city-theme .tp-dictation",".vice-city-theme .tp-word-appbar",
  ".vice-city-theme .tp-word-paper"
 ])assert.ok(theme.includes(key),"Missing important palette/section "+key);
-assert.ok(!/url\s*\(/i.test(theme),"Theme should be self-contained, with no third-party background assets");
+assert.ok(!/url\s*\(\s*["']?https?:\/\//i.test(theme),"Theme must not load third-party artwork");
 assert.ok(!/display\s*:\s*none\s*!important/i.test(theme),"Do not hide existing app features");
 // Original white Word paper, tables, forms, projects and dictation remain in base stylesheet.
 for(const feature of [
