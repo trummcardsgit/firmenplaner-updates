@@ -519,7 +519,7 @@ dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
 /* Task editor: fast due-date selection that keeps the precise date picker available */
 .tp-due-field{display:flex;flex-direction:column;gap:9px;margin:4px 0 8px}
 .tp-due-field>label{font-size:13px;font-weight:700;color:#e2e6ee}
-#entry-due{width:100%;max-width:410px;min-height:42px}
+#entry-due,#entry-remind{width:100%;max-width:410px;min-height:42px}
 .tp-due-presets{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .tp-due-presets>button{
  border:1px solid #536071;border-radius:999px;
@@ -537,7 +537,10 @@ dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
 .tp-due-presets>button.tp-due-clear.is-active{color:#fff;border-color:#af717f;background:#563140}
 .tp-due-hint{color:#adbfd4;font-size:12px;line-height:1.5}
 @media(max-width:680px){
- #entry-due{max-width:none}
+ #entry-due,#entry-remind{max-width:none}
  .tp-due-presets{gap:7px}
  .tp-due-presets>button{flex:1 1 auto;min-height:41px;padding:10px 13px}
 }
+
+/* Visually separate the independent reminder quick choices. */
+.tp-remind-field{border-top:1px solid #3d4657;padding-top:14px;margin-top:9px}
