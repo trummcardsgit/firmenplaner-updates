@@ -1,0 +1,150 @@
+/* TrummPlaner career / prestige progression, styled for Vice City Sunset */
+.vice-city-theme .tp-game-mini{
+ display:flex;align-items:center;gap:18px;width:100%;text-align:left;
+ border:1px solid rgba(255,144,200,.49);border-radius:20px;
+ background:linear-gradient(110deg,#452349,#2c234e 65%,#27365c);
+ box-shadow:0 12px 35px rgba(29,13,48,.26);
+ padding:16px 20px;color:#fff;cursor:pointer;margin-bottom:22px;
+}
+.vice-city-theme .tp-game-mini:hover,.vice-city-theme .tp-game-mini:focus-visible{
+ border-color:#ffc0dc;background:linear-gradient(110deg,#592855,#352958 65%,#294360);
+}
+.tp-game-mini-seal,.tp-game-rank-seal{
+ display:grid;place-items:center;flex-shrink:0;
+ background:radial-gradient(circle at 25% 20%,#ffd499,#ff79b9 48%,#8d4fd7 85%);
+ border:2px solid #ffc7e7;color:#321238;
+ box-shadow:0 6px 26px rgba(255,106,190,.38),inset 0 0 0 5px rgba(44,19,72,.17);
+ border-radius:50%;
+}
+.tp-game-mini-seal{width:64px;height:64px;font-size:35px}
+.tp-game-mini-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.tp-game-kicker{font-size:10px;font-weight:850;letter-spacing:2.3px;color:#ffcfb2}
+.tp-game-mini-body>strong{font-size:17px;color:#fff7ff}
+.tp-game-mini-bar{height:7px;border-radius:8px;background:#211b3b;overflow:hidden;display:block}
+.tp-game-mini-bar>span,.tp-game-progress-track>span{
+ display:block;height:100%;border-radius:inherit;
+ background:linear-gradient(90deg,#75f0e5 0%,#ffb3ab 35%,#ff67bc 75%,#c78aff 100%);
+ box-shadow:0 0 14px rgba(255,104,195,.36);
+}
+.tp-game-mini-caption{font-size:11px;color:#e1cde8}
+.tp-game-mini-arrow{font-size:40px;color:#ffc0dd;line-height:1}
+.tp-game-career{display:grid;gap:20px;max-width:1050px}
+.tp-game-hero{
+ background:radial-gradient(ellipse 55% 80% at 96% 4%,rgba(255,121,142,.19),transparent),
+  linear-gradient(135deg,#452443,#34224c 50%,#202848);
+ border:1px solid #a165ac;border-radius:23px;
+ padding:clamp(18px,3vw,34px);
+ box-shadow:0 20px 46px rgba(17,7,31,.23);
+ overflow:hidden;position:relative;
+}
+.tp-game-hero::after{
+ content:"";pointer-events:none;position:absolute;right:-40px;top:-130px;
+ width:390px;height:390px;border-radius:50%;opacity:.27;
+ background:repeating-linear-gradient(180deg,transparent 0 26px,#562f69 26px 36px),
+ linear-gradient(180deg,#ff80bd,#ffad8c);
+}
+.tp-game-hero-main{display:flex;gap:22px;flex-wrap:wrap;align-items:center;position:relative;z-index:1}
+.tp-game-hero-main>.tp-game-kicker{width:100%;margin-bottom:0}
+.tp-game-rank-seal{width:110px;height:110px;font-size:60px}
+.tp-game-hero-overline{color:#ffc3c7;margin:0;font-weight:650;font-size:12px;letter-spacing:.4px}
+.tp-game-hero h2{font-size:clamp(28px,5vw,44px);margin:0;color:#fff5ff;line-height:1.08}
+.tp-game-level{margin:7px 0 0;font-size:18px;color:#ffe0ed}
+.tp-game-level strong{font-size:31px;color:#fff}
+.tp-game-level span{font-size:14px;opacity:.75}
+.tp-game-progress{position:relative;z-index:1;margin:25px 0 15px}
+.tp-game-progress-line{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px;color:#ffe1f0;font-weight:700}
+.tp-game-progress-track{height:15px;border-radius:999px;background:#18182d;overflow:hidden;border:1px solid rgba(255,176,215,.24)}
+.tp-game-lead{position:relative;z-index:1;color:#eaddf1;line-height:1.6;margin:12px 0}
+.vice-city-theme .tp-game-prestige-button{
+ position:relative;z-index:1;margin:13px 0 0;padding:13px 20px;
+ border:1px solid #ffcfaf;border-radius:12px;
+ background:linear-gradient(110deg,#ffd48a,#ff95ac,#f37ebf);color:#341a32;
+ font-weight:900;box-shadow:0 8px 20px rgba(255,114,181,.25)
+}
+.vice-city-theme .tp-game-prestige-button:hover{filter:brightness(1.09)}
+.tp-game-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tp-game-stats>div,.tp-game-panel{
+ background:linear-gradient(145deg,#302640,#242239);
+ border:1px solid rgba(239,155,222,.31);border-radius:17px;padding:19px;
+}
+.tp-game-stats>div{display:flex;flex-direction:column;gap:7px}
+.tp-game-stats strong{font-size:clamp(20px,3vw,28px);color:#ffe4aa}
+.tp-game-stats span{font-size:12px;color:#e0d0e7}
+.tp-game-panel h3{margin:0;color:#fff6ff}
+.tp-game-panel>p,.tp-game-empty{color:#d8c9e2;font-size:13px;line-height:1.6}
+.tp-game-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.tp-game-panel-heading>span{font-size:11px;color:#c1b4d3}
+.tp-prestige-badges{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:9px;margin:20px 0}
+.tp-prestige-badge{
+ min-height:65px;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:2px;border:1px solid #51455b;background:#201d33;color:#8e879a;font-size:21px;
+}
+.tp-prestige-badge b{font-size:12px}
+.tp-prestige-badge.unlocked{color:#ffe7b0;border-color:#ffacb6;background:linear-gradient(155deg,#653153,#392957)}
+.tp-game-master-badge{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #51455b;border-radius:14px;background:#211e32}
+.tp-game-master-badge>span:first-child{font-size:27px;filter:grayscale(1);opacity:.5}
+.tp-game-master-badge div{display:flex;flex:1;flex-direction:column;gap:3px}
+.tp-game-master-badge small{color:#c6b9d4}
+.tp-game-master-badge>span:last-child{font-size:10px;letter-spacing:1px;color:#b4a7c2}
+.tp-game-master-badge.unlocked{border-color:#ffc28b;background:linear-gradient(110deg,#633c50,#322d58)}
+.tp-game-master-badge.unlocked>span:first-child{filter:none;opacity:1}
+.tp-game-event{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid rgba(225,169,211,.17)}
+.tp-game-event:last-child{border:0}
+.tp-game-event-sign{flex:0 0 85px;font-size:15px;font-weight:850;color:#89f5e2}
+.tp-game-event-info{min-width:0;display:flex;flex-direction:column;gap:4px}
+.tp-game-event-info strong{color:#fff1f8;overflow-wrap:anywhere;font-size:13px}
+.tp-game-event-info small{color:#bfb0d2;font-size:11px}
+.tp-xp-reward{
+ position:fixed;right:20px;top:20px;z-index:13000;
+ padding:18px 23px;border-radius:17px;min-width:210px;max-width:min(360px,calc(100vw - 32px));
+ color:#fff7ff;text-align:center;border:1px solid #ffd39d;
+ background:linear-gradient(120deg,#6d315b,#4a285a,#263a65);
+ box-shadow:0 24px 75px rgba(16,6,36,.45),0 0 25px rgba(255,126,188,.20);
+ animation:tp-xp-slide .35s ease-out both
+}
+.tp-xp-reward strong{display:block;font-size:29px;color:#8effdf;font-weight:900}
+.tp-xp-reward span{display:block;font-size:12px;margin-top:3px}
+.tp-xp-reward em{display:block;font-style:normal;color:#ffd4a0;font-weight:750;margin-top:7px}
+@keyframes tp-xp-slide{from{opacity:0;transform:translateY(-20px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.vice-city-theme dialog.tp-prestige-dialog{
+ width:min(460px,calc(100vw - 32px));border:1px solid #f8a5d0;border-radius:18px;
+ background:linear-gradient(150deg,#50304f,#252542);color:#fff5ff;padding:26px;
+ box-shadow:0 24px 80px #140c2acc;
+}
+.tp-prestige-dialog h2{font-size:24px;color:#ffe5be}
+.tp-prestige-dialog p{line-height:1.6;color:#eadbea}
+.tp-prestige-dialog-actions{display:flex;justify-content:flex-end;gap:11px;flex-wrap:wrap}
+.vice-city-theme .sidebar .tp-game-nav-glyph,.vice-city-theme .bottom-nav .tp-game-nav-glyph{
+ width:24px;height:24px;display:inline-grid;place-items:center;
+ border-radius:8px;flex-shrink:0;
+ color:#ffd7aa;background:linear-gradient(135deg,#a44894,#4a367d);
+ box-shadow:0 0 12px rgba(255,98,184,.25);
+ font-size:19px;font-weight:900;line-height:1
+}
+.vice-city-theme .bottom-nav .tp-game-nav-glyph{width:22px;height:22px;font-size:17px}
+@media(max-width:850px){.tp-prestige-badges{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:680px){
+ .tp-game-mini{gap:10px;padding:13px!important}
+ .tp-game-mini-seal{width:49px;height:49px;font-size:26px}
+ .tp-game-rank-seal{width:82px;height:82px;font-size:43px}
+ .tp-game-hero-main{gap:15px}
+ .tp-game-hero h2{font-size:30px}
+ .tp-game-stats{gap:7px}
+ .tp-game-stats>div{padding:12px}
+ .tp-game-stats span{font-size:10px}
+ .tp-game-stats strong{font-size:19px}
+ .tp-prestige-badges{gap:6px}
+ .tp-prestige-badge{min-height:58px}
+ .tp-game-mini-body>strong{font-size:14px}
+ .tp-xp-reward{top:10px;right:10px;padding:14px}
+ /* 9 destinations, horizontal swipe instead of crushing icons */
+ .vice-city-theme .bottom-nav{
+  display:flex;align-items:stretch;justify-content:flex-start;
+  overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch;
+ }
+ .vice-city-theme .bottom-nav>button{
+  flex:0 0 68px;min-width:68px;scroll-snap-align:start;
+ }
+}
+@media(prefers-reduced-motion:reduce){.tp-xp-reward{animation:none}}
