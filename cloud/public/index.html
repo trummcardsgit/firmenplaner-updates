@@ -21,7 +21,20 @@
  </div>
  <small id="tp-due-hint" class="tp-due-hint" aria-live="polite">Schnellauswahl jeweils 17:00 Uhr, oder Datum und Uhrzeit oben selbst festlegen.</small>
 </div>
-<label id="entry-remind-field">Erinnern am<input type="datetime-local" id="entry-remind"></label></div><div class="panel" style="margin-top:12px"><h3>Anhänge und Word-Dokumente</h3><div id="entry-attachments"></div></div><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
+<div id="entry-remind-field" class="wide tp-due-field tp-remind-field">
+ <label for="entry-remind">Erinnern am</label>
+ <input type="datetime-local" id="entry-remind" aria-describedby="tp-remind-hint">
+ <div id="tp-remind-presets" class="tp-due-presets" role="group" aria-label="Erinnerung schnell auswählen">
+  <button type="button" data-remind-preset="today" aria-pressed="false">Heute</button>
+  <button type="button" data-remind-preset="tomorrow" aria-pressed="false">Morgen</button>
+  <button type="button" data-remind-preset="threeDays" aria-pressed="false">3 Tage</button>
+  <button type="button" data-remind-preset="oneWeek" aria-pressed="false">1 Woche</button>
+  <button type="button" data-remind-preset="twoWeeks" aria-pressed="false">2 Wochen</button>
+  <button type="button" data-remind-preset="month" aria-pressed="false">1 Monat</button>
+  <button type="button" data-remind-preset="none" aria-pressed="false" class="tp-due-clear">Ohne Erinnerung</button>
+ </div>
+ <small id="tp-remind-hint" class="tp-due-hint" aria-live="polite">Schnellauswahl jeweils 17:00 Uhr, oder Datum und Uhrzeit oben selbst festlegen.</small>
+</div></div><div class="panel" style="margin-top:12px"><h3>Anhänge und Word-Dokumente</h3><div id="entry-attachments"></div></div><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
 <dialog id="company-editor"><form id="company-form"><div class="modal-header"><h2>Firma</h2><button type="button" class="close" data-close>×</button></div><input type="hidden" id="company-id"><label>Firmenname *<input id="company-name" required maxlength="160"></label><label>Ansprechpartner<input id="company-contact"></label><label>Telefon<input id="company-phone"></label><label>E-Mail<input type="email" id="company-email"></label><div class="modal-actions"><button type="button" class="subtle" data-close>Abbrechen</button><button class="primary">Speichern</button></div></form></dialog>
 <dialog id="solution-dialog" aria-labelledby="solution-heading">
 <form id="solution-form">
