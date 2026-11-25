@@ -11,7 +11,7 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: trummplaner-cloud-pages
+  group: trummplaner-cloud-pages-v160
   cancel-in-progress: true
 jobs:
   deploy:
