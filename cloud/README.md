@@ -1,4 +1,4 @@
-# TrummPlaner Cloud PWA (1.5.3)
+# TrummPlaner Cloud PWA (1.5.4)
 
 Live: https://trummcardsgit.github.io/firmenplaner-updates/
 
@@ -71,3 +71,8 @@ Das Dropdown `Projekt (optional)` laedt die aktuellen Projekte bei jedem Oeffnen
 - Löschen muss explizit im neuen Fenster bestätigt werden; vor der endgültigen Löschung wird nochmals auf vorhandene Dateianhänge geprüft.
 - Bereits verknüpfte Aufgaben und Word-Dokumente bleiben erhalten, der Bezug zum Projekt wird durch die bestehenden FK-Regeln entfernt.
 - Test umfasst Klick auf „Projekt löschen“ in der Übersicht und im Projektfenster, Abbruch, Fehlermeldung und erfolgreichen Datenbank-Aufruf.
+
+## 1.5.4: Schnellauswahl der Fälligkeit
+
+Im Formular für neue und bestehende Aufgaben gibt es direkt unter dem genauen Fälligkeitsdatum die Schnellbuttons **Heute**, **Morgen**, **3 Tage**, **1 Woche**, **2 Wochen**, **1 Monat** und **Ohne Datum**. Bei einer Schnellwahl wird das jeweilige lokale Kalenderdatum auf **17:00 Uhr** gesetzt. Der Monatsbutton berücksichtigt unterschiedliche Monatslängen (31. Januar → 28./29. Februar). Individuelle Datums- und Zeitangaben sind unverändert möglich und überschreiben die Schnellwahl. Bestehende Aufgaben übernehmen weiterhin ihren gespeicherten Termin; Erinnerungen werden nicht automatisch geändert. Notizen zeigen keine Aufgaben-Fälligkeit an.
+
