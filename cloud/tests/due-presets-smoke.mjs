@@ -67,8 +67,61 @@ $("entry-kind").dispatchEvent(new dom.window.Event("change",{bubbles:true}));
 assert.equal($("tp-due-field").classList.contains("hidden"),false);
 assert.equal($("entry-remind-field").classList.contains("hidden"),false);
 
+
+// Reminder quick choices have exactly the same presets but must not change the due date.
+const reminderGroup=$("tp-remind-presets");
+const reminder=$("entry-remind");
+for(const key of ["today","tomorrow","threeDays","oneWeek","twoWeeks","month","none"])
+ assert.ok(reminderGroup.querySelector('[data-remind-preset="'+key+'"]'),"Missing reminder preset "+key);
+let reminderInputs=0,reminderChanges=0;
+reminder.addEventListener("input",()=>reminderInputs++);
+reminder.addEventListener("change",()=>reminderChanges++);
+const remind=key=>reminderGroup.querySelector('[data-remind-preset="'+key+'"]').click();
+const originalDue=$("entry-due").value;
+remind("oneWeek");
+assert.equal(reminder.value,"2026-12-02T17:00");
+assert.equal($("entry-due").value,originalDue,"Reminder shortcut must not change due date");
+assert.equal(reminderGroup.querySelector('[data-remind-preset="oneWeek"]').getAttribute("aria-pressed"),"true");
+assert.equal(reminderInputs,1);
+assert.equal(reminderChanges,1);
+assert.match($("tp-remind-hint").textContent,/02\.12\.2026/);
+remind("twoWeeks");
+assert.equal(reminder.value,"2026-12-09T17:00");
+assert.equal($("entry-due").value,originalDue);
+remind("month");
+assert.equal(reminder.value,"2026-12-25T17:00");
+// Exact date / time remains freely editable and invalidates preset highlight.
+reminder.value="2027-01-05T09:45";
+reminder.dispatchEvent(new dom.window.Event("input",{bubbles:true}));
+assert.equal(reminder.value,"2027-01-05T09:45");
+assert.equal([...reminderGroup.querySelectorAll('[aria-pressed="true"]')].length,0);
+assert.match($("tp-remind-hint").textContent,/05\.01\.2027/);
+remind("none");
+assert.equal(reminder.value,"");
+assert.match($("tp-remind-hint").textContent,/Keine Erinnerung/);
+assert.equal($("entry-due").value,originalDue);
+// A reminder without a due date warns the user that the existing save rule requires both.
+$("entry-due").value="";
+remind("tomorrow");
+assert.match($("tp-remind-hint").textContent,/Zum Speichern auch eine Fälligkeit auswählen/);
+$("entry-due").value=originalDue;
+controls.sync();
+// Existing task reminder values are preserved on reopening.
+reminder.value="2026-12-09T17:00";
+controls.sync();
+assert.equal(reminderGroup.querySelector('[data-remind-preset="twoWeeks"]').getAttribute("aria-pressed"),"true");
+// Notes show neither dates nor quick reminder controls.
+$("entry-kind").value="note";
+$("entry-kind").dispatchEvent(new dom.window.Event("change",{bubbles:true}));
+assert.equal($("entry-remind-field").classList.contains("hidden"),true);
+remind("oneWeek");
+assert.equal(reminder.value,"2026-12-09T17:00");
+$("entry-kind").value="task";
+$("entry-kind").dispatchEvent(new dom.window.Event("change",{bubbles:true}));
+assert.equal($("entry-remind-field").classList.contains("hidden"),false);
+
 const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
 assert.match(app,/installDueDatePresets\(document\)/);
 assert.match(app,/duePresets\.sync\(\)/);
 assert.match(app,/due_at:kind==="note"\?null:iso\(\$\("entry-due"\)\.value\)/);
-console.log("Fälligkeit getestet: Heute, Morgen, 3 Tage, 1/2 Wochen, Monat, Monatsende, freies Datum, Uhrzeit, Erinnerungen, Notizen und Speicherung.");
+console.log("Fälligkeit und Erinnerung getestet: Heute, Morgen, 3 Tage, 1/2 Wochen, Monat, Monatsende, freies Datum, Uhrzeit, Erinnerungen, Notizen und Speicherung.");
