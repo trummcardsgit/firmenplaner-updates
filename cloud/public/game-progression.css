@@ -160,3 +160,21 @@
 .vice-city-theme .sidebar .nav[data-view="companies"] .tp-nav-icon,.vice-city-theme .bottom-nav button[data-view="companies"] .tp-nav-icon{background:url("./icons/nav-companies.webp") center/contain no-repeat;color:transparent;width:38px;height:38px;flex-shrink:0;border-radius:8px;box-shadow:none}
 .vice-city-theme .sidebar .nav[data-view="settings"] .tp-nav-icon,.vice-city-theme .bottom-nav button[data-view="settings"] .tp-nav-icon{background:url("./icons/nav-settings.webp") center/contain no-repeat;color:transparent;width:38px;height:38px;flex-shrink:0;border-radius:8px;box-shadow:none}
 .tp-rank-art{display:block;object-fit:contain;width:100%;height:100%;border-radius:8px}.tp-game-mini-seal,.tp-game-rank-seal{background:#100d16;border-radius:13px;overflow:hidden;padding:0}.tp-prestige-badge{padding:5px;min-height:85px}.tp-prestige-badge .tp-rank-art{width:100%;max-width:72px;height:auto;aspect-ratio:1}.tp-prestige-badge:not(.unlocked) .tp-rank-art{filter:grayscale(1);opacity:.38}.tp-game-master-badge>span:first-child{width:72px;height:72px;flex-shrink:0}.tp-game-master-badge>span:first-child .tp-rank-art{width:100%;height:100%}@media(max-width:680px){.vice-city-theme .bottom-nav button[data-view] .tp-nav-icon,.vice-city-theme .bottom-nav button[data-view] .tp-game-nav-glyph{width:34px;height:34px}.tp-prestige-badge{min-height:70px}.tp-game-master-badge>span:first-child{width:55px;height:55px}}
+
+/* 1.7.2: full-width header, centered workspace and responsive section art */
+.vice-city-theme .app-shell>.main{flex:1 1 0%;min-width:0;width:auto;max-width:none;margin:0;}
+.vice-city-theme .main>.topbar{width:100%;max-width:none;margin-inline:0;display:flex;align-items:center;gap:20px;min-height:140px;padding:16px 26px;}
+.vice-city-theme .topbar>div:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.vice-city-theme .topbar>#new-entry{flex:0 0 auto;white-space:nowrap}
+.vice-city-theme .topbar>.tp-page-menu-art{display:block;flex:0 0 auto;width:110px;height:110px;object-fit:contain;border-radius:16px;filter:drop-shadow(0 0 16px #ff6bb64a)}
+.vice-city-theme .main>#content{width:100%;max-width:1400px;margin-inline:auto;min-width:0}
+.vice-city-theme .tp-game-career{width:100%;margin-inline:auto}
+.tp-game-rank-seal{width:110px;height:110px}
+@media(max-width:680px){
+ .vice-city-theme .app-shell>.main{width:100%}
+ .vice-city-theme .main>.topbar{min-height:98px;padding:12px 14px;gap:9px;flex-wrap:wrap}
+ .vice-city-theme .topbar>div:first-child{flex:1 1 130px}
+ .vice-city-theme .topbar>.tp-page-menu-art{width:64px;height:64px;order:1}
+ .vice-city-theme .topbar>#new-entry{order:2;flex-basis:100%;white-space:normal}
+ .tp-game-rank-seal{width:82px;height:82px}
+}

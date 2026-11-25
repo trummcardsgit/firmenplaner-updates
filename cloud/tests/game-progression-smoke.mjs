@@ -17,7 +17,7 @@ assert.ok(doc.getElementById("tp-prestige-confirm"));
 assert.ok(doc.getElementById("tp-xp-reward"));
 assert.match(sw,/game-progression\.js/);
 assert.match(sw,/game-progression\.css/);
-assert.match(sw,/v1\.7\.1/);
+assert.match(sw,/v1\.7\.2/);
 assert.match(app,/db\.from\("tp_game_profiles"\)/);
 assert.match(app,/db\.from\("tp_game_xp_events"\)/);
 assert.match(app,/db\.rpc\("tp_game_enter_prestige"\)/);
@@ -89,3 +89,8 @@ console.log("XP & Prestige smoke passed: L1-55, ten Prestige ranks, Master 1000,
 for(const rank of [...Array.from({length:10},(_,i)=>i+1),"master"]){const path="icons/prestige-"+rank+".webp";assert.ok(page.includes(path));assert.ok(sw.includes(path));const bytes=readFileSync(new URL("../public/"+path,import.meta.url));assert.equal(bytes.subarray(0,4).toString(),"RIFF");assert.equal(bytes.subarray(8,12).toString(),"WEBP");}
 assert.match(careerCard({prestige:7,level:1}),/prestige-7\.webp/);
 assert.match(careerCard({stage:"master",prestige:10,level:55}),/prestige-master\.webp/);
+
+assert.ok(doc.getElementById("page-menu-art"),"Header artwork present");
+assert.ok(app.includes('const menuArt=$("page-menu-art")'),"Header changes with navigation");
+assert.ok(css.includes(".app-shell>.main{flex:1 1 0%"),"Main occupies remaining available width");
+assert.ok(css.includes(".tp-game-career{width:100%;margin-inline:auto}"),"Career centered");

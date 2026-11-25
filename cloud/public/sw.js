@@ -1,4 +1,4 @@
-const CACHE="trummplaner-pwa-v1.7.1";
+const CACHE="trummplaner-pwa-v1.7.2";
 const ASSETS=["./","./index.html","./styles.css","./vice-city-theme.css","./game-progression.css","./game-progression.js","./app.js","./due-presets.js","./extended.js","./task-projects.js","./table-editor.js","./dictation.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp","./icons/nav-vicecity.webp","./icons/nav-dashboard.webp","./icons/nav-tasks.webp","./icons/nav-notes.webp","./icons/nav-career.webp","./icons/nav-solutions.webp","./icons/nav-projects.webp","./icons/nav-documents.webp","./icons/nav-companies.webp","./icons/nav-settings.webp","./icons/prestige-1.webp","./icons/prestige-2.webp","./icons/prestige-3.webp","./icons/prestige-4.webp","./icons/prestige-5.webp","./icons/prestige-6.webp","./icons/prestige-7.webp","./icons/prestige-8.webp","./icons/prestige-9.webp","./icons/prestige-10.webp","./icons/prestige-master.webp"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
