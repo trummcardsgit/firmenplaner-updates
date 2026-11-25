@@ -348,3 +348,59 @@ body.vice-city-theme{
  }
  .vice-city-theme .item:hover{transform:none}
 }
+
+
+/* Neon menu sprites 1.6.1: the eight selected original artwork icons, compressed
+   into a transparent WebP atlas (8 x 48px, 10KB) for fast loading.
+   Text remains accessible; artwork is decorative in aria-hidden spans. */
+.vice-city-theme .tp-nav-icon{
+ display:inline-block;flex:0 0 36px;
+ width:36px;height:36px;
+ background-image:url("./icons/nav-vicecity.webp");
+ background-repeat:no-repeat;
+ background-size:288px 36px;
+ background-position:0 0;
+ filter:drop-shadow(0 2px 3px rgba(253,102,189,.14));
+ transition:filter .18s ease,transform .18s ease;
+}
+.vice-city-theme .sidebar .nav{
+ gap:12px;
+ padding:9px 12px;
+ min-height:54px;
+}
+.vice-city-theme .sidebar .nav:hover .tp-nav-icon,
+.vice-city-theme .sidebar .nav.active .tp-nav-icon{
+ filter:drop-shadow(0 0 5px rgba(255,119,187,.43));
+ transform:translateY(-1px);
+}
+.vice-city-theme .tp-nav-icon--dashboard{background-position:0px 0}
+.vice-city-theme .tp-nav-icon--tasks{background-position:-36px 0}
+.vice-city-theme .tp-nav-icon--notes{background-position:-72px 0}
+.vice-city-theme .tp-nav-icon--solutions{background-position:-108px 0}
+.vice-city-theme .tp-nav-icon--projects{background-position:-144px 0}
+.vice-city-theme .tp-nav-icon--documents{background-position:-180px 0}
+.vice-city-theme .tp-nav-icon--companies{background-position:-216px 0}
+.vice-city-theme .tp-nav-icon--settings{background-position:-252px 0}
+
+@media(max-width:680px){
+ .vice-city-theme .bottom-nav button{
+  min-width:69px;gap:3px;padding:7px 3px 9px;
+ }
+ .vice-city-theme .bottom-nav button .tp-nav-icon{
+  flex:0 0 30px;width:30px;height:30px;
+  background-size:240px 30px;
+ }
+ .vice-city-theme .bottom-nav .tp-nav-icon--dashboard{background-position:0px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--tasks{background-position:-30px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--notes{background-position:-60px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--solutions{background-position:-90px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--projects{background-position:-120px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--documents{background-position:-150px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--companies{background-position:-180px 0}
+ .vice-city-theme .bottom-nav .tp-nav-icon--settings{background-position:-210px 0}
+}
+@media(prefers-reduced-motion:reduce){
+ .vice-city-theme .tp-nav-icon{transition:none}
+ .vice-city-theme .sidebar .nav:hover .tp-nav-icon,
+ .vice-city-theme .sidebar .nav.active .tp-nav-icon{transform:none}
+}
