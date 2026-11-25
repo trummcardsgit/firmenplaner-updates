@@ -12,7 +12,7 @@ const dom=new JSDOM(html,{url:"https://trummcardsgit.github.io/firmenplaner-upda
 const doc=dom.window.document;
 assert.equal(doc.body.className,"vice-city-theme");
 const styles=[...doc.querySelectorAll('link[rel="stylesheet"]')].map(e=>e.getAttribute("href"));
-assert.deepEqual(styles,["./styles.css","./vice-city-theme.css"],"New palette must override original CSS");
+assert.deepEqual(styles,["./styles.css","./vice-city-theme.css","./game-progression.css"],"Original theme remains first; career styles layer on top");
 assert.equal(doc.querySelector('meta[name="theme-color"]').content,"#201735");
 assert.equal(manifest.background_color,"#13142e");
 assert.equal(manifest.theme_color,"#201735");
