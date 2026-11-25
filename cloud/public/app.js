@@ -2,6 +2,7 @@ import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
 import {createTaskProjectSelector} from "./task-projects.js";
+import {installDueDatePresets} from "./due-presets.js";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
@@ -174,6 +175,7 @@ const taskProjectSelector=createTaskProjectSelector({
  submitButton:$("entry-form").querySelector('button.primary'),
  onError:fail
 });
+const duePresets=installDueDatePresets(document);
 function openEntry(e){
  if(!state.companies.length){nav("companies");notice("Bitte zuerst eine Firma anlegen.");return;}
  const x=e||{};
@@ -188,6 +190,7 @@ function openEntry(e){
  $("entry-status").value=x.status||"open";
  $("entry-due").value=inDate(x.due_at);
  $("entry-remind").value=inDate(x.remind_at);
+ duePresets.sync();
  $("entry-heading").textContent=x.id?"Eintrag bearbeiten":"Neuen Eintrag erstellen";
  features.setEntryAttachments(x.id||null);
  $("editor").showModal();
