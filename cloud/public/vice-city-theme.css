@@ -1,0 +1,350 @@
+/*
+ * TrummPlaner / Vice City Sunset
+ * Original interface palette inspired by tropical GTA VI sunsets.
+ * No third-party graphics or trademark assets. A separate stylesheet keeps
+ * all task, project, document and auth workflows unchanged.
+ */
+:root{
+ --vc-ink:#0c1022;
+ --vc-midnight:#14152c;
+ --vc-plum:#221d3e;
+ --vc-surface:#1d1b35;
+ --vc-surface-up:#282540;
+ --vc-border:rgba(220,161,243,.22);
+ --vc-border-bright:rgba(255,148,194,.54);
+ --vc-text:#fcf5ff;
+ --vc-muted:#c4bdd8;
+ --vc-pink:#ff6bb6;
+ --vc-rose:#f04f9f;
+ --vc-lavender:#b38cf4;
+ --vc-coral:#ff927c;
+ --vc-sun:#ffd08f;
+ --vc-aqua:#73e3dc;
+ --vc-gradient:linear-gradient(115deg,#ffcc8a 0%,#ff9a87 27%,#ff70b5 57%,#a77af0 100%);
+ --vc-glow:0 12px 35px rgba(13,5,34,.20);
+ color-scheme:dark;
+ background:var(--vc-ink);
+ color:var(--vc-text);
+}
+/* Foundation / ambient horizon */
+html{background:#0c1022}
+body.vice-city-theme{
+ min-height:100dvh;
+ color:var(--vc-text);
+ background:
+  radial-gradient(ellipse 60% 42% at 89% 0%,rgba(241,91,159,.20),transparent 75%),
+  radial-gradient(ellipse 48% 32% at 23% 14%,rgba(123,86,204,.20),transparent 78%),
+  radial-gradient(ellipse 40% 30% at 86% 90%,rgba(32,145,178,.09),transparent 80%),
+  linear-gradient(156deg,#13142e 0%,#100f27 47%,#0c1022 100%);
+ background-attachment:fixed;
+}
+.vice-city-theme .app-shell{background:transparent}
+.vice-city-theme .main{position:relative}
+/* Tropical sunset sidebar */
+.vice-city-theme .sidebar{
+ background:linear-gradient(162deg,#211935 0%,#191831 46%,#10182b 100%);
+ border-right:1px solid rgba(255,153,197,.29);
+ box-shadow:9px 0 44px rgba(8,6,24,.20);
+}
+.vice-city-theme .sidebar::before{
+ content:"";position:absolute;left:0;right:0;top:0;height:4px;
+ background:var(--vc-gradient);pointer-events:none;
+}
+.vice-city-theme .brand{
+ background:#fdf3ff;
+ padding:7px;border:1px solid rgba(255,201,224,.62);
+ border-radius:16px;box-shadow:0 9px 32px rgba(242,90,158,.16);
+}
+.vice-city-theme .side-bottom{
+ border-top:1px solid rgba(245,180,211,.17);
+ color:var(--vc-muted);padding-top:15px
+}
+.vice-city-theme .nav{
+ color:#ddd4f2;border:1px solid transparent;
+ font-weight:650;transition:background .18s,box-shadow .18s,border-color .18s,color .18s
+}
+.vice-city-theme .nav:hover{
+ background:rgba(192,112,216,.12);
+ border-color:rgba(254,135,196,.22);color:#fff4ff;
+}
+.vice-city-theme .nav.active{
+ color:#fff;background:linear-gradient(105deg,rgba(242,77,153,.37),rgba(146,99,217,.28));
+ border-color:rgba(255,155,198,.48);
+ box-shadow:inset 3px 0 var(--vc-pink),0 7px 24px rgba(241,74,149,.13);
+}
+/* Signature sunset hero */
+.vice-city-theme .topbar{
+ position:relative;isolation:isolate;overflow:hidden;
+ min-height:114px;padding:21px 25px;
+ border-radius:22px;border:1px solid rgba(255,151,197,.39);
+ background:linear-gradient(112deg,rgba(75,38,103,.92) 0%,rgba(99,50,121,.69) 48%,rgba(158,72,112,.55) 100%);
+ box-shadow:0 18px 48px rgba(7,4,24,.22),inset 0 1px rgba(255,219,236,.10);
+}
+.vice-city-theme .topbar::before{
+ content:"";position:absolute;z-index:-1;right:18px;top:-122px;
+ height:320px;width:320px;border-radius:50%;
+ background:linear-gradient(180deg,rgba(255,216,145,.70),rgba(255,120,143,.54) 50%,rgba(173,108,219,.13));
+ opacity:.42;pointer-events:none;
+}
+.vice-city-theme .topbar::after{
+ content:"";position:absolute;z-index:-1;right:-4%;bottom:-15px;
+ width:53%;height:50px;
+ border-top:1px solid rgba(255,205,196,.18);
+ transform:rotate(-6deg);
+ background:linear-gradient(180deg,rgba(235,112,176,.08),transparent);
+ pointer-events:none;
+}
+.vice-city-theme .topbar h1{
+ color:#fff8ff;text-shadow:0 3px 18px rgba(32,12,61,.25);
+ letter-spacing:-.9px;font-weight:850;
+}
+.vice-city-theme .eyebrow{
+ color:#ffd3be;letter-spacing:2.7px;font-weight:850;
+ text-shadow:0 1px 4px rgba(41,8,48,.35)
+}
+/* Action buttons + everyday controls */
+.vice-city-theme button,.vice-city-theme input,.vice-city-theme textarea,.vice-city-theme select{
+ transition:border-color .15s,background-color .15s,box-shadow .15s,filter .15s;
+}
+.vice-city-theme .primary{
+ color:#2e1734!important;background:var(--vc-gradient)!important;
+ border:1px solid rgba(255,232,208,.32)!important;
+ border-radius:12px;box-shadow:0 5px 22px rgba(239,89,149,.23);
+ font-weight:850;
+}
+.vice-city-theme .primary:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 8px 26px rgba(240,87,155,.32)}
+.vice-city-theme .subtle,
+.vice-city-theme .actions button,
+.vice-city-theme .tp-toolbar button{
+ background:#302841;color:#f6eafa;border:1px solid rgba(195,151,225,.37);
+}
+.vice-city-theme .subtle:hover:not(:disabled),
+.vice-city-theme .actions button:hover:not(:disabled){
+ background:#473151;border-color:rgba(255,145,196,.62);color:white;
+}
+.vice-city-theme input,
+.vice-city-theme textarea,
+.vice-city-theme select{
+ background:#17182f;color:#fff7ff;border-color:rgba(199,154,222,.37);
+ box-shadow:inset 0 1px 2px rgba(0,0,0,.13);
+}
+.vice-city-theme input::placeholder,.vice-city-theme textarea::placeholder{color:#aba5c1;opacity:1}
+.vice-city-theme input:focus,
+.vice-city-theme textarea:focus,
+.vice-city-theme select:focus{
+ border-color:#ff92c8;box-shadow:0 0 0 3px rgba(255,105,178,.18);
+}
+.vice-city-theme :where(button,input,select,textarea,[contenteditable]):focus-visible{
+ outline:2px solid #ffd29c;outline-offset:2px
+}
+.vice-city-theme label{color:#f7e9fc}
+.vice-city-theme :is(.counter,.muted,.meta,.install-tip){color:var(--vc-muted)}
+.vice-city-theme .company-badge{color:var(--vc-sun)}
+/* Dashboard metrics / project and task cards */
+.vice-city-theme .metric,
+.vice-city-theme .panel,
+.vice-city-theme .item{
+ background:linear-gradient(155deg,rgba(40,34,65,.97),rgba(27,26,51,.97));
+ border:1px solid var(--vc-border);
+ box-shadow:var(--vc-glow),inset 0 1px rgba(255,216,238,.045);
+}
+.vice-city-theme .metric{position:relative;overflow:hidden}
+.vice-city-theme .metric::before{
+ content:"";position:absolute;left:0;right:0;top:0;height:3px;
+ background:linear-gradient(90deg,#ff91c8,#b593f8);
+}
+.vice-city-theme .metric:nth-child(2)::before{background:linear-gradient(90deg,#ffcb91,#ff8c96)}
+.vice-city-theme .metric:nth-child(3)::before{background:linear-gradient(90deg,#9a81f2,#7bd9d7)}
+.vice-city-theme .metric:nth-child(4)::before{background:linear-gradient(90deg,#fa6fb5,#ffbd7b)}
+.vice-city-theme .metric strong{color:#fff4ff}
+.vice-city-theme .metric span{color:#d1c4e3}
+.vice-city-theme .metric.highlight{
+ border-color:rgba(255,162,194,.71);
+ background:linear-gradient(144deg,#402743,#2e233e 66%,#231f3c);
+ box-shadow:0 12px 34px rgba(236,95,143,.12);
+}
+.vice-city-theme .item{transition:border-color .17s,transform .17s,box-shadow .17s}
+.vice-city-theme .item:hover{
+ border-color:rgba(255,156,206,.47);
+ box-shadow:0 15px 38px rgba(13,5,32,.27);
+ transform:translateY(-1px);
+}
+.vice-city-theme .item p{color:#ded6eb}
+.vice-city-theme .item h3,.vice-city-theme .panel h2{color:#fff6ff}
+.vice-city-theme .item .actions{margin-top:15px}
+.vice-city-theme .pill{background:#38304f;color:#e9dbfc;border:1px solid rgba(205,169,234,.15)}
+.vice-city-theme .pill.gold{background:#593345;color:#ffceae;border-color:rgba(255,181,151,.30)}
+.vice-city-theme .pill.red{background:#56293f;color:#ffb6c3;border-color:rgba(255,124,164,.30)}
+.vice-city-theme .pill.green{background:#24414b;color:#9ff0e4;border-color:rgba(116,221,216,.27)}
+.vice-city-theme .empty{color:var(--vc-muted);border-color:rgba(235,153,218,.36);background:rgba(42,32,65,.22)}
+.vice-city-theme .warning{background:#553346;color:#ffe0c7;border:1px solid rgba(255,179,154,.4)}
+.vice-city-theme .toast{
+ background:#3b254f;border:1px solid rgba(255,146,191,.77);
+ color:#fff8ff;box-shadow:0 15px 48px rgba(21,4,31,.44)
+}
+/* Login and dialogs */
+.vice-city-theme .auth-wrap{
+ background:
+ radial-gradient(circle at 68% 18%,rgba(255,137,134,.32),transparent 40%),
+ radial-gradient(circle at 22% 63%,rgba(186,92,226,.23),transparent 53%),
+ linear-gradient(145deg,#18132e,#101229 76%);
+}
+.vice-city-theme .auth-panel{
+ background:linear-gradient(148deg,#342442 0%,#221e3c 53%,#1c2039 100%);
+ border:1px solid rgba(255,164,197,.54);
+ box-shadow:0 22px 80px rgba(10,4,31,.55),0 0 75px rgba(229,91,174,.09);
+}
+.vice-city-theme .auth-panel h1{color:#ffe7f3}
+.vice-city-theme .auth-panel p{color:#d6c9e5}
+.vice-city-theme .auth-logo{
+ background:#fdf1fa;border:1px solid rgba(255,182,201,.7);
+ box-shadow:0 9px 32px rgba(232,90,158,.17)
+}
+.vice-city-theme dialog:not(.tp-document-fullscreen):not(.tp-doc-preview-dialog){
+ background:linear-gradient(145deg,#2a2341,#191d34);
+ color:#fff6ff;border:1px solid rgba(254,158,206,.52);
+ box-shadow:0 30px 88px rgba(8,5,25,.69);
+}
+.vice-city-theme dialog::backdrop{background:rgba(9,5,25,.80)}
+.vice-city-theme .close{color:#ffe2f0}
+.vice-city-theme .close:hover{color:#fff;background:rgba(240,102,171,.15);border-radius:8px}
+.vice-city-theme .modal-header{border-bottom:1px solid rgba(255,172,214,.17);margin-bottom:15px;padding-bottom:8px}
+.vice-city-theme .modal-header h2{color:#fff1fa}
+.vice-city-theme .tp-editor-toolbar{
+ border-color:rgba(255,144,197,.36);background:#322b48
+}
+.vice-city-theme .tp-editor-toolbar button{
+ background:#24243e;color:#f2e8f9;border-color:rgba(205,161,237,.33)
+}
+.vice-city-theme .tp-editor-toolbar button:hover{color:#ffd1e6;border-color:#fd87be}
+.vice-city-theme .tp-rich-editor:not(.tp-page-editor):not(#tp-document-body){
+ background:#1b1b32;color:#f4ebff;border-color:rgba(190,160,230,.44)
+}
+.vice-city-theme .tp-rich-editor:focus{outline-color:#fc86be}
+.vice-city-theme .tp-rich-editor th{background:#eee4f4;color:#312347}
+.vice-city-theme .tp-file{border-color:rgba(220,153,214,.22)}
+.vice-city-theme .tp-solution-option{
+ border-color:rgba(255,168,156,.52);background:#482b43;color:#ffe0cb
+}
+.vice-city-theme .tp-solution-option input[type="checkbox"]{accent-color:#fa78b3}
+/* Projects */
+.vice-city-theme .tp-project-count{
+ background:#4b294a;border-color:#d77db8;color:#ffd2ea
+}
+.vice-city-theme .tp-project-tasks-panel{border-color:rgba(254,153,204,.38)}
+.vice-city-theme .tp-project-task-summary{background:#352d4d;color:#d8cbed}
+.vice-city-theme .tp-project-task-summary strong{color:#ffd4a0}
+.vice-city-theme .tp-project-task-status{color:#ffb36a}
+.vice-city-theme .tp-project-task-status.is-done{color:#7ddedc}
+.vice-city-theme .tp-project-task-row{border-color:rgba(222,165,226,.19)}
+.vice-city-theme .tp-project-actions #tp-project-delete,
+.vice-city-theme .actions [data-project-delete]{
+ background:#47283c;color:#ffc2cf;border-color:#a35c76
+}
+.vice-city-theme #tp-project-delete-confirm{
+ color:#fff!important;background:#9d3355!important;border-color:#ff829a!important;
+ box-shadow:none;
+}
+.vice-city-theme .tp-project-delete-name{background:#382d4a;border-color:rgba(235,161,213,.35)}
+.vice-city-theme .tp-project-delete-details{background:#302d46;color:#e9def6}
+.vice-city-theme .tp-project-delete-details strong{color:#ffc899}
+.vice-city-theme .tp-project-delete-error{background:#612c42;border-color:#e4889c}
+/* Due dates, reminders and speech-to-text */
+.vice-city-theme #task-project-filter{
+ background:#332543;border-color:rgba(248,160,206,.59);color:#ffdae9
+}
+.vice-city-theme #entry-project-hint{color:#c9bfdc}
+.vice-city-theme .tp-due-presets>button{
+ background:#332840;color:#f9e9fb;border:1px solid rgba(221,168,236,.37)
+}
+.vice-city-theme .tp-due-presets>button:hover{
+ background:#533452;border-color:#ff96ca
+}
+.vice-city-theme .tp-due-presets>button.is-active{
+ background:linear-gradient(125deg,#bb578f,#8d5ec5);
+ border-color:#ffbed9;color:#fff;
+ box-shadow:0 4px 14px rgba(226,79,164,.19)
+}
+.vice-city-theme .tp-due-presets>button.tp-due-clear{background:#362940;color:#e9c4d1}
+.vice-city-theme .tp-due-presets>button.tp-due-clear.is-active{background:#683951;border-color:#e790ab;color:#fff}
+.vice-city-theme .tp-due-hint{color:#c7bad4}
+.vice-city-theme .tp-remind-field{border-color:rgba(224,157,213,.26)}
+.vice-city-theme .tp-dictation{
+ background:#2a2541;border-color:rgba(177,148,237,.42)
+}
+.vice-city-theme .tp-dictation .tp-dictation-button{
+ background:#433260;color:#fff0ff;border-color:#a47ee3
+}
+.vice-city-theme .tp-dictation .tp-dictation-button:hover{background:#62427f}
+.vice-city-theme .tp-dictation .tp-dictation-button.is-recording{
+ background:#8f2f55;color:#fff;border-color:#ff97b9
+}
+.vice-city-theme .tp-dictation .tp-dictation-language{color:#e7d5f5}
+.vice-city-theme .tp-dictation .tp-dictation-language select{
+ background:#201d3b;border-color:#7d679e;color:#fff
+}
+.vice-city-theme .tp-dictation-state{color:#b9eee9}
+.vice-city-theme .tp-dictation-live{color:#ffd8a5}
+/* Preserve editable white Word paper; retint app chrome only. */
+.vice-city-theme .tp-word-appbar,
+.vice-city-theme .tp-preview-topbar{
+ background:linear-gradient(108deg,#65326f,#b14489 50%,#ea846d 100%);
+ color:#fff;
+}
+.vice-city-theme .tp-word-brand{color:#773e83;box-shadow:inset -7px 0 #f7d9ed}
+.vice-city-theme .tp-word-product{color:#ffe7f4}
+.vice-city-theme .tp-word-title-pencil{color:#ffe1d2}
+.vice-city-theme .tp-word-sync{color:#ffe9f4}
+.vice-city-theme .tp-word-appbar .tp-word-save{color:#5c2b68;border-color:#fff;background:#fff}
+.vice-city-theme .tp-word-tabs{background:#fff9fd;border-color:#ebd8e8}
+.vice-city-theme #tp-document-dialog .tp-word-tab.is-active{
+ background:#fdebf6;color:#823969;border-bottom-color:#e9529b
+}
+.vice-city-theme #tp-document-dialog .tp-word-tab:hover{background:#fbeaf5}
+.vice-city-theme .tp-word-ribbons{
+ background:#fffbfe;color:#352b41;border-color:#ebdce9
+}
+.vice-city-theme .tp-word-ruler{background:#f4edf5;border-color:#e6d5e9}
+.vice-city-theme .tp-word-workspace{
+ background:linear-gradient(90deg,#eae1ed,#f1eaf1 20%,#f1eaf1 80%,#eae1ed)
+}
+.vice-city-theme .tp-preview-word-icon{color:#813c82;box-shadow:inset -9px 0 #f3deef}
+.vice-city-theme .tp-word-status-indicator{background:#21ab9d}
+/* Native preview and page editor text remain dark on white for legibility. */
+.vice-city-theme .tp-page-editor,
+.vice-city-theme .tp-word-paper,
+.vice-city-theme #tp-document-dialog #tp-document-body{
+ color:#202a35;background-color:#fff;
+}
+/* Mobile navigation */
+@media(max-width:960px){
+ .vice-city-theme .sidebar{box-shadow:none}
+}
+@media(max-width:680px){
+ body.vice-city-theme{background-attachment:scroll}
+ .vice-city-theme .main{padding:18px 14px calc(110px + env(safe-area-inset-bottom))}
+ .vice-city-theme .topbar{min-height:100px;padding:17px 16px;border-radius:18px}
+ .vice-city-theme .topbar::before{width:230px;height:230px;top:-115px;right:-75px}
+ .vice-city-theme .topbar h1{font-size:25px}
+ .vice-city-theme .topbar .primary{box-shadow:0 5px 18px rgba(16,8,28,.19)}
+ .vice-city-theme .metric,.vice-city-theme .panel{box-shadow:0 6px 19px rgba(10,5,30,.15)}
+ .vice-city-theme .bottom-nav{
+  border-top:1px solid rgba(255,137,192,.5);
+  background:linear-gradient(100deg,rgba(39,25,63,.98),rgba(25,24,49,.99));
+  box-shadow:0 -10px 30px rgba(12,8,29,.33);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+ }
+ .vice-city-theme .bottom-nav button{color:#c4b7d8}
+ .vice-city-theme .bottom-nav button.active{
+  color:#ffb6dc;
+  background:linear-gradient(180deg,rgba(255,112,174,.17),transparent)
+ }
+ .vice-city-theme .bottom-nav button:hover{color:#fff}
+}
+/* Responsive and motion safety */
+@media(prefers-reduced-motion:reduce){
+ .vice-city-theme button,.vice-city-theme input,.vice-city-theme textarea,.vice-city-theme select,.vice-city-theme .item{
+  transition:none!important
+ }
+ .vice-city-theme .item:hover{transform:none}
+}
