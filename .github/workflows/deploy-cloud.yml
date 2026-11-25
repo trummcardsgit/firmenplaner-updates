@@ -26,6 +26,7 @@ jobs:
           node --check cloud/public/app.js
           node --check cloud/public/extended.js
           node --check cloud/public/dictation.js
+          node --check cloud/public/due-presets.js
           node --check cloud/public/sw.js
           node -e "JSON.parse(require('fs').readFileSync('cloud/public/manifest.webmanifest','utf8'))"
       - name: Word-Dokumente und Formatierungen testen
@@ -37,6 +38,7 @@ jobs:
           node cloud/tests/project-tasks-smoke.mjs
           node cloud/tests/task-project-selector-smoke.mjs
           node cloud/tests/project-delete-smoke.mjs
+          node cloud/tests/due-presets-smoke.mjs
       - name: Smartphone-Icons aus dem Original-Logo erstellen
         run: |
           python3 -m pip install --user Pillow==11.3.0
