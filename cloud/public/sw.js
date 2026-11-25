@@ -1,5 +1,5 @@
-const CACHE="trummplaner-pwa-v1.6.1";
-const ASSETS=["./","./index.html","./styles.css","./vice-city-theme.css","./app.js","./due-presets.js","./extended.js","./task-projects.js","./table-editor.js","./dictation.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp","./icons/nav-vicecity.webp"];
+const CACHE="trummplaner-pwa-v1.7.0";
+const ASSETS=["./","./index.html","./styles.css","./vice-city-theme.css","./game-progression.css","./game-progression.js","./app.js","./due-presets.js","./extended.js","./task-projects.js","./table-editor.js","./dictation.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp","./icons/nav-vicecity.webp"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
