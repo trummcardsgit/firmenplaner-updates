@@ -3,11 +3,12 @@ import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
 import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
+import {careerCard,careerPage,playerRank} from "./game-progression.js";
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
 let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
-const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[]};
+const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -17,6 +18,32 @@ const active=()=>state.entries.filter(x=>x.kind==="task"&&x.status==="open");
 const overdue=e=>e.kind==="task"&&e.status==="open"&&e.due_at&&Date.parse(e.due_at)<Date.now();
 const today=e=>e.due_at&&new Date(e.due_at).toDateString()===new Date().toDateString();
 let toastTimer,installPrompt;
+let xpToastTimer;
+function showTaskXp(entryId,previousEventId){
+ const gained=(state.gameEvents||[]).find(ev=>ev.entry_id===entryId&&Number(ev.id)>Number(previousEventId||0));
+ if(!gained)return;
+ const reward=$("tp-xp-reward");
+ const levelUp=Number(gained.rank_after)>Number(gained.rank_before);
+ const rank=playerRank(state.gameProfile);
+ reward.innerHTML='<strong>+'+Number(gained.xp)+' XP</strong>'+
+  '<span>Mission abgeschlossen!</span>'+
+  (levelUp?'<em>★ LEVELAUFSTIEG! Level '+rank.level+'</em>':'')+
+  (rank.ready?'<em>✦ Prestige bereit!</em>':'');
+ reward.classList.remove("hidden");
+ clearTimeout(xpToastTimer);
+ xpToastTimer=setTimeout(()=>reward.classList.add("hidden"),6500);
+}
+function openPrestigeDialog(){
+ const p=playerRank(state.gameProfile);
+ if(!p.ready)return notice("Prestige wird erst ab Level 55 freigeschaltet.");
+ $("tp-prestige-dialog-title").textContent=p.next+"?";
+ $("tp-prestige-dialog-message").textContent=p.prestige===10
+  ?"Du hast Prestige 10 auf Level 55 geschafft! Jetzt wird Prestige-Meister freigeschaltet. Starte dort wieder auf Level 1 und steige bis Level 1000 auf. Gesamt-XP, Abzeichen und Aufgaben bleiben erhalten."
+  :"Du startest Prestige "+(p.prestige+1)+" wieder auf Level 1. Gesammelte Gesamt-XP, abgeschlossene Aufgaben und bisherige Prestige-Abzeichen bleiben erhalten. Diesen Schritt kannst du nicht rückgängig machen.";
+ $("tp-prestige-dialog").showModal();
+}
+function closePrestigeDialog(){if($("tp-prestige-dialog").open)$("tp-prestige-dialog").close();}
+
 function notice(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),6000);}
 function fail(e){console.error(e);notice("Fehler: "+(e?.message||String(e)));}
 const features=createFeatures({
@@ -33,20 +60,26 @@ const features=createFeatures({
 });
 async function load(){
  if(!state.user)return;
- const [a,b,adminStatus,sol,pushDevices]=await Promise.all([
+ const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents]=await Promise.all([
   db.from("tp_companies").select("*").order("name"),
   db.from("tp_entries").select("*").order("created_at",{ascending:false}),
   db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle(),
   db.from("tp_solutions").select("*").order("updated_at",{ascending:false}),
-  db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id)
+  db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id),
+  db.from("tp_game_profiles").select("*").eq("owner_id",state.user.id).maybeSingle(),
+  db.from("tp_game_xp_events").select("id,entry_id,entry_title,xp,rank_before,rank_after,prestige,stage,awarded_at").eq("owner_id",state.user.id).order("id",{ascending:false}).limit(30)
  ]);
  if(a.error)throw a.error;
  if(b.error)throw b.error;
  if(adminStatus.error)throw adminStatus.error;
  if(sol.error)throw sol.error;
  if(pushDevices.error)throw pushDevices.error;
+ if(gameProfile.error)throw gameProfile.error;
+ if(xpEvents.error)throw xpEvents.error;
  state.solutions=sol.data||[];
  state.pushSubs=pushDevices.data||[];
+ state.gameProfile=gameProfile.data||null;
+ state.gameEvents=xpEvents.data||[];
  state.companies=a.data||[];
  state.entries=b.data||[];
  state.isAdmin=!!adminStatus.data;
@@ -58,7 +91,7 @@ async function load(){
  await features.load();
  render();
 }
-function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];}}
+function showApp(user){state.user=user||null;$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -82,7 +115,7 @@ if(e.priority==="high")meta+=chip("Dringend","red");
 return '<article class="item"><div class="meta">'+meta+"</div><h3>"+esc(e.title)+"</h3>"+(e.description?"<p>"+esc(e.description)+"</p>":"")+'<div class="meta">'+(e.due_at?"<span>📅 Fällig: "+esc(fmt(e.due_at))+"</span>":"")+(e.remind_at?"<span>🔔 Erinnerung: "+esc(fmt(e.remind_at))+"</span>":"")+'</div><div class="actions"><button data-edit="'+e.id+'">Bearbeiten / Dateien</button>'+(e.kind==="note"?'<button data-convert="'+e.id+'">Als Aufgabe</button>':'<button data-status="'+e.id+'">'+(e.status==="done"?"Wieder öffnen":"Erledigen")+"</button>")+'<button class="danger" data-delete="'+e.id+'">Löschen</button></div></article>';}
 function list(items,empty){return items.length?items.map(row).join(""):'<div class="empty">'+esc(empty||"Keine Einträge vorhanden.")+"</div>";}
 function metric(t,n,h){return '<div class="metric '+(h||"")+'"><strong>'+n+"</strong><span>"+esc(t)+"</span></div>";}
-function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return '<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
+function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
 function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
 if(kind==="task"&&features.taskCompany)data=data.filter(e=>e.company_id===features.taskCompany);
 if(kind==="task"&&features.taskProject)data=data.filter(e=>
@@ -149,9 +182,9 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+admin+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;const names={dashboard:"Übersicht",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];$("new-entry").style.display=["settings","solutions","projects","documents"].includes(state.view)?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+function render(){if(!state.user)return;const names={dashboard:"Übersicht",career:"Karriere",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];$("new-entry").style.display=["settings","solutions","projects","documents","career"].includes(state.view)?"none":"block";
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}
 const firmFilter=$("task-company-filter");if(firmFilter){firmFilter.value=features.taskCompany;firmFilter.addEventListener("change",e=>{
@@ -200,6 +233,8 @@ $(`entry-kind`).addEventListener("change",()=>taskProjectSelector.refresh($("ent
 $("new-entry").addEventListener("click",()=>openEntry());
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
 $("content").addEventListener("click",async event=>{const b=event.target.closest("button");if(!b)return;try{
+if("openCareer" in b.dataset){nav("career");return;}
+if(b.id==="tp-enter-prestige"){openPrestigeDialog();return;}
 if(b.id==="new-company")return openCompany();
 if(b.dataset.edit)return openEntry(state.entries.find(e=>e.id===b.dataset.edit));
 if(b.dataset.convert)return openEntry({...state.entries.find(e=>e.id===b.dataset.convert),kind:"task"});
@@ -264,12 +299,32 @@ $("content").addEventListener("submit",async event=>{
   finally{btn.disabled=false;}
  }
 });
+$("tp-prestige-cancel").addEventListener("click",closePrestigeDialog);
+$("tp-prestige-dialog").addEventListener("cancel",event=>{event.preventDefault();closePrestigeDialog();});
+$("tp-prestige-confirm").addEventListener("click",async()=>{
+ const button=$("tp-prestige-confirm");
+ button.disabled=true;
+ try{
+  const before=playerRank(state.gameProfile);
+  if(!before.ready)throw new Error("Prestige ist noch nicht freigeschaltet.");
+  const {error}=await db.rpc("tp_game_enter_prestige");
+  if(error)throw error;
+  closePrestigeDialog();
+  await load();
+  const after=playerRank(state.gameProfile);
+  notice(after.stage==="master"?
+   "👑 Prestige-Meister freigeschaltet! Dein Weg bis Level 1000 beginnt.":
+   "✦ Prestige "+after.prestige+" erreicht! Du startest wieder bei Level 1.");
+ }catch(e){fail(e)}
+ finally{button.disabled=false;}
+});
 $("solution-form").addEventListener("submit",async event=>{
  event.preventDefault();
  const entryId=$("solution-entry-id").value;
  const saveSolution=$("solution-save-to-library").checked;
  const solution=$("solution-text").value.trim();
  if(saveSolution&&solution.length<3)return notice("Bitte mindestens drei Zeichen für die Lösung eingeben.");
+ const lastXpEventId=state.gameEvents[0]?.id||0;
  const submit=event.target.querySelector('button[type="submit"]');
  submit.disabled=true;
  try{
@@ -286,6 +341,7 @@ $("solution-form").addEventListener("submit",async event=>{
   }
   $("solution-dialog").close();
   await load();
+  showTaskXp(entryId,lastXpEventId);
   notice(saveSolution
    ?"Aufgabe erledigt. Die Lösung ist jetzt in der Lösungsdatenbank durchsuchbar."
    :"Aufgabe erledigt – keine neue Lösung gespeichert.");
@@ -293,7 +349,7 @@ $("solution-form").addEventListener("submit",async event=>{
  finally{submit.disabled=false;}
 });
 $("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
-$("entry-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,project_id:kind==="task"?($("entry-project").value||null):null,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();notice("Eintrag gespeichert.");}catch(e){fail(e)}});
+$("entry-form").addEventListener("submit",async event=>{event.preventDefault();const lastXpEventId=state.gameEvents[0]?.id||0;const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,project_id:kind==="task"?($("entry-project").value||null):null,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();if(kind==="task"&&values.status==="done")showTaskXp(id||state.gameEvents[0]?.entry_id,lastXpEventId);notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
 window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
 const pushEndpoint=cfg.supabaseUrl+"/functions/v1/tp-background-push";
