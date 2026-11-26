@@ -56,13 +56,14 @@ Deno.serve(async(req)=>{
    if(users.data.users.some(u=>u.email?.toLowerCase()===email))return json({error:"Für diese E-Mail existiert bereits ein Konto. Bitte Benutzerverwaltung verwenden."},409);
    if(users.data.users.length<200)break;
   }
-  const now=new Date().toISOString();
-  const add=await admin.from("tp_invites").insert({email,invited_by:caller,status:"pending",created_at:now,updated_at:now});
-  if(add.error)return json({error:"Für diese Adresse existiert bereits eine Einladung. Bitte Administrator kontaktieren."},409);
+  const reservation=await admin.rpc("tp_reserve_employee_invitation",{p_email:email,p_caller:caller});
+  if(reservation.error)return json({error:"Einladung konnte nicht vorbereitet werden. Bitte erneut versuchen."},503);
+  if(reservation.data!==true)return json({error:"Für diese Adresse läuft bereits eine Einladung oder es besteht ein Konto. Bitte Benutzerverwaltung prüfen."},409);
  }
  const generated=await admin.auth.admin.generateLink({type:mode,email,options:{redirectTo:site}});
  if(generated.error||!generated.data?.user?.id||!generated.data?.properties?.hashed_token){
-  if(mode==="invite")await admin.from("tp_invites").update({status:"failed",updated_at:new Date().toISOString()}).eq("email",email);
+  if(mode==="invite")await admin.from("tp_invites").update({status:"failed",updated_at:new Date().toISOString()}).eq("email",email).eq("status","pending");
+  console.warn("Invitation generation failed",generated.error?.code||"missing_token",generated.error?.status||0);
   return json({error:"Aktivierungscode konnte nicht erstellt werden. Bitte Administrator kontaktieren."},502);
  }
  const newId=generated.data.user.id;

@@ -1,7 +1,7 @@
 name: Enterprise staging checks
 on:
   push:
-    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4]
+    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5]
   workflow_dispatch:
 permissions:
   contents: read
@@ -68,6 +68,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/activation-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-activation-cancel.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/activation-cancel-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-activation-retry.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/activation-retry-integration.sql
 
   preview:
     needs: [checks, database]
