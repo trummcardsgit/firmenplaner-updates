@@ -83,6 +83,8 @@ Deno.serve(async req=>{
       const res=await admin.auth.getUser(jwt);
       if(res.error||!res.data.user)return response({error:"Session invalid"},401);
       userId=res.data.user.id;
+      const member=await admin.from("tp_members").select("active").eq("user_id",userId).maybeSingle();
+      if(member.error||!member.data?.active)return response({error:"Konto nicht freigeschaltet"},403);
     }
     if(action==="setup"){
       const {data:isAdmin,error}=await admin.from("tp_app_admins").select("user_id").eq("user_id",userId).maybeSingle();
@@ -104,7 +106,7 @@ Deno.serve(async req=>{
     const pushServer=await webpush.ApplicationServer.new({contactInformation:appUrl,vapidKeys});
     if(action==="test"){
       const result=await sendToUser(pushServer,admin,userId!,{
-        title:"TrummPlaner – Test-Push",body:"Die Hintergrund-Push-Benachrichtigung ist eingerichtet.",url:appUrl,tag:"tp-test-"+Date.now()
+        title:"RHTFLOW – Test-Push",body:"Die Hintergrund-Push-Benachrichtigung ist eingerichtet.",url:appUrl,tag:"tp-test-"+Date.now()
       });
       return response({ok:result.sent>0,...result},result.sent>0?200:422);
     }
@@ -114,7 +116,7 @@ Deno.serve(async req=>{
       const stats={tasks:tasks?.length||0,delivered:0,failed:0};
       for(const task of tasks||[]){
         const sent=await sendToUser(pushServer,admin,task.owner_id,{
-          title:"TrummPlaner: Erinnerung",body:task.title,tag:"tp-task-"+task.entry_id,
+          title:"RHTFLOW: Erinnerung",body:task.title,tag:"tp-task-"+task.entry_id,
           url:appUrl+"?task="+encodeURIComponent(task.entry_id),
           dueAt:task.due_at
         });
@@ -124,7 +126,29 @@ Deno.serve(async req=>{
           await admin.from("tp_entries").update({reminder_sent_at:null}).eq("id",task.entry_id).eq("status","open");
         }
       }
-      return response({ok:true,...stats});
+      // The existing server-side cron also dispatches ticket events.
+      const reminder=await admin.rpc("tp_ticket_remind");
+      if(reminder.error)throw reminder.error;
+      const queue=await admin.rpc("tp_ticket_claim_notifications",{p_limit:50});
+      if(queue.error)throw queue.error;
+      const ticketStats={reminders:reminder.data||0,delivered:0,failed:0};
+      for(const item of queue.data||[]){
+        try{
+          const member=await admin.from("tp_members").select("active").eq("user_id",item.recipient_id).maybeSingle();
+          if(member.error)throw member.error;
+          const sent=member.data?.active?await sendToUser(pushServer,admin,item.recipient_id,{
+            title:"RHTFLOW: Ticket",body:item.message,tag:"tp-ticket-event-"+item.id,
+            url:appUrl+"?ticket="+encodeURIComponent(item.ticket_id)
+          }):{sent:0,failed:0,subscribers:0,removed:0};
+          ticketStats.delivered+=sent.sent;ticketStats.failed+=sent.failed;
+          // Keep the in-app notification even when the user has no subscribed device.
+          if(sent.sent>0||sent.subscribers===0||sent.removed===sent.subscribers){
+            const done=await admin.from("tp_ticket_notifications").update({delivered_at:new Date().toISOString(),lease_until:null}).eq("id",item.id);
+            if(done.error)throw done.error;
+          }
+        }catch(e){ticketStats.failed++;console.error("Ticket push failed",String(e).slice(0,180));}
+      }
+      return response({ok:true,...stats,tickets:ticketStats});
     }
     return response({error:"Unknown action"},400);
   }catch(err){

@@ -12,12 +12,12 @@ const dom=new JSDOM(html,{url:"https://trummcardsgit.github.io/firmenplaner-upda
 const doc=dom.window.document;
 assert.equal(doc.body.className,"vice-city-theme");
 const styles=[...doc.querySelectorAll('link[rel="stylesheet"]')].map(e=>e.getAttribute("href"));
-assert.deepEqual(styles,["./styles.css","./vice-city-theme.css","./game-progression.css"],"Original theme remains first; career styles layer on top");
+assert.deepEqual(styles,["./styles.css","./vice-city-theme.css","./game-progression.css","./tickets.css","./admin.css"],"Original theme and career styles remain first, enterprise styles layer on top");
 assert.equal(doc.querySelector('meta[name="theme-color"]').content,"#201735");
 assert.equal(manifest.background_color,"#13142e");
 assert.equal(manifest.theme_color,"#201735");
 assert.ok(serviceWorker.includes('"./vice-city-theme.css"'),"Offline app must cache the theme");
-assert.match(serviceWorker,/const CACHE="trummplaner-pwa-v\d+\.\d+\.\d+"/,"PWA cache must have a version");
+assert.match(serviceWorker,/const CACHE=CACHE_PREFIX\+"v\d+\.\d+\.\d+(?:-dev\.\d+)?(?:-[a-z0-9.-]+)?"/,"PWA cache must have a version");
 
 // A valid stylesheet with meaningful rules, not a placeholder/mockup.
 const style=doc.createElement("style");

@@ -1,3 +1,4 @@
+import {createRecovery} from "./recovery.js";
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
@@ -5,18 +6,29 @@ import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
+import {createTicketCenter} from "./tickets.js";
+import {createAdminCenter} from "./admin.js";
+import {ticketAwardsPanel} from "./ticket-awards.js";
+
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
-const trophyKey=()=> "tp-trophy-prefs-"+state.user?.id;
+const trophyKey=()=> (cfg.staging?"rhtflow-test-trophy-prefs-":"tp-trophy-prefs-")+state.user?.id;
 function readTrophyPrefs(){try{const p=JSON.parse(localStorage.getItem(trophyKey())||"{}");trophyFavorites=Array.isArray(p.favorites)?p.favorites.filter(Number.isInteger).slice(0,3):[];trophySound=p.sound===true}catch{trophyFavorites=[];trophySound=false}}
 function saveTrophyPrefs(){try{localStorage.setItem(trophyKey(),JSON.stringify({favorites:trophyFavorites,sound:trophySound}))}catch{}}
 async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const {data,error}=await db.rpc("tp_sync_trophies");if(state.user?.id!==uid)return;if(error)throw error;trophyItems=Array.isArray(data?.trophies)?data.trophies:[];if(data?.profile)state.gameProfile=data.profile;trophyError=false;announceTrophies(trophyItems,data?.new||[],trophySound)}catch(e){if(state.user?.id===uid){trophyError=true;console.warn("Trophäen-Sync",e)}}}
 function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.onclick=()=>{const next=toggleFavorite(trophyFavorites,Number(b.dataset.trophyFavorite),trophyItems);if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei Trophäen.");return}trophyFavorites=next;saveTrophyPrefs();redraw()});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
 const cfg=window.TRUMMPLANER_CONFIG||{};
+if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.includes("ilmwoapvcluoravpsrjv"))){
+ document.getElementById("setup-warning")?.classList.remove("hidden");
+ document.querySelectorAll("#auth-form input,#auth-form button").forEach(el=>el.disabled=true);
+ throw new Error("Supabase connection is not configured for this build");
+}
 const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 // Preserve the Supabase project-specific production session key; TEST uses its own ref.
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
+const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),resetPassword:async email=>{const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error}});
 const $=id=>document.getElementById(id);
-let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
+let inviteFlow=["invite","recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"));
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
@@ -69,15 +81,24 @@ const features=createFeatures({
 });
 async function load(){
  if(!state.user)return;
- const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents]=await Promise.all([
+ const loadingUser=state.user.id;
+ const membership=await db.from("tp_members").select("active").eq("user_id",state.user.id).maybeSingle();
+ if(state.user?.id!==loadingUser)return;
+ if(membership.error)throw membership.error;
+ if(!membership.data?.active){await db.auth.signOut();showApp(null);notice("Konto noch nicht freigeschaltet oder gesperrt.");return;}
+ const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents,members,awardRows,closedTickets]=await Promise.all([
   db.from("tp_companies").select("*").order("name"),
   db.from("tp_entries").select("*").order("created_at",{ascending:false}),
   db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle(),
   db.from("tp_solutions").select("*").order("updated_at",{ascending:false}),
   db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id),
   db.from("tp_game_profiles").select("*").eq("owner_id",state.user.id).maybeSingle(),
-  db.from("tp_game_xp_events").select("id,entry_id,entry_title,xp,rank_before,rank_after,prestige,stage,awarded_at").eq("owner_id",state.user.id).order("id",{ascending:false}).limit(30)
+  db.from("tp_game_xp_events").select("id,entry_id,entry_title,xp,rank_before,rank_after,prestige,stage,awarded_at").eq("owner_id",state.user.id).order("id",{ascending:false}).limit(30),
+  db.from("tp_members").select("user_id,display_name"),
+  db.from("tp_ticket_awards").select("threshold,awarded_at").eq("owner_id",state.user.id),
+  db.from("tp_tickets").select("id",{count:"exact",head:true}).eq("assignee_id",state.user.id).eq("status","closed")
  ]);
+ if(state.user?.id!==loadingUser)return;
  if(a.error)throw a.error;
  if(b.error)throw b.error;
  if(adminStatus.error)throw adminStatus.error;
@@ -85,6 +106,10 @@ async function load(){
  if(pushDevices.error)throw pushDevices.error;
  if(gameProfile.error)throw gameProfile.error;
  if(xpEvents.error)throw xpEvents.error;
+ if(members.error)throw members.error;
+ state.members=members.data||[];
+ if(awardRows.error)throw awardRows.error;if(closedTickets.error)throw closedTickets.error;
+ state.ticketAwards=awardRows.data||[];state.closedTickets=closedTickets.count||0;
  state.solutions=sol.data||[];
  state.pushSubs=pushDevices.data||[];
  state.gameProfile=gameProfile.data||null;
@@ -92,16 +117,20 @@ async function load(){
  state.companies=a.data||[];
  state.entries=b.data||[];
  state.isAdmin=!!adminStatus.data;
+ if(new URLSearchParams(location.search).has("ticket"))state.view="tickets";
  if(state.isAdmin){
   const invites=await db.from("tp_invites").select("email,status,created_at").order("created_at",{ascending:false}).limit(40);
+  if(state.user?.id!==loadingUser)return;
   if(invites.error)throw invites.error;
   state.invites=invites.data||[];
  }else state.invites=[];
  await features.load();
+ if(state.user?.id!==loadingUser)return;
  await syncTrophies();
+ if(state.user?.id!==loadingUser)return;
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -114,8 +143,26 @@ async function login(){
  finally{$("login-submit").disabled=false;}
 }
 $("auth-form").addEventListener("submit",e=>{e.preventDefault();login()});
+const recoveryClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-recovery-only",persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+const recoveryUI={
+ message:m=>{$("recovery-message").textContent=m},
+ busy:v=>document.querySelectorAll("#recovery-panel button,#recovery-panel input").forEach(el=>el.disabled=v),
+ open:value=>{$("auth-form").classList.add("hidden");$("recovery-open").classList.add("hidden");$("recovery-panel").classList.remove("hidden");$("recovery-request").classList.remove("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-password-form").classList.add("hidden");$("recovery-email").value=value;$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value="";$("recovery-message").textContent="";},
+ code:()=>{$("recovery-code-form").classList.remove("hidden");$("recovery-code").value="";$("recovery-code").focus()},
+ password:()=>{$("recovery-request").classList.add("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-code").value="";$("recovery-password-form").classList.remove("hidden");$("recovery-password").focus()},
+ done:()=>{$("recovery-panel").classList.add("hidden");$("auth-form").classList.remove("hidden");$("recovery-open").classList.remove("hidden");$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value=""}
+};
+const recovery=createRecovery(recoveryClient.auth,recoveryUI,new URL("./",location.href).href);
+$("recovery-open").onclick=()=>recovery.open($("login-email").value);
+$("recovery-request").onsubmit=e=>{e.preventDefault();recovery.request($("recovery-email").value)};
+$("recovery-code-form").onsubmit=e=>{e.preventDefault();recovery.verify($("recovery-code").value.trim())};
+$("recovery-password-form").onsubmit=e=>{e.preventDefault();recovery.save($("recovery-password").value,$("recovery-repeat").value)};
+$("recovery-cancel").onclick=()=>recovery.cancel();
+const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
+if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
+
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
-function nav(view){state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
+function nav(view){if(view==="admin"&&!state.isAdmin)return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function chip(value,extra){return '<span class="pill '+(extra||"")+'">'+esc(value)+"</span>";}
 function row(e){let meta=chip(company(e.company_id),"gold")+chip(e.kind==="note"?"Notiz":"Aufgabe");
@@ -142,7 +189,7 @@ function solutionResults(){
  '<input id="search" type="search" aria-label="Lösungen durchsuchen" placeholder="Problem, Fehlermeldung oder Lösungsbegriff suchen …" value="'+esc(state.search)+'">'+
  '<p class="counter" style="margin-top:10px">'+filtered.length+' Lösungen gefunden</p></div>'+
  (filtered.length?filtered.map(s=>'<article class="item"><div class="meta"><span class="pill gold">'+esc(s.company_name||"Ohne Firma")+'</span><span>'+esc(fmt(s.updated_at))+'</span></div>'+
- '<h3>'+esc(s.problem_title)+'</h3>'+
+ '<h3>'+esc(s.problem_title)+'</h3><p class="muted">Erstellt von: '+esc(state.members?.find(m=>m.user_id===s.owner_id)?.display_name||"Ehemaliger Mitarbeiter")+'</p>'+
  (s.problem_description?'<p><strong>Problembeschreibung:</strong> '+esc(s.problem_description)+'</p>':'')+
  '<div style="border-left:3px solid #e2af48;padding:12px;background:#242630;border-radius:9px"><strong>✔ Lösung</strong><p style="margin:8px 0 0;white-space:pre-wrap">'+esc(s.solution_text)+'</p></div>'+
  '</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');
@@ -169,10 +216,8 @@ function openResolution(entry){
  toggleSolutionFields();
  $("solution-dialog").showModal();
 }
-function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' offene Aufgaben</span><div class="actions"><button data-company-edit="'+c.id+'">Bearbeiten</button><button data-company-delete="'+c.id+'" class="danger">Löschen</button></div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
-function settings(){
- const own='<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+
- '</p><p>Deine Firmen und Aufgaben sind durch Benutzerrechte geschützt. Neue Konten erhalten nur eingeladene Personen.</p></div>';
+function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' gemeinsame Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' eigene offene Aufgaben</span><div class="actions">'+((state.isAdmin||c.owner_id===state.user.id)?'<button data-company-edit="'+c.id+'">Bearbeiten</button>':'')+(state.isAdmin?'<button data-company-delete="'+c.id+'" class="danger">Löschen</button>':'')+'</div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
+function invitePanel(){
  const admin=state.isAdmin?
  '<div class="panel"><h2>Benutzer einladen</h2><p>Nur du als Administrator kannst weitere Personen freischalten. Sie erhalten einen Einladungslink per E-Mail und legen danach ihr eigenes Passwort fest.</p>'+
  '<form id="invite-form"><label>E-Mail-Adresse des neuen Benutzers<input type="email" id="invite-email" required autocomplete="off" placeholder="person@firma.at"></label><button class="primary" type="submit">Einladung senden</button></form>'+
@@ -180,22 +225,30 @@ function settings(){
  '<h3 style="margin-top:24px">Bisherige Einladungen</h3>'+
  (state.invites.length?state.invites.map(i=>'<p class="muted">'+esc(i.email)+' · '+esc(i.status==="sent"?"Gesendet":i.status==="pending"?"In Bearbeitung":"Fehlgeschlagen")+' · '+esc(fmt(i.created_at))+'</p>').join(""):'<p class="muted">Noch keine Einladungen</p>')+
  '</div>':"";
+
+ return admin;
+}
+function settings(){
+ const own='<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+
+ '</p><p>Deine Firmen und Aufgaben sind durch Benutzerrechte geschützt. Neue Konten erhalten nur eingeladene Personen.</p></div>';
  const password='<div class="panel"><h2>Passwort festlegen oder ändern</h2><p>Nach der ersten Einladung hier dein Passwort erstellen. Das geht nur nach erfolgreicher Anmeldung über den Einladungslink.</p><form id="password-form"><label>Neues Passwort<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="subtle" type="submit">Passwort speichern</button></form></div>';
  const permission=typeof Notification==="undefined"?"Nicht unterstützt":Notification.permission==="granted"?"Erlaubt":Notification.permission==="denied"?"Blockiert":"Noch nicht erlaubt";
  const reminder='<div class="panel"><h2>🔔 Hintergrund-Push-Benachrichtigungen</h2>'+
- '<p>Erinnerungen werden im Hintergrund über Supabase versendet – auch wenn TrummPlaner geschlossen ist. Die Prüfung erfolgt ungefähr einmal pro Minute.</p>'+
+ '<p>Erinnerungen werden im Hintergrund über Supabase versendet – auch wenn RHTFLOW geschlossen ist. Die Prüfung erfolgt ungefähr einmal pro Minute.</p>'+
  '<p class="muted">Browserberechtigung: <strong>'+esc(permission)+'</strong> · Hinterlegte Geräte: '+state.pushSubs.length+'</p>'+
  '<div class="settings-actions"><button class="primary" id="enable-notifications">Push auf diesem Gerät aktivieren</button>'+
  '<button class="subtle" id="test-notification">Echten Push testen</button><button class="subtle" id="disable-push">Auf diesem Gerät deaktivieren</button></div>'+
- '<p class="install-tip">iPhone: zuerst TrummPlaner über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
- const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud – Zugang nur per Einladung</p></div>';
+ '<p class="install-tip">iPhone: zuerst RHTFLOW über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
+ const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">RHTFLOW – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
- return own+admin+password+reminder+install+backup;
+ return own+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;const names={dashboard:"Übersicht",career:"Karriere",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career"].includes(state.view)?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+function render(){if(!state.user)return;ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career")bindTrophies();
+if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
+if(state.view==="admin")adminCenter.open();
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}
 const firmFilter=$("task-company-filter");if(firmFilter){firmFilter.value=features.taskCompany;firmFilter.addEventListener("change",e=>{
@@ -250,7 +303,7 @@ if(b.id==="new-company")return openCompany();
 if(b.dataset.edit)return openEntry(state.entries.find(e=>e.id===b.dataset.edit));
 if(b.dataset.convert)return openEntry({...state.entries.find(e=>e.id===b.dataset.convert),kind:"task"});
 if(b.dataset.companyEdit)return openCompany(state.companies.find(c=>c.id===b.dataset.companyEdit));
-if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!confirm("Firma "+c.name+" und alle zugehörigen Aufgaben löschen?"))return;const {error}=await db.from("tp_companies").delete().eq("id",c.id);if(error)throw error;return await load();}
+if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!state.isAdmin||!c||!confirm("Gemeinsame Firma "+c.name+" löschen? Nur unbenutzte Firmen können gelöscht werden."))return;const {data,error}=await db.from("tp_companies").delete().eq("id",c.id).select("id");if(error?.code==="23503")return notice("Firma wird noch in Aufgaben, Projekten oder Tickets verwendet und kann nicht gelöscht werden.");if(error)throw error;if(!data?.length)return notice("Firma konnte nicht gelöscht werden.");return await load();}
 if(b.dataset.delete){if(!confirm("Diesen Eintrag endgültig löschen?"))return;const {error}=await db.from("tp_entries").delete().eq("id",b.dataset.delete);if(error)throw error;return await load();}
 if(b.dataset.status){
  const x=state.entries.find(e=>e.id===b.dataset.status);
@@ -359,10 +412,10 @@ $("solution-form").addEventListener("submit",async event=>{
  }catch(err){fail(err)}
  finally{submit.disabled=false;}
 });
-$("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
+$("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id).select("id"):await db.from("tp_companies").insert({...values,owner_id:state.user.id}).select("id");if(r.error)throw r.error;if(!r.data?.length)throw new Error("Keine Berechtigung, diese Firma zu ändern.");$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
 $("entry-form").addEventListener("submit",async event=>{event.preventDefault();const lastXpEventId=state.gameEvents[0]?.id||0;const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,project_id:kind==="task"?($("entry-project").value||null):null,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();if(kind==="task"&&values.status==="done")showTaskXp(id||state.gameEvents[0]?.entry_id,lastXpEventId);notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
-window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
+window.addEventListener("appinstalled",()=>{installPrompt=null;notice("RHTFLOW installiert.");});
 const pushEndpoint=cfg.supabaseUrl+"/functions/v1/tp-background-push";
 function decodeBase64Url(input){
  const value=input.replace(/-/g,"+").replace(/_/g,"/");
@@ -381,7 +434,7 @@ async function enablePush(){
  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))throw new Error("Dein Browser unterstützt Web Push nicht.");
  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
  const installed=window.matchMedia?.("(display-mode: standalone)").matches||navigator.standalone===true;
- if(ios&&!installed)throw new Error("Auf dem iPhone zuerst über Safari zum Home-Bildschirm hinzufügen und die installierte TrummPlaner-App öffnen.");
+ if(ios&&!installed)throw new Error("Auf dem iPhone zuerst über Safari zum Home-Bildschirm hinzufügen und die installierte RHTFLOW-App öffnen.");
  const perm=await Notification.requestPermission();
  if(perm!=="granted")throw new Error("Benachrichtigungen sind nicht erlaubt. Bitte in den Browser-/Systemeinstellungen freigeben.");
  const reg=await navigator.serviceWorker.ready;
@@ -433,7 +486,7 @@ db.auth.onAuthStateChange((event,session)=>{
  if(event==="SIGNED_OUT")showApp(null);
  else if(session?.user){
   if(!state.user||state.user.id!==session.user.id)showApp(session.user);
-  if(inviteFlow){inviteFlow=false;nav("settings");notice("Einladung angenommen! Bitte in Einstellungen ein neues Passwort festlegen.");}
+  if(inviteFlow||event==="PASSWORD_RECOVERY"){inviteFlow=false;state.view="settings";notice("Bitte in den Einstellungen ein neues Passwort festlegen.");}
  }
 });
 features.init();

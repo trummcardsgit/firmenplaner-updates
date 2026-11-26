@@ -1,0 +1,83 @@
+name: Enterprise staging checks
+on:
+  push:
+    branches: [enterprise-2.0]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          for f in cloud/public/*.js; do node --check "$f"; done
+          node cloud/tests/tickets-smoke.mjs
+          node cloud/tests/pwa-isolation-smoke.mjs
+          node cloud/tests/recovery-smoke.mjs
+      - run: |
+          npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund docx@9.15.3 jsdom@26.1.0 jszip@3.10.1
+          node cloud/tests/trophies-smoke.mjs
+          node cloud/tests/game-progression-smoke.mjs
+          node cloud/tests/editor-smoke.mjs
+          node cloud/tests/table-editor-smoke.mjs
+          node cloud/tests/dictation-smoke.mjs
+          node cloud/tests/project-tasks-smoke.mjs
+          node cloud/tests/task-project-selector-smoke.mjs
+          node cloud/tests/project-delete-smoke.mjs
+          node cloud/tests/due-presets-smoke.mjs
+          node cloud/tests/vice-city-theme-smoke.mjs
+          node cloud/tests/neon-menu-icons-smoke.mjs
+          node cloud/tests/ticket-submenu-smoke.mjs
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: enterprise_ci
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: ci_only
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: enterprise_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run migrations against isolated fixture and verify access and rewards
+        run: |
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/enterprise-fixture.sql
+          for migration in enterprise-tickets enterprise-members enterprise-ticket-extras enterprise-ticket-career enterprise-hardening; do
+            psql -v ON_ERROR_STOP=1 -f "cloud/backend/$migration.sql"
+          done
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/enterprise-integration.sql
+          bash cloud/tests/enterprise-concurrency.sh
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-shared-companies.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/shared-companies-integration.sql
+
+  preview:
+    needs: [checks, database]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Assemble isolated staging preview
+        env:
+          TP_STAGING_URL: ${{ vars.TP_STAGING_URL }}
+          TP_STAGING_PUBLISHABLE_KEY: ${{ vars.TP_STAGING_PUBLISHABLE_KEY }}
+        run: node cloud/build-staging.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RHTFLOW-2.0-staging-preview
+          path: cloud/staging-preview/
+          retention-days: 14
