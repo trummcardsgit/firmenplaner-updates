@@ -20,6 +20,15 @@ jobs:
           npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund docx@9.15.3 jsdom@26.1.0 jszip@3.10.1
           node cloud/tests/trophies-smoke.mjs
           node cloud/tests/game-progression-smoke.mjs
+          node cloud/tests/editor-smoke.mjs
+          node cloud/tests/table-editor-smoke.mjs
+          node cloud/tests/dictation-smoke.mjs
+          node cloud/tests/project-tasks-smoke.mjs
+          node cloud/tests/task-project-selector-smoke.mjs
+          node cloud/tests/project-delete-smoke.mjs
+          node cloud/tests/due-presets-smoke.mjs
+          node cloud/tests/vice-city-theme-smoke.mjs
+          node cloud/tests/neon-menu-icons-smoke.mjs
 
   database:
     runs-on: ubuntu-latest
@@ -47,3 +56,23 @@ jobs:
             psql -v ON_ERROR_STOP=1 -f "cloud/backend/$migration.sql"
           done
           psql -v ON_ERROR_STOP=1 -f cloud/tests/enterprise-integration.sql
+          bash cloud/tests/enterprise-concurrency.sh
+
+  preview:
+    needs: [checks, database]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Assemble isolated staging preview
+        env:
+          TP_STAGING_URL: ${{ vars.TP_STAGING_URL }}
+          TP_STAGING_PUBLISHABLE_KEY: ${{ vars.TP_STAGING_PUBLISHABLE_KEY }}
+        run: node cloud/build-staging.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TrummPlaner-2.0-staging-preview
+          path: cloud/staging-preview/
+          retention-days: 14

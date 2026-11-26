@@ -16,11 +16,16 @@ function saveTrophyPrefs(){try{localStorage.setItem(trophyKey(),JSON.stringify({
 async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const {data,error}=await db.rpc("tp_sync_trophies");if(state.user?.id!==uid)return;if(error)throw error;trophyItems=Array.isArray(data?.trophies)?data.trophies:[];if(data?.profile)state.gameProfile=data.profile;trophyError=false;announceTrophies(trophyItems,data?.new||[],trophySound)}catch(e){if(state.user?.id===uid){trophyError=true;console.warn("Trophäen-Sync",e)}}}
 function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.onclick=()=>{const next=toggleFavorite(trophyFavorites,Number(b.dataset.trophyFavorite),trophyItems);if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei Trophäen.");return}trophyFavorites=next;saveTrophyPrefs();redraw()});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
 const cfg=window.TRUMMPLANER_CONFIG||{};
+if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.includes("ilmwoapvcluoravpsrjv"))){
+ document.getElementById("setup-warning")?.classList.remove("hidden");
+ document.querySelectorAll("#auth-form input,#auth-form button").forEach(el=>el.disabled=true);
+ throw new Error("Supabase connection is not configured for this build");
+}
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),resetPassword:async email=>{const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error}});
 const $=id=>document.getElementById(id);
-let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
+let inviteFlow=["invite","recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"));
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
@@ -460,7 +465,7 @@ db.auth.onAuthStateChange((event,session)=>{
  if(event==="SIGNED_OUT")showApp(null);
  else if(session?.user){
   if(!state.user||state.user.id!==session.user.id)showApp(session.user);
-  if(inviteFlow){inviteFlow=false;nav("settings");notice("Einladung angenommen! Bitte in Einstellungen ein neues Passwort festlegen.");}
+  if(inviteFlow||event==="PASSWORD_RECOVERY"){inviteFlow=false;state.view="settings";notice("Bitte in den Einstellungen ein neues Passwort festlegen.");}
  }
 });
 features.init();
