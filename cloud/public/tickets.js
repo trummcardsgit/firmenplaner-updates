@@ -1,4 +1,5 @@
 import {memberLabel} from "./profile-avatar.js";
+import {applyTicketOrder,normalizeTicketOrder,ticketMenuItems} from "./menu-preferences.js";
 import {defaultTicketFilters,normalizeTicketFilters,readTicketFilters} from "./ticket-filter-preferences.js";
 import {attachmentAccept,validateAttachments,uploadAttachments,canAttach} from "./ticket-attachments.js";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -12,7 +13,7 @@ export function countActiveTickets(tickets,candidates,uid,category){
  return filterTickets(tickets,candidates,uid,category).filter(t=>t.status==="open"||t.status==="accepted").length;
 }
 export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
-export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
+export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,ticketOrder=()=>[],customizeOrder=()=>{}}){
  let data=null,tab="all",firm="",status="open",search="",busy=false,epoch=0,focusId="",polling=false,menuVisible=false;
  let preferences=new Map(),prefsReady=false,prefsSaving=false,prefsGeneration=0,restorePending=true;
  const pageSize=500;
@@ -44,6 +45,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  const memberOptions=()=>data.members.filter(m=>m.active).map(m=>'<label class="tp-ticket-check"><input type="checkbox" name="candidate" value="'+esc(m.user_id)+'"> '+memberLabel(m.user_id,m.display_name)+'</label>').join("");
  function count(category){return data?countActiveTickets(data.tickets,data.candidates,uid(),category):null}
  function syncMenu(){
+  applyTicketOrder(document,ticketOrder());
   document.querySelectorAll("[data-ticket-category]").forEach(button=>{
    const key=button.dataset.ticketCategory;
    button.setAttribute("aria-pressed",String(tab===key));
@@ -120,7 +122,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   const el=root();if(!el||!data)return;
   const list=filterTickets(data.tickets,data.candidates,uid(),tab,firm,status,search);
   const categoryLabel=ticketCategories.find(([key])=>key===tab)?.[1]||"All Tickets";
-  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+ticketCategories.map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" maxlength="200" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button><button type="button" data-tp-action="save-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Filter speichern</button><button type="button" data-tp-action="reset-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Standardfilter</button></div><small class="tp-filter-state" role="status">'+(!prefsReady?'Gespeicherte Filter konnten noch nicht geladen werden. Bitte aktualisieren.':prefsSaving?'Filter werden gespeichert …':JSON.stringify(currentFilters())===JSON.stringify(preferences.get(tab))?'Persönlicher Filter gespeichert':preferences.has(tab)?'Filter geändert · zum Übernehmen speichern':'Noch kein persönlicher Filter gespeichert')+'</small></div>'+
+  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+normalizeTicketOrder(ticketOrder()).map(k=>[k,ticketMenuItems[k]]).map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" maxlength="200" value="'+esc(search)+'"><button type="button" data-tp-action="customize-order">☷ Reihenfolge anpassen</button><button type="button" data-tp-action="refresh">Aktualisieren</button><button type="button" data-tp-action="save-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Filter speichern</button><button type="button" data-tp-action="reset-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Standardfilter</button></div><small class="tp-filter-state" role="status">'+(!prefsReady?'Gespeicherte Filter konnten noch nicht geladen werden. Bitte aktualisieren.':prefsSaving?'Filter werden gespeichert …':JSON.stringify(currentFilters())===JSON.stringify(preferences.get(tab))?'Persönlicher Filter gespeichert':preferences.has(tab)?'Filter geändert · zum Übernehmen speichern':'Noch kein persönlicher Filter gespeichert')+'</small></div>'+
   (data.notifications.length?'<details class="tp-ticket-panel"><summary>Benachrichtigungen ('+data.notifications.filter(n=>!n.read_at).length+' ungelesen)</summary><button type="button" data-tp-action="read-notifications">Alle als gelesen markieren</button>'+data.notifications.slice(0,20).map(n=>'<p>'+esc(n.message)+' <small>'+esc(date(n.created_at))+'</small></p>').join("")+'</details>':'')+
   '<div class="tp-ticket-list">'+(list.map(t=>{
    const cs=data.candidates.filter(c=>String(c.ticket_id)===String(t.id));
@@ -184,6 +186,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   }finally{d?.removeEventListener("cancel",preventClose);if(uid()===u){busy=false;btn.disabled=false;if(cancel)cancel.disabled=false;}}
  }
  function action(a,id,b){
+  if(a==="customize-order"){customizeOrder();return}
   if(a==="save-filter"){return saveFilters()}
   if(a==="reset-filter"){return saveFilters(true)}
   if(a==="refresh"){open();return}

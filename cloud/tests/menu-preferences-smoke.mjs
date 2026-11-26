@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {JSDOM} from "jsdom";
-import {normalizeMenu,moveMenu,visibleMenu,applyMenu,createMenuEditor} from "../public/menu-preferences.js";
+import {normalizeMenu,moveMenu,visibleMenu,applyMenu,createMenuEditor,normalizeTicketOrder} from "../public/menu-preferences.js";
 const p=normalizeMenu({menu_order:["tickets","tasks","tickets","unknown"],hidden_items:["settings","admin","bad"]});
 assert.equal(p.menu_order.length,11);assert.equal(p.menu_order[0],"tickets");assert.deepEqual(p.hidden_items,["settings","admin"]);
 assert.equal(moveMenu(p,"tasks",-1,false).menu_order[0],"tasks");assert.equal(visibleMenu(p,true).includes("settings"),false);assert.equal(visibleMenu({},false).includes("admin"),false);
@@ -24,3 +24,18 @@ assert.ok(saved.hidden_items.includes("settings"));assert.ok(saved.menu_order.in
 editor.open(saved);doc.getElementById("tp-menu-reset").onclick();await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});assert.deepEqual(saved,normalizeMenu());
 editor.reset();assert.equal(dialog.open,false);
 console.log("Menu preferences: ordering, visibility, ticket submenu, restore, role filtering and persisted editor passed");
+
+assert.deepEqual(normalizeTicketOrder(["my","bad","my"]),["my","all","open"]);
+editor.open({menu_order:["tasks","tickets"],hidden_items:["settings"]},true);
+assert.equal(doc.getElementById("tp-menu-main-section").hidden,true);
+doc.querySelector('[data-ticket-menu-key="my"] button').click();
+doc.querySelector('[data-ticket-menu-key="my"] button').click();
+await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});
+assert.deepEqual(saved.ticket_order,["my","all","open"]);
+assert.equal(saved.menu_order[0],"tasks");assert.deepEqual(saved.hidden_items,["settings"]);
+applyMenu(doc,saved,false,"tickets");
+assert.deepEqual([...doc.querySelectorAll("#tp-ticket-subnav [data-ticket-category]")].map(b=>b.dataset.ticketCategory),["my","all","open"]);
+editor.open(saved,true);doc.getElementById("tp-menu-reset").click();
+await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});
+assert.deepEqual(saved.ticket_order,["all","open","my"]);assert.equal(saved.menu_order[0],"tasks");
+console.log("Ticket order: validation, user persistence, arrows, ticket-only reset and main menu preserved");

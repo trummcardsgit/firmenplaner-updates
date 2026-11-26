@@ -82,18 +82,19 @@ const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let menuPrefs=normalizeMenu(),menuRevision=0,menuReady=false;
 const menuEditor=createMenuEditor({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,onSaved:p=>{menuRevision++;menuPrefs=p;applyMenu(document,menuPrefs,state.isAdmin,state.view);notice("Dein Menü wurde gespeichert.");},onError:fail});
-document.querySelectorAll("[data-menu-customize]").forEach(b=>b.onclick=()=>{if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs);});
+function openMenuEditor(onlyTickets=false){if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs,onlyTickets);}
+document.querySelectorAll("[data-menu-customize]").forEach(b=>b.onclick=()=>openMenuEditor());
 async function loadMenuPreferences(uid){
  const revision=menuRevision;
  try{
-  const {data,error}=await db.from("tp_menu_preferences").select("menu_order,hidden_items").eq("owner_id",uid).maybeSingle();
+  const {data,error}=await db.from("tp_menu_preferences").select("menu_order,hidden_items,ticket_order").eq("owner_id",uid).maybeSingle();
   if(state.user?.id!==uid||revision!==menuRevision)return;
   if(error)throw error;
   if(!menuEditor.isOpen())menuPrefs=normalizeMenu(data);
   menuReady=true;
  }catch(e){if(state.user?.id===uid&&revision===menuRevision){menuReady=false;console.warn("Menüeinstellungen konnten nicht geladen werden",e);}}
 }
-const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load,ticketOrder:()=>menuPrefs.ticket_order,customizeOrder:()=>openMenuEditor(true)});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),cancelInvitation:async row=>{
  const {data:{session}}=await db.auth.getSession();
  if(!session?.access_token)throw new Error("Bitte neu anmelden.");

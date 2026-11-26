@@ -14,7 +14,8 @@ const db={from(table){
  }
  return {select(){return this},eq(){return this},order(){return this},async range(){return {data:data[table]||[]}}};
 }};
-const center=createTicketCenter({db,userId:()=>currentUser,isAdmin:()=>false,notice(){},fail(e){throw e}});
+let order=[],customizations=0;
+const center=createTicketCenter({db,userId:()=>currentUser,isAdmin:()=>false,notice(){},fail(e){throw e},ticketOrder:()=>order,customizeOrder:()=>customizations++});
 globalThis.setInterval=timer;
 const nav=document.getElementById("tp-ticket-subnav");
 const selectedStatus=()=>document.querySelector("#tp-ticket-status").value;
@@ -81,3 +82,10 @@ center.reset();document.getElementById("content").innerHTML=center.page();center
 selectTab("my");assert.equal(selectedStatus(),"closed");await document.querySelector('[data-tp-action="reset-filter"]').onclick();assert.equal(selectedStatus(),"open");assert.equal(prefs.has("u:my"),false);
 center.reset();currentUser="another";document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();assert.equal(selectedStatus(),"open");
 console.log("Saved filters: independent categories, reopen, sign-in, reset and user separation passed");
+
+order=["my","open","all"];await center.open();
+assert.deepEqual([...nav.querySelectorAll("[data-ticket-category]")].map(b=>b.dataset.ticketCategory),order);
+assert.deepEqual([...document.querySelectorAll(".tp-ticket-mobile-subnav [data-ticket-category]")].map(b=>b.dataset.ticketCategory),order);
+document.querySelector('[data-tp-action="customize-order"]').click();assert.equal(customizations,1);
+nav.querySelector('[data-ticket-category="my"]').click();assert.equal(nav.querySelector('[data-ticket-category="my"]').getAttribute("aria-pressed"),"true");
+console.log("Custom ticket order on desktop and mobile, shortcut and navigation passed");
