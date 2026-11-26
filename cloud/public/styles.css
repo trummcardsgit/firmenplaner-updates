@@ -546,3 +546,14 @@ dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
 .tp-remind-field{border-top:1px solid #3d4657;padding-top:14px;margin-top:9px}
 
 #mfa-panel{display:grid;gap:12px}#mfa-panel.hidden{display:none}#mfa-panel #mfa-qr{display:block;margin:12px auto;background:#fff;border:8px solid #fff;border-radius:12px;max-width:100%;height:auto}#mfa-secret{display:block;overflow-wrap:anywhere;user-select:all;padding:12px;background:#251c34;border-radius:8px}#mfa-code{font-size:1.5rem;letter-spacing:.2em;text-align:center}#mfa-panel form{display:grid;gap:12px}#mfa-panel form.hidden{display:none}
+
+#nav>button[hidden],.bottom-nav>button[hidden],#tp-ticket-subnav[hidden]{display:none!important}
+.tp-menu-customize{white-space:nowrap}.sidebar .tp-menu-customize{width:100%;margin-bottom:8px}
+#tp-menu-dialog{width:min(630px,calc(100vw - 24px));max-height:90dvh;overflow:auto}
+#tp-menu-rows{display:grid;gap:8px;margin-block:12px}
+.tp-menu-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:10px;border:1px solid #715583;border-radius:10px;background:#2c223d}
+.tp-menu-row[draggable=true]{cursor:grab}.tp-menu-row label{display:flex;flex-direction:row;align-items:center;gap:6px;margin:0}
+.tp-menu-row input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#b47adf}
+.tp-menu-move{display:flex;gap:5px}.tp-menu-move button{min-width:36px;min-height:36px;padding:5px}
+.tp-menu-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:480px){.tp-menu-row{gap:6px;padding:8px;font-size:.85rem}.tp-menu-row label{font-size:.8rem}.tp-menu-move button{min-width:30px}.tp-menu-actions button{flex:1 1 auto}}

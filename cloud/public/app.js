@@ -1,3 +1,4 @@
+import {normalizeMenu,applyMenu,createMenuEditor} from "./menu-preferences.js";
 import {createMfa,mfaStatus} from "./mfa.js";
 import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
 import {createActivation} from "./activation.js";
@@ -77,6 +78,19 @@ if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.
 const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 // Preserve the Supabase project-specific production session key; TEST uses its own ref.
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+let menuPrefs=normalizeMenu(),menuRevision=0,menuReady=false;
+const menuEditor=createMenuEditor({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,onSaved:p=>{menuRevision++;menuPrefs=p;applyMenu(document,menuPrefs,state.isAdmin,state.view);notice("Dein Menü wurde gespeichert.");},onError:fail});
+document.querySelectorAll("[data-menu-customize]").forEach(b=>b.onclick=()=>{if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs);});
+async function loadMenuPreferences(uid){
+ const revision=menuRevision;
+ try{
+  const {data,error}=await db.from("tp_menu_preferences").select("menu_order,hidden_items").eq("owner_id",uid).maybeSingle();
+  if(state.user?.id!==uid||revision!==menuRevision)return;
+  if(error)throw error;
+  if(!menuEditor.isOpen())menuPrefs=normalizeMenu(data);
+  menuReady=true;
+ }catch(e){if(state.user?.id===uid&&revision===menuRevision){menuReady=false;console.warn("Menüeinstellungen konnten nicht geladen werden",e);}}
+}
 const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),cancelInvitation:async row=>{
  const {data:{session}}=await db.auth.getSession();
@@ -177,6 +191,8 @@ async function load(){
  state.companies=a.data||[];
  state.entries=b.data||[];
  state.isAdmin=!!adminStatus.data;
+ await loadMenuPreferences(loadingUser);
+ if(state.user?.id!==loadingUser)return;
  if(new URLSearchParams(location.search).has("ticket"))state.view="tickets";
  if(state.isAdmin){
   const invites=await db.from("tp_invites").select("email,status,created_at").order("created_at",{ascending:false}).limit(40);
@@ -190,7 +206,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();menuEditor.reset();menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -407,14 +423,16 @@ function settings(){
  '<p class="install-tip">iPhone: zuerst RHTFLOW über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
  const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">RHTFLOW – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
- return own+password+reminder+install+backup;
+ return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern, Menüpunkte aus- und wieder einblenden.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+function render(){if(!state.user)return;if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
 $("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="admin")adminCenter.open();
+applyMenu(document,menuPrefs,state.isAdmin,state.view);
+if($("tp-settings-menu"))$("tp-settings-menu").onclick=()=>{if(menuReady)menuEditor.open(menuPrefs);else {notice("Menüeinstellungen konnten noch nicht geladen werden.");load().catch(fail);}};
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}
 const firmFilter=$("task-company-filter");if(firmFilter){firmFilter.value=features.taskCompany;firmFilter.addEventListener("change",e=>{
