@@ -106,7 +106,7 @@ Deno.serve(async req=>{
     const pushServer=await webpush.ApplicationServer.new({contactInformation:appUrl,vapidKeys});
     if(action==="test"){
       const result=await sendToUser(pushServer,admin,userId!,{
-        title:"TrummPlaner – Test-Push",body:"Die Hintergrund-Push-Benachrichtigung ist eingerichtet.",url:appUrl,tag:"tp-test-"+Date.now()
+        title:"RHTFLOW – Test-Push",body:"Die Hintergrund-Push-Benachrichtigung ist eingerichtet.",url:appUrl,tag:"tp-test-"+Date.now()
       });
       return response({ok:result.sent>0,...result},result.sent>0?200:422);
     }
@@ -116,7 +116,7 @@ Deno.serve(async req=>{
       const stats={tasks:tasks?.length||0,delivered:0,failed:0};
       for(const task of tasks||[]){
         const sent=await sendToUser(pushServer,admin,task.owner_id,{
-          title:"TrummPlaner: Erinnerung",body:task.title,tag:"tp-task-"+task.entry_id,
+          title:"RHTFLOW: Erinnerung",body:task.title,tag:"tp-task-"+task.entry_id,
           url:appUrl+"?task="+encodeURIComponent(task.entry_id),
           dueAt:task.due_at
         });
@@ -137,7 +137,7 @@ Deno.serve(async req=>{
           const member=await admin.from("tp_members").select("active").eq("user_id",item.recipient_id).maybeSingle();
           if(member.error)throw member.error;
           const sent=member.data?.active?await sendToUser(pushServer,admin,item.recipient_id,{
-            title:"TrummPlaner: Ticket",body:item.message,tag:"tp-ticket-event-"+item.id,
+            title:"RHTFLOW: Ticket",body:item.message,tag:"tp-ticket-event-"+item.id,
             url:appUrl+"?ticket="+encodeURIComponent(item.ticket_id)
           }):{sent:0,failed:0,subscribers:0,removed:0};
           ticketStats.delivered+=sent.sent;ticketStats.failed+=sent.failed;

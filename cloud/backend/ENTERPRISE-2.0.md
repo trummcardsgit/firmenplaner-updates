@@ -14,3 +14,5 @@ The enterprise workflow now executes the complete legacy smoke suite and races t
 
 ## Dedicated TEST setup
 The existing TEST project (cpycfxolqpidfjbhhsmr) is explicitly authorized for repurposing. First inspect and remove old app objects and storage via supported APIs; never delete managed Supabase schemas. Apply staging-baseline.sql before the five enterprise migrations. The baseline is schema-only and excludes the production administrator identity. Bootstrap a new test administrator using a separate invitation; do not copy production Auth accounts or push configuration. Verify the baseline on the restored project before using the preview.
+
+The TEST project was successfully restored, old application tables and users removed, and the schema installed in migration rhtflow_staging_clean_install. RHTFLOW is the release brand; public staging build defaults exclusively to the approved TEST project and contains only its publishable key. Production configuration and main branch are unchanged. Old private storage objects are pending supported Storage API cleanup. The supplied artwork still needs to replace the binary logos and install icons before release.

@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "TrummPlaner",
-  "short_name": "TrummPlaner",
+  "name": "RHTFLOW",
+  "short_name": "RHTFLOW",
   "description": "Firmen, Notizen, Aufgaben und Erinnerungen",
   "start_url": "./",
   "scope": "./",

@@ -213,12 +213,12 @@ function settings(){
  const password='<div class="panel"><h2>Passwort festlegen oder ändern</h2><p>Nach der ersten Einladung hier dein Passwort erstellen. Das geht nur nach erfolgreicher Anmeldung über den Einladungslink.</p><form id="password-form"><label>Neues Passwort<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="subtle" type="submit">Passwort speichern</button></form></div>';
  const permission=typeof Notification==="undefined"?"Nicht unterstützt":Notification.permission==="granted"?"Erlaubt":Notification.permission==="denied"?"Blockiert":"Noch nicht erlaubt";
  const reminder='<div class="panel"><h2>🔔 Hintergrund-Push-Benachrichtigungen</h2>'+
- '<p>Erinnerungen werden im Hintergrund über Supabase versendet – auch wenn TrummPlaner geschlossen ist. Die Prüfung erfolgt ungefähr einmal pro Minute.</p>'+
+ '<p>Erinnerungen werden im Hintergrund über Supabase versendet – auch wenn RHTFLOW geschlossen ist. Die Prüfung erfolgt ungefähr einmal pro Minute.</p>'+
  '<p class="muted">Browserberechtigung: <strong>'+esc(permission)+'</strong> · Hinterlegte Geräte: '+state.pushSubs.length+'</p>'+
  '<div class="settings-actions"><button class="primary" id="enable-notifications">Push auf diesem Gerät aktivieren</button>'+
  '<button class="subtle" id="test-notification">Echten Push testen</button><button class="subtle" id="disable-push">Auf diesem Gerät deaktivieren</button></div>'+
- '<p class="install-tip">iPhone: zuerst TrummPlaner über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
- const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">TrummPlaner Cloud – Zugang nur per Einladung</p></div>';
+ '<p class="install-tip">iPhone: zuerst RHTFLOW über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
+ const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">RHTFLOW – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+password+reminder+install+backup;
 }
@@ -394,7 +394,7 @@ $("solution-form").addEventListener("submit",async event=>{
 $("company-form").addEventListener("submit",async event=>{event.preventDefault();const id=$("company-id").value,values={owner_id:state.user.id,name:$("company-name").value.trim(),contact:$("company-contact").value.trim(),phone:$("company-phone").value.trim(),email:$("company-email").value.trim()};try{const r=id?await db.from("tp_companies").update(values).eq("id",id):await db.from("tp_companies").insert(values);if(r.error)throw r.error;$("company-editor").close();await load();notice("Firma gespeichert.");}catch(e){fail(e)}});
 $("entry-form").addEventListener("submit",async event=>{event.preventDefault();const lastXpEventId=state.gameEvents[0]?.id||0;const id=$("entry-id").value,kind=$("entry-kind").value,values={owner_id:state.user.id,company_id:$("entry-company").value,title:$("entry-title").value.trim(),description:$("entry-description").value,priority:$("entry-priority").value,status:$("entry-status").value,kind,project_id:kind==="task"?($("entry-project").value||null):null,due_at:kind==="note"?null:iso($("entry-due").value),remind_at:kind==="note"?null:iso($("entry-remind").value),reminder_sent_at:null,updated_at:new Date().toISOString()};if(values.remind_at&&!values.due_at)return notice("Bitte einen Fälligkeitstermin auswählen.");try{const r=id?await db.from("tp_entries").update(values).eq("id",id):await db.from("tp_entries").insert(values);if(r.error)throw r.error;$("editor").close();await load();if(kind==="task"&&values.status==="done")showTaskXp(id||state.gameEvents[0]?.entry_id,lastXpEventId);notice("Eintrag gespeichert.");}catch(e){fail(e)}});
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;});
-window.addEventListener("appinstalled",()=>{installPrompt=null;notice("TrummPlaner installiert.");});
+window.addEventListener("appinstalled",()=>{installPrompt=null;notice("RHTFLOW installiert.");});
 const pushEndpoint=cfg.supabaseUrl+"/functions/v1/tp-background-push";
 function decodeBase64Url(input){
  const value=input.replace(/-/g,"+").replace(/_/g,"/");
@@ -413,7 +413,7 @@ async function enablePush(){
  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))throw new Error("Dein Browser unterstützt Web Push nicht.");
  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
  const installed=window.matchMedia?.("(display-mode: standalone)").matches||navigator.standalone===true;
- if(ios&&!installed)throw new Error("Auf dem iPhone zuerst über Safari zum Home-Bildschirm hinzufügen und die installierte TrummPlaner-App öffnen.");
+ if(ios&&!installed)throw new Error("Auf dem iPhone zuerst über Safari zum Home-Bildschirm hinzufügen und die installierte RHTFLOW-App öffnen.");
  const perm=await Notification.requestPermission();
  if(perm!=="granted")throw new Error("Benachrichtigungen sind nicht erlaubt. Bitte in den Browser-/Systemeinstellungen freigeben.");
  const reg=await navigator.serviceWorker.ready;
