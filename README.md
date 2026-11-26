@@ -22,6 +22,18 @@ Alternativ kann ein git-Tag `vX.Y.Z` nach entsprechendem Anheben der Paketversio
 
 **Niemals den Ordner `data/`, Passwörter oder echte Firmendaten nach GitHub hochladen!** `.gitignore` schließt `data/`, `dist/`, `node_modules/` und `.env` aus. Der Browser-Zugang zum FirmenPlaner bleibt lokal. Die Update-Dateien sind öffentlich. Es werden keine echten Firmendaten in Github Releases übertragen. Öffentlicher Zugriff auf die PWA benötigt einen eigenen HTTPS-Server; GitHub-Releases hosten nicht die Anwendung oder den Push-Server.
 
+### Sichere Ersteinrichtung und Reverse-Proxy
+
+Richte ein neues System zuerst über `http://localhost:4173` ein, bevor du den Reverse-Proxy oder eine Firewall-Freigabe aktivierst. Beim ersten Start erzeugt der Server `data/firmenplaner-setup-token.txt` mit lokalen Leserechten. Gib dieses Token zusammen mit dem neuen Passwort ein; nach erfolgreicher Einrichtung wird die Datei gelöscht.
+
+Für den späteren HTTPS-Betrieb muss `APP_ORIGIN` exakt auf die öffentliche Origin gesetzt werden. Vertraue Proxy-Header nur dann mit `TRUST_PROXY=loopback`, wenn der Proxy wie im Beispiel ausschließlich über die Loopback-Schnittstelle zugreift:
+
+```sh
+APP_ORIGIN=https://aufgaben.beispiel.at TRUST_PROXY=loopback ./start-linux.sh
+```
+
+Unter Windows können dieselben Variablen vor `node manager.js` mit `set APP_ORIGIN=https://aufgaben.beispiel.at` und `set TRUST_PROXY=loopback` gesetzt werden. Ohne `APP_ORIGIN` akzeptiert der Server Browser-Schreibzugriffe nur von den lokalen Loopback-Adressen auf seinem tatsächlichen Port. `TRUST_PROXY` bleibt standardmäßig `none`.
+
 Die Update-Prüfsumme SHA-256 schützt vor fehlerhaften Downloads, ist aber kein unabhängiger kryptographischer Herkunftsnachweis. Repository-Zugriff entsprechend absichern.
 
 ## Entwicklung

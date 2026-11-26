@@ -26,6 +26,11 @@
         <div class="tiny-label" id="auth-kicker">Willkommen</div>
         <h2 id="auth-heading">FirmenPlaner öffnen</h2>
         <p id="auth-description" class="muted">Melde dich mit deinem Passwort an.</p>
+        <div id="auth-setup-token-field" hidden>
+          <label class="field-label" for="auth-setup-token">Einrichtungstoken</label>
+          <input id="auth-setup-token" type="password" autocomplete="off" maxlength="64" placeholder="Token aus dem Datenordner">
+          <p class="auth-hint">Du findest das Token in <code>data/firmenplaner-setup-token.txt</code>.</p>
+        </div>
         <label class="field-label" for="auth-password">Passwort</label>
         <input id="auth-password" type="password" autocomplete="current-password" minlength="10" required placeholder="Dein Passwort">
         <p class="auth-hint" id="auth-hint" hidden>Mindestens 10 Zeichen. Merke es dir gut – es gibt noch keine Passwort-Wiederherstellung.</p>
