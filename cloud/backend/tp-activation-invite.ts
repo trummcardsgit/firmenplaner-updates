@@ -14,6 +14,9 @@ Deno.serve(async(req)=>{
  const {data:who,error:authError}=await admin.auth.getUser(token);
  if(authError||!who.user)return json({error:"Anmeldung ungültig."},401);
  const caller=who.user.id;
+ const scoped=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_ANON_KEY")!,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:"Bearer "+token}}});
+ const {data:security,error:securityError}=await scoped.rpc("tp_mfa_status");
+ if(securityError||security?.active!==true||security?.fresh!==true)return json({error:"Zwei-Faktor-Bestätigung erforderlich."},403);
  const [rights,member]=await Promise.all([admin.from("tp_app_admins").select("user_id").eq("user_id",caller).maybeSingle(),admin.from("tp_members").select("active").eq("user_id",caller).maybeSingle()]);
  if(rights.error||member.error||!rights.data||!member.data?.active)return json({error:"Nur aktive Administratoren."},403);
  const body=await req.json();
