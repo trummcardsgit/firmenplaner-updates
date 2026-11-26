@@ -73,7 +73,7 @@ function inlineText(node){
  if(["i","em"].includes(tag)||style.fontStyle==="italic")types.push("i");
  if(tag==="u"||/\bunderline\b/.test(style.textDecoration+" "+style.textDecorationLine))types.push("u");
  if(["s","strike","del"].includes(tag)||/\bline-through\b/.test(style.textDecoration+" "+style.textDecorationLine))types.push("s");
- return types.reduceRight((s,t)=>"[[ "+t+" ]]".replaceAll(" ","")+s+"[[/"+t+"]]",children);
+ return types.reduceRight((s,t)=>"[["+t+"]]"+s+"[[/"+t+"]]",children);
 }
 function rowKind(row){
  if(row?.matches(".tp-rich-check"))return "check";
