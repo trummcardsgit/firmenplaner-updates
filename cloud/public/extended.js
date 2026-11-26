@@ -2,8 +2,9 @@
 import {runTableCommand,TABLE_MAX_ROWS,TABLE_MAX_COLS} from "./table-editor.js";
 const BUCKET="tp-private-files";
 const DOCX_MIME="application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const SCRIPT_DOCX="https://cdn.jsdelivr.net/npm/docx@9.15.3/dist/index.iife.js";
-const SCRIPT_MAMMOTH="https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.js";
+const SCRIPT_DOCX="./vendor/docx-9.15.3.js";
+const SCRIPT_MAMMOTH="./vendor/mammoth-1.13.0.js";
+const DOCUMENT_INTEGRITY={"./vendor/docx-9.15.3.js":"sha384-7RQr7shIQxpY5MCxz+1WEr7c87/32cetAdWsetOYnb6IYz/H/6OcuJGOiv+L3nCj","./vendor/mammoth-1.13.0.js":"sha384-gVJqBsY+BzmRGi61zUJVD1R0NuBs/+4IWO5uIy55Ig5FG5KwAIQIhmiO3Oz2RDgw"};
 
 export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,openTask=()=>{},showProjectTasks=()=>{}}){
  const $=id=>document.getElementById(id);
@@ -230,11 +231,13 @@ export function createFeatures({db,state,esc,fmt,notice,fail,refresh,company,ope
   if(libraries[src])return libraries[src];
   libraries[src]=new Promise((resolve,reject)=>{
    const script=document.createElement("script");
-   script.src=src;script.async=true;
+   if(!Object.hasOwn(DOCUMENT_INTEGRITY,src)){reject(new Error("Unbekannte Dokumentbibliothek"));return;}
+   script.src=src;script.integrity=DOCUMENT_INTEGRITY[src];script.crossOrigin="anonymous";script.async=true;
    script.onload=()=>check()?resolve():reject(new Error("Dokumentbibliothek nicht verfügbar"));
    script.onerror=()=>reject(new Error("Dokumentbibliothek konnte nicht geladen werden. Internetverbindung prüfen."));
    document.head.appendChild(script);
   });
+  libraries[src]=libraries[src].catch(e=>{delete libraries[src];throw e;});
   return libraries[src];
  }
  async function toWord(title,raw){

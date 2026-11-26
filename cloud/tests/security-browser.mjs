@@ -65,6 +65,18 @@ try{
    assert.equal(result.data?.[0]?.display_name,"CI",JSON.stringify(result));
    assert.ok(requests.includes("/auth/v1/token"));assert.ok(requests.includes("/rest/v1/tp_members"));
    assert.equal(errors.length,0,errors.join("\n"));
+   const documentResult=await page.evaluate(async()=>{
+    const {createFeatures}=await import("./extended.js");
+    const features=createFeatures({db:{},state:{user:{id:"ci"},companies:[],entries:[],projects:[],documents:[],attachments:[]},esc:String,fmt:String,notice:()=>{},fail:e=>{throw e},refresh:async()=>{},company:()=>"CI"});
+    const blob=await features.toWord("CI document","<h1>Local document test</h1><table><tr><td>Round trip cell</td></tr></table>");
+    const script=document.createElement("script");script.src="./vendor/mammoth-1.13.0.js";script.integrity="sha384-gVJqBsY+BzmRGi61zUJVD1R0NuBs/+4IWO5uIy55Ig5FG5KwAIQIhmiO3Oz2RDgw";script.crossOrigin="anonymous";
+    await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error("Local Mammoth failed"));document.head.append(script);});
+    const result=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});
+    const docxTag=[...document.scripts].find(s=>s.src.endsWith("/vendor/docx-9.15.3.js"));
+    return {html:result.value,size:blob.size,docxIntegrity:docxTag?.integrity};
+   });
+   assert.ok(documentResult.size>0);assert.match(documentResult.html,/Local document test/);assert.match(documentResult.html,/Round trip cell/);assert.equal(documentResult.docxIntegrity,"sha384-7RQr7shIQxpY5MCxz+1WEr7c87/32cetAdWsetOYnb6IYz/H/6OcuJGOiv+L3nCj");
+   assert.ok(!external.includes("cdn.jsdelivr.net"));console.log(environment+": local document export/import roundtrip passed");
    assert.deepEqual(await page.evaluate(()=>window.__csp),[],"Unexpected CSP violations");
    await page.evaluate(()=>{
     const inline=document.createElement("script");inline.textContent="window.__injected=true";document.body.append(inline);

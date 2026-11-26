@@ -4,5 +4,29 @@
   "tarball": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.95.3.tgz",
   "integrity": "sha512-Fukw1cUTQ6xdLiHDJhKKPu6svEPaCEDvThqCne3OaQyZvuq2qjhJAd91kJu3PXLG18aooCgYBaB6qQz35hhABg==",
   "entry": "package/dist/umd/supabase.js",
-  "bundleIntegrity": "sha384-g8TQpKstPpyDTjwOLNQvGR++9KAGGvtxWv+P5XmDd3QZQx1jie8r1hx0gVpD+cdb"
+  "bundleIntegrity": "sha384-g8TQpKstPpyDTjwOLNQvGR++9KAGGvtxWv+P5XmDd3QZQx1jie8r1hx0gVpD+cdb",
+  "documents": [
+    {
+      "name": "docx",
+      "version": "9.15.3",
+      "entry": "package/dist/index.iife.js",
+      "license": "MIT",
+      "integrity": "sha512-3FnU6K5cuvGXEAn24yhvP3mfrZ1G8k9+hH8pSVDYsMR+mGmfK/t0NR5AwoMQodnaaxiRt2e+SvckffcJe/NvTQ==",
+      "bundleIntegrity": "sha384-7RQr7shIQxpY5MCxz+1WEr7c87/32cetAdWsetOYnb6IYz/H/6OcuJGOiv+L3nCj",
+      "tarball": "https://registry.npmjs.org/docx/-/docx-9.15.3.tgz",
+      "file": "docx-9.15.3.js",
+      "licenseEntry": "package/LICENSE"
+    },
+    {
+      "name": "mammoth",
+      "version": "1.13.0",
+      "entry": "package/mammoth.browser.js",
+      "license": "BSD-2-Clause",
+      "integrity": "sha512-2cawcYFcP7ISfXbBcL9lmVgTNWo88v/52ND1gnywHtVT/pX0//puPnf0iMPV9ZgmuvNOE+zkIhDgZ9M2c2dDDg==",
+      "bundleIntegrity": "sha384-gVJqBsY+BzmRGi61zUJVD1R0NuBs/+4IWO5uIy55Ig5FG5KwAIQIhmiO3Oz2RDgw",
+      "tarball": "https://registry.npmjs.org/mammoth/-/mammoth-1.13.0.tgz",
+      "file": "mammoth-1.13.0.js",
+      "licenseEntry": "package/LICENSE"
+    }
+  ]
 }

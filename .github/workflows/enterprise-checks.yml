@@ -1,7 +1,7 @@
 name: Enterprise staging checks
 on:
   push:
-    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9, release/rhtflow-2.0.10, release/rhtflow-2.0.11, release/rhtflow-2.0.12]
+    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9, release/rhtflow-2.0.10, release/rhtflow-2.0.11, release/rhtflow-2.0.12, security/rhtflow-local-documents-review]
   workflow_dispatch:
 permissions:
   contents: read
@@ -87,6 +87,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/profile-avatar-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-ticket-filter-preferences.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/ticket-filter-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/security-permissions-integration.sql
 
   preview:
     needs: [checks, database]
