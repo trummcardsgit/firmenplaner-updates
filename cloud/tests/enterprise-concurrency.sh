@@ -22,6 +22,7 @@ set role authenticated;
 set request.jwt.claim.sub='$1';
 select pg_sleep(0.2);
 select public.tp_respond_ticket(:id,true);
+select public.tp_import_ticket_task(:id);
 select pg_sleep(0.5);
 commit;
 SQL

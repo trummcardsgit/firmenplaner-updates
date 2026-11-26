@@ -13,6 +13,7 @@ do $$ begin
 end $$;
 select public.tp_create_ticket('10000000-0000-0000-0000-000000000001','Shared firm ticket','CI','normal',array['00000000-0000-0000-0000-000000000003']::uuid[]) as tid \gset
 select public.tp_respond_ticket(:tid,true);
+select public.tp_import_ticket_task(:tid);
 do $$ begin
  if not exists(select 1 from public.tp_entries where company_id='10000000-0000-0000-0000-000000000001' and owner_id=auth.uid()) then raise exception 'Task did not use same firm';end if;
  update public.tp_companies set name='Forbidden' where id='10000000-0000-0000-0000-000000000001';
