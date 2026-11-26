@@ -17,7 +17,7 @@ async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const 
 function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.onclick=()=>{const next=toggleFavorite(trophyFavorites,Number(b.dataset.trophyFavorite),trophyItems);if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei Trophäen.");return}trophyFavorites=next;saveTrophyPrefs();redraw()});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),resetPassword:async email=>{const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error}});
 const $=id=>document.getElementById(id);
 let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
@@ -97,6 +97,7 @@ async function load(){
  if(xpEvents.error)throw xpEvents.error;
  if(members.error)throw members.error;
  state.members=members.data||[];
+ if(awardRows.error)throw awardRows.error;if(closedTickets.error)throw closedTickets.error;
  state.ticketAwards=awardRows.data||[];state.closedTickets=closedTickets.count||0;
  state.solutions=sol.data||[];
  state.pushSubs=pushDevices.data||[];

@@ -4,7 +4,7 @@ export function filterTickets(tickets,candidates,uid,tab,firm="",status="",searc
  const pending=new Set(candidates.filter(c=>c.user_id===uid&&c.response==="pending").map(c=>String(c.ticket_id)));
  return tickets.filter(t=>(tab==="all"||tab==="my"&&t.assignee_id===uid||tab==="open"&&t.status==="open"&&pending.has(String(t.id)))&&(!firm||String(t.company_id)===firm)&&(!status||t.status===status)&&(!search||(t.title+" "+t.description+" "+t.id).toLowerCase().includes(search.toLowerCase())));
 }
-export function createTicketCenter({db,userId,isAdmin,notice,fail}){
+export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  let data=null,tab="all",firm="",status="",search="",busy=false,epoch=0,focusId="";
  const root=()=>document.getElementById("tp-ticket-root");
  const uid=()=>userId();
@@ -55,7 +55,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail}){
  }
  async function call(fn,args,button){
   if(busy)return;busy=true;const u=uid();if(button)button.disabled=true;
-  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");await read()}
+  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");if(["tp_import_ticket_task","tp_close_ticket","tp_publish_ticket_solution","tp_reassign_ticket"].includes(fn)&&refreshApp){await refreshApp()}else await read()}
   catch(e){if(uid()===u){fail(e);if(fn==="tp_respond_ticket")await read().catch(error)}}
   finally{if(uid()===u){busy=false;if(button)button.disabled=false}}
  }
