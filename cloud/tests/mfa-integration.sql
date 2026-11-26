@@ -1,0 +1,20 @@
+begin;
+insert into auth.sessions values('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','aal2',null);
+insert into auth.mfa_factors values('20000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','totp','verified');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+do $$ declare now_epoch bigint:=floor(extract(epoch from now())); status jsonb;
+begin
+ perform set_config('request.jwt.claims',jsonb_build_object('aal','aal1','session_id','10000000-0000-0000-0000-000000000001','amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',now_epoch)))::text,true);
+ status:=public.tp_mfa_status();
+ if not (status->>'active')::boolean or (status->>'fresh')::boolean or tp_private.enterprise_member() then raise exception 'AAL1 access allowed or enrollment unavailable';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000001','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',now_epoch-431999)))::text,true);
+ if not tp_private.enterprise_member() then raise exception 'Fresh MFA denied';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000001','iat',now_epoch,'amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',now_epoch-432001)))::text,true);
+ if tp_private.enterprise_member() then raise exception 'Refresh extended MFA';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000099','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',now_epoch)))::text,true);
+ if tp_private.enterprise_member() then raise exception 'Unknown session accepted';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000001','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',now_epoch+100)))::text,true);
+ if tp_private.enterprise_member() then raise exception 'Future authentication accepted';end if;
+end $$;
+rollback;

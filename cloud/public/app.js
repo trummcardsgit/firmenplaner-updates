@@ -1,3 +1,4 @@
+import {createMfa,mfaStatus} from "./mfa.js";
 import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
 import {createActivation} from "./activation.js";
 import {solutionDeleteButton,deleteSolution} from "./solution-admin.js";
@@ -140,6 +141,7 @@ const features=createFeatures({
 async function load(){
  if(!state.user)return;
  const loadingUser=state.user.id;
+ try{const status=await mfaStatus(db);if(state.user?.id!==loadingUser)return;if(!status.active||!status.fresh){await checkMfaAccess();return;}}catch{if(state.user?.id===loadingUser){showApp(null);displayMfa("Sicherheitsprüfung derzeit nicht verfügbar. Bitte erneut prüfen.");}return;}
  const membership=await db.from("tp_members").select("active").eq("user_id",state.user.id).maybeSingle();
  if(state.user?.id!==loadingUser)return;
  if(membership.error)throw membership.error;
@@ -196,7 +198,7 @@ async function login(){
  try{
   const {data,error}=await db.auth.signInWithPassword({email:emailField.value.trim(),password:passwordField.value});
   if(error)throw error;
-  if(data.session?.user)showApp(data.session.user);
+  if(data.session?.user){passwordField.value="";await checkMfaAccess();}
  }catch(e){fail(e)}
  finally{$("login-submit").disabled=false;}
 }
@@ -220,8 +222,8 @@ const activationClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{
 const activation=createActivation(activationClient.auth,async()=>{
  const {data:who,error}=await activationClient.auth.getUser();
  if(error||!who.user)return false;
- const {data,error:memberError}=await activationClient.from("tp_members").select("active").eq("user_id",who.user.id).maybeSingle();
- return !memberError&&data?.active===true;
+ const status=await mfaStatus(activationClient);
+ return status.active===true;
 });
 function activationScreen(open){
  $("activation-panel").classList.toggle("hidden",!open);
@@ -239,6 +241,89 @@ $("activation-form").onsubmit=async e=>{
  finally{fields.forEach(x=>x.disabled=false);}
 };
 
+
+const mfa=createMfa(db.auth);
+let mfaJob=null,mfaEpoch=0,mfaDeadline=null,mfaBusy=false,mfaFactorUser=null;
+function clearMfaScreen(){
+ clearTimeout(mfaDeadline);mfaDeadline=null;mfa.clear();mfaFactorUser=null;
+ $("mfa-qr").removeAttribute("src");$("mfa-secret").textContent="";$("mfa-code").value="";$("mfa-factor").replaceChildren();
+ $("mfa-enrollment").classList.add("hidden");$("mfa-panel").classList.add("hidden");$("mfa-enroll").classList.add("hidden");$("mfa-verify-form").classList.add("hidden");
+}
+function displayMfa(message=""){
+ $("auth").classList.remove("hidden");$("app").classList.add("hidden");
+ for(const id of ["auth-form","activation-open","activation-panel","recovery-open","recovery-panel"])$(id).classList.add("hidden");
+ $("mfa-panel").classList.remove("hidden");$("mfa-message").textContent=message;
+}
+function mfaLoginScreen(){
+ clearMfaScreen();$("auth-form").classList.remove("hidden");$("activation-open").classList.remove("hidden");$("recovery-open").classList.remove("hidden");
+}
+function setMfaBusy(value){
+ mfaBusy=value;for(const e of $("mfa-panel").querySelectorAll("input,button,select"))e.disabled=value;
+}
+function setMfaFactors(factors){
+ const select=$("mfa-factor");select.replaceChildren();
+ for(const f of factors){const opt=document.createElement("option");opt.value=f.id;opt.textContent=f.friendly_name||"Authenticator";select.append(opt);}
+ $("mfa-verify-form").classList.toggle("hidden",!factors.length);
+ $("mfa-enroll").classList.toggle("hidden",!!factors.length);
+}
+async function checkMfaAccess(){
+ if(mfaJob)return mfaJob;
+ const epoch=mfaEpoch;
+ mfaJob=(async()=>{
+  try{
+   const {data:{session},error}=await db.auth.getSession();if(error)throw error;
+   if(epoch!==mfaEpoch)return;
+   if(!session?.user){if(state.user)showApp(null);if(!$("mfa-panel").classList.contains("hidden"))mfaLoginScreen();return;}
+   const status=await mfaStatus(db);if(epoch!==mfaEpoch)return;
+   if(!status.active){await db.auth.signOut({scope:"local"});if(epoch===mfaEpoch){showApp(null);mfaLoginScreen();notice("Konto noch nicht freigeschaltet oder gesperrt.");}return;}
+   if(status.fresh){
+    clearMfaScreen();
+    if(state.user?.id!==session.user.id)showApp(session.user);
+    const seconds=Number(status.remaining_seconds);
+    mfaDeadline=setTimeout(()=>checkMfaAccess(),Math.max(1,seconds+1)*1000);
+    return;
+   }
+   if(state.user)showApp(null);
+   displayMfa();
+   if(mfaBusy)return;
+   // Preserve an in-progress enrollment on refresh/auth events in the same session.
+   if(mfaFactorUser===session.user.id&&!$("mfa-enrollment").classList.contains("hidden"))return;
+   if(mfaFactorUser!==session.user.id){mfa.clear();mfaFactorUser=session.user.id;$("mfa-qr").removeAttribute("src");$("mfa-secret").textContent="";$("mfa-enrollment").classList.add("hidden");}
+   const factors=await mfa.factors();if(epoch!==mfaEpoch)return;
+   setMfaFactors(factors.verified);
+   $("mfa-intro").textContent=factors.verified.length?"Bitte bestätige deine Anmeldung mit dem aktuellen Code aus deiner Authenticator-App.":"Richte deine Authenticator-App einmalig ein. Danach wird die Prüfung spätestens alle fünf Tage fällig.";
+  }catch{
+   if(epoch===mfaEpoch){if(state.user)showApp(null);displayMfa("Sicherheitsprüfung derzeit nicht verfügbar. Bitte erneut prüfen.");}
+  }
+ })();
+ try{await mfaJob;}finally{mfaJob=null;}
+}
+$("mfa-enroll").onclick=async()=>{
+ if(mfaBusy)return;setMfaBusy(true);const epoch=mfaEpoch;
+ try{
+  const factor=await mfa.enroll();if(epoch!==mfaEpoch)return;
+  const qr=String(factor.qr||"");
+  if(qr.startsWith("data:image/svg+xml")||qr.startsWith("data:image/png;base64,"))$("mfa-qr").src=qr;
+  else if(qr.startsWith("<svg"))$("mfa-qr").src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(qr);
+  else $("mfa-qr").removeAttribute("src");
+  $("mfa-secret").textContent=factor.secret;$("mfa-enrollment").classList.remove("hidden");
+  setMfaFactors([{id:factor.id,friendly_name:"RHTFLOW"}]);$("mfa-message").textContent="Nach dem Scannen bitte den aktuellen Code eingeben.";
+ }catch(e){if(epoch===mfaEpoch)$("mfa-message").textContent=e.message;}
+ finally{if(epoch===mfaEpoch)setMfaBusy(false);}
+};
+$("mfa-verify-form").onsubmit=async e=>{
+ e.preventDefault();if(mfaBusy)return;setMfaBusy(true);const epoch=mfaEpoch;
+ try{
+  await mfa.verify($("mfa-factor").value,$("mfa-code").value.trim());if(epoch!==mfaEpoch)return;
+  $("mfa-code").value="";$("mfa-qr").removeAttribute("src");$("mfa-secret").textContent="";$("mfa-enrollment").classList.add("hidden");
+  if(mfaJob)await mfaJob;
+  await checkMfaAccess();
+  if(epoch===mfaEpoch&&!state.user)$("mfa-message").textContent="Code bestätigt, aber Sitzung noch nicht freigegeben. Bitte abmelden und neu anmelden.";
+ }catch(e){if(epoch===mfaEpoch)$("mfa-message").textContent=e.message;}
+ finally{if(epoch===mfaEpoch)setMfaBusy(false);}
+};
+$("mfa-retry").onclick=()=>checkMfaAccess();
+$("mfa-signout").onclick=async()=>{if(mfaBusy)return;try{const {error}=await db.auth.signOut({scope:"local"});if(error)throw error;}catch{ $("mfa-message").textContent="Abmelden fehlgeschlagen. Bitte erneut versuchen."; }};
 const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
 if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
 
@@ -575,14 +660,13 @@ setInterval(()=>{if(state.user&&!document.hidden&&navigator.onLine)load().catch(
 window.addEventListener("online",()=>state.user&&load().catch(console.warn));
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)load().catch(console.warn);});
 db.auth.onAuthStateChange((event,session)=>{
- if(event==="SIGNED_OUT")showApp(null);
- else if(session?.user){
-  if(!state.user||state.user.id!==session.user.id)showApp(session.user);
-  if(inviteFlow||event==="PASSWORD_RECOVERY"){inviteFlow=false;state.view="settings";notice("Bitte in den Einstellungen ein neues Passwort festlegen.");}
- }
+ if(event==="SIGNED_OUT"){mfaEpoch++;showApp(null);mfaLoginScreen();setMfaBusy(false);}
+ else if(session?.user){setTimeout(()=>checkMfaAccess(),0);}
 });
 features.init();
 installDictation(document,window);
 window.addEventListener("tp-refresh-view",()=>render());
-db.auth.getUser().then(r=>showApp(r.data.user||null)).catch(fail);
+checkMfaAccess();
+setInterval(()=>{if(state.user&&!document.hidden)checkMfaAccess();},30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)checkMfaAccess();});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js",{scope:"./",updateViaCache:"none"}).catch(console.warn);

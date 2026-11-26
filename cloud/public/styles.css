@@ -544,3 +544,5 @@ dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
 
 /* Visually separate the independent reminder quick choices. */
 .tp-remind-field{border-top:1px solid #3d4657;padding-top:14px;margin-top:9px}
+
+#mfa-panel{display:grid;gap:12px}#mfa-panel.hidden{display:none}#mfa-panel #mfa-qr{display:block;margin:12px auto;background:#fff;border:8px solid #fff;border-radius:12px;max-width:100%;height:auto}#mfa-secret{display:block;overflow-wrap:anywhere;user-select:all;padding:12px;background:#251c34;border-radius:8px}#mfa-code{font-size:1.5rem;letter-spacing:.2em;text-align:center}#mfa-panel form{display:grid;gap:12px}#mfa-panel form.hidden{display:none}
