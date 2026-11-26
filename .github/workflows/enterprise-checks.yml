@@ -31,6 +31,7 @@ jobs:
           node cloud/tests/due-presets-smoke.mjs
           node cloud/tests/vice-city-theme-smoke.mjs
           node cloud/tests/neon-menu-icons-smoke.mjs
+          node cloud/tests/ticket-submenu-smoke.mjs
 
   database:
     runs-on: ubuntu-latest

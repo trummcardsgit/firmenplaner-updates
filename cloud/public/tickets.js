@@ -4,6 +4,7 @@ export function filterTickets(tickets,candidates,uid,tab,firm="",status="",searc
  const pending=new Set(candidates.filter(c=>c.user_id===uid&&c.response==="pending").map(c=>String(c.ticket_id)));
  return tickets.filter(t=>(tab==="all"||tab==="my"&&t.assignee_id===uid||tab==="open"&&t.status==="open"&&pending.has(String(t.id)))&&(!firm||String(t.company_id)===firm)&&(!status||t.status===status)&&(!search||(t.title+" "+t.description+" "+t.id).toLowerCase().includes(search.toLowerCase())));
 }
+export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
 export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  let data=null,tab="all",firm="",status="",search="",busy=false,epoch=0,focusId="",polling=false;
  const pageSize=500;
@@ -14,7 +15,31 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  const date=s=>s?new Date(s).toLocaleString("de-AT"):"";
  const options=(o,val)=>Object.entries(o).map(([k,v])=>'<option value="'+esc(k)+'"'+(String(val)===k?" selected":"")+'>'+esc(v)+'</option>').join("");
  const memberOptions=()=>data.members.filter(m=>m.active).map(m=>'<label class="tp-ticket-check"><input type="checkbox" name="candidate" value="'+esc(m.user_id)+'"> '+esc(m.display_name)+'</label>').join("");
- function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="";search="";busy=false}
+ function count(category){return data?filterTickets(data.tickets,data.candidates,uid(),category).length:null}
+ function syncMenu(){
+  document.querySelectorAll("[data-ticket-category]").forEach(button=>{
+   const key=button.dataset.ticketCategory;
+   button.setAttribute("aria-pressed",String(tab===key));
+   button.classList.toggle("active",tab===key);
+   const n=button.querySelector(".tp-ticket-subnav-count");
+   if(n)n.textContent=String(count(key)??"–");
+  });
+ }
+ function setMenuVisible(visible){
+  const menu=document.getElementById("tp-ticket-subnav");
+  if(menu)menu.hidden=!visible;
+  document.querySelector('#nav [data-view="tickets"]')?.setAttribute("aria-expanded",String(visible));
+  syncMenu();
+ }
+ function selectCategory(key){
+  if(!ticketCategories.some(([id])=>id===key)||!root()||busy)return;
+  tab=key;firm="";status="";search="";focusId="";draw();syncMenu();
+ }
+ document.getElementById("tp-ticket-subnav")?.addEventListener("click",e=>{
+  const button=e.target.closest("[data-ticket-category]");
+  if(button)selectCategory(button.dataset.ticketCategory);
+ });
+ function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="";search="";busy=false;setMenuVisible(false)}
  async function read(background=false){
   const u=uid(),token=++epoch;if(!u)return;
   const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
@@ -42,7 +67,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   const next=Object.fromEntries(results.map((r,i)=>[keys[i],r]));
   const changed=JSON.stringify(data)!==JSON.stringify(next);
   if(background&&(busy||root()?.querySelector('dialog[open]')||root()?.contains(document.activeElement)&&document.activeElement?.matches('input,textarea,select,summary')))return;
-  data=next;
+  data=next;syncMenu();
   if(!background||changed){
    if(background&&(busy||root()?.querySelector("dialog[open]")||root()?.contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary")))return;
    const expanded=[...root()?.querySelectorAll("article details[open]")||[]].map(d=>d.closest("article")?.dataset.ticketId);
@@ -52,12 +77,12 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  }
  function page(){return '<section id="tp-ticket-root" class="tp-ticket-center"><p>Tickets werden geladen …</p></section>'}
  function error(e){if(root())root().innerHTML='<div class="tp-ticket-panel"><p>Ticket-Center nicht verfügbar. Die Enterprise-Datenbank muss eingerichtet sein.</p><button type="button" id="tp-ticket-retry">Erneut laden</button></div>';document.getElementById("tp-ticket-retry")?.addEventListener("click",()=>open());fail(e)}
- function open(id=""){if(id){focusId=String(id);tab="all";firm="";status="";search=""}if(data)draw();read().catch(error)}
+ function open(id=""){if(id){focusId=String(id);tab="all";firm="";status="";search=""}syncMenu();if(data)draw();return read().catch(error)}
  function draw(){
   const el=root();if(!el||!data)return;
   const list=filterTickets(data.tickets,data.candidates,uid(),tab,firm,status,search);
-  const count=t=>filterTickets(data.tickets,data.candidates,uid(),t).length;
-  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>Ticket-Center</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-tabs">'+[["all","All Tickets"],["my","My Tickets"],["open","Open Tickets"]].map(([k,n])=>'<button type="button" data-tp-tab="'+k+'" aria-pressed="'+(tab===k)+'">'+n+' <b>'+count(k)+'</b></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button></div></div>'+
+  const categoryLabel=ticketCategories.find(([key])=>key===tab)?.[1]||"All Tickets";
+  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+ticketCategories.map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button></div></div>'+
   (data.notifications.length?'<details class="tp-ticket-panel"><summary>Benachrichtigungen ('+data.notifications.filter(n=>!n.read_at).length+' ungelesen)</summary><button type="button" data-tp-action="read-notifications">Alle als gelesen markieren</button>'+data.notifications.slice(0,20).map(n=>'<p>'+esc(n.message)+' <small>'+esc(date(n.created_at))+'</small></p>').join("")+'</details>':'')+
   '<div class="tp-ticket-list">'+(list.map(t=>{
    const cs=data.candidates.filter(c=>String(c.ticket_id)===String(t.id));
@@ -69,7 +94,8 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
    return '<article data-ticket-id="'+esc(t.id)+'" class="tp-ticket-panel tp-ticket-card '+esc(t.priority)+'"><div class="tp-ticket-head"><small>#'+esc(t.id)+' · '+esc(company(t.company_id))+'</small><span class="tp-ticket-priority">'+esc(priorities[t.priority]||t.priority)+'</span></div><h3>'+esc(t.title)+'</h3><p class="tp-ticket-description">'+esc(t.description)+'</p><div class="tp-ticket-meta"><b>'+esc(statuses[t.status]||t.status)+'</b><span>Erstellt von: '+esc(name(t.creator_id))+'</span><span>'+esc(date(t.created_at))+'</span>'+(t.assignee_id?'<span>Bearbeiter: '+esc(name(t.assignee_id))+'</span>':'')+'</div><details><summary>Zuweisungen und Verlauf</summary>'+cs.map(c=>'<p>'+esc(name(c.user_id))+' · '+esc(({pending:"Wartet",accepted:"Angenommen",declined:"Abgelehnt",withdrawn:"Anderweitig vergeben"})[c.response]||c.response)+'</p>').join("")+events.map(e=>'<div class="tp-ticket-event"><small>'+esc(date(e.created_at))+' · '+esc(e.actor_id?name(e.actor_id):"System")+' · '+esc(({created:"Erstellt",accepted:"Angenommen",declined:"Abgelehnt",closed:"Abgeschlossen",comment:"Kommentar",five_day_reminder:"5-Tage-Erinnerung"})[e.kind]||e.kind)+'</small><p>'+esc(e.message)+'</p></div>').join("")+'</details>'+(t.resolution?'<div class="tp-ticket-resolution"><b>Lösung</b><p>'+esc(t.resolution)+'</p></div>':'')+'<div class="tp-ticket-actions">'+(can?'<button type="button" data-tp-action="accept" data-id="'+esc(t.id)+'">✓ Annehmen</button><button type="button" data-tp-action="decline" data-id="'+esc(t.id)+'">× Ablehnen</button>':'')+(finish?'<button type="button" data-tp-action="close" data-id="'+esc(t.id)+'">Ticket abschließen</button>':'')+(t.status==="accepted"&&t.assignee_id===uid()?'<button type="button" data-tp-action="task" data-id="'+esc(t.id)+'" '+(imported?'disabled':'')+'>'+(imported?'Als Aufgabe übernommen':'Als Aufgabe übernehmen')+'</button>':'')+(t.status==="closed"&&(t.assignee_id===uid()||isAdmin())?'<button type="button" data-tp-action="publish" data-id="'+esc(t.id)+'">Lösung veröffentlichen</button>':'')+(comment?'<button type="button" data-tp-action="comment" data-id="'+esc(t.id)+'">Kommentar</button>':'')+((t.status!=="closed"&&(t.creator_id===uid()||t.assignee_id===uid()||isAdmin()))?'<button type="button" data-tp-action="reassign" data-id="'+esc(t.id)+'">Weiterleiten</button>':'')+'<button type="button" data-tp-action="files" data-id="'+esc(t.id)+'">Anhänge</button>'+'</div></article>';
   }).join("")||'<p class="tp-ticket-panel">Keine Tickets in dieser Ansicht.</p>')+'</div><dialog id="tp-ticket-dialog" class="tp-ticket-dialog"></dialog>';
   if(focusId){const match=[...el.querySelectorAll("[data-ticket-id]")].find(x=>x.dataset.ticketId===focusId);if(match){match.scrollIntoView({block:"center"});focusId=""}}
-  el.querySelectorAll("[data-tp-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tpTab;draw()});
+  el.querySelectorAll("[data-ticket-category]").forEach(b=>b.onclick=()=>selectCategory(b.dataset.ticketCategory));
+  syncMenu();
   el.querySelector("#tp-ticket-firm").onchange=e=>{firm=e.target.value;draw()};
   el.querySelector("#tp-ticket-status").onchange=e=>{status=e.target.value;draw()};
   el.querySelector("#tp-ticket-search").oninput=e=>{search=e.target.value;const p=e.target.selectionStart;draw();const input=root()?.querySelector("#tp-ticket-search");input?.focus();input?.setSelectionRange(p,p)};
@@ -125,5 +151,5 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   polling=true;try{await read(true)}catch(e){console.warn("Ticket refresh failed",e)}finally{polling=false}
  }
  setInterval(poll,15000);
- return {page,open,reset,poll};
+ return {page,open,reset,poll,setMenuVisible};
 }
