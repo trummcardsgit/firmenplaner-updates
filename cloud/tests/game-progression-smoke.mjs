@@ -17,7 +17,7 @@ assert.ok(doc.getElementById("tp-prestige-confirm"));
 assert.ok(doc.getElementById("tp-xp-reward"));
 assert.match(sw,/game-progression\.js/);
 assert.match(sw,/game-progression\.css/);
-assert.match(sw,/v1\.8\.0/);
+assert.match(sw,/v2\.0\.0-dev\.3/);
 assert.match(app,/db\.from\("tp_game_profiles"\)/);
 assert.match(app,/db\.from\("tp_game_xp_events"\)/);
 assert.match(app,/db\.rpc\("tp_game_enter_prestige"\)/);

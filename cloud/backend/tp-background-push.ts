@@ -124,7 +124,29 @@ Deno.serve(async req=>{
           await admin.from("tp_entries").update({reminder_sent_at:null}).eq("id",task.entry_id).eq("status","open");
         }
       }
-      return response({ok:true,...stats});
+      // The existing server-side cron also dispatches ticket events.
+      const reminder=await admin.rpc("tp_ticket_remind");
+      if(reminder.error)throw reminder.error;
+      const queue=await admin.rpc("tp_ticket_claim_notifications",{p_limit:50});
+      if(queue.error)throw queue.error;
+      const ticketStats={reminders:reminder.data||0,delivered:0,failed:0};
+      for(const item of queue.data||[]){
+        try{
+          const member=await admin.from("tp_members").select("active").eq("user_id",item.recipient_id).maybeSingle();
+          if(member.error)throw member.error;
+          const sent=member.data?.active?await sendToUser(pushServer,admin,item.recipient_id,{
+            title:"TrummPlaner: Ticket",body:item.message,tag:"tp-ticket-event-"+item.id,
+            url:appUrl+"?ticket="+encodeURIComponent(item.ticket_id)
+          }):{sent:0,failed:0,subscribers:0,removed:0};
+          ticketStats.delivered+=sent.sent;ticketStats.failed+=sent.failed;
+          // Keep the in-app notification even when the user has no subscribed device.
+          if(sent.sent>0||sent.subscribers===0||sent.removed===sent.subscribers){
+            const done=await admin.from("tp_ticket_notifications").update({delivered_at:new Date().toISOString(),lease_until:null}).eq("id",item.id);
+            if(done.error)throw done.error;
+          }
+        }catch(e){ticketStats.failed++;console.error("Ticket push failed",String(e).slice(0,180));}
+      }
+      return response({ok:true,...stats,tickets:ticketStats});
     }
     return response({error:"Unknown action"},400);
   }catch(err){
