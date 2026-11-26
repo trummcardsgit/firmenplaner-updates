@@ -1,24 +1,28 @@
-const CACHE="trummplaner-pwa-v1.8.0";
+const SCOPE=new URL(self.registration.scope);
+const CACHE_PREFIX="tp-cache:"+SCOPE.pathname+":";
+const CACHE=CACHE_PREFIX+"v1.8.0-isolation.1";
+const ownURL=value=>{try{const u=new URL(value,SCOPE);return u.origin===SCOPE.origin&&u.pathname.startsWith(SCOPE.pathname)?u.href:SCOPE.href;}catch{return SCOPE.href;}};
+const ownRequest=value=>{try{const u=new URL(value);return u.origin===SCOPE.origin&&u.pathname.startsWith(SCOPE.pathname);}catch{return false;}};
 const ASSETS=["./trophies.js","./icons/trophies/manifest.json","./icons/trophies/trophy-1.svg","./icons/trophies/trophy-2.svg","./icons/trophies/trophy-3.svg","./icons/trophies/trophy-4.svg","./icons/trophies/trophy-5.svg","./icons/trophies/trophy-6.svg","./icons/trophies/trophy-7.svg","./icons/trophies/trophy-8.svg","./icons/trophies/trophy-9.svg","./icons/trophies/trophy-10.svg","./icons/trophies/trophy-11.svg","./icons/trophies/trophy-12.svg","./icons/trophies/trophy-13.svg","./icons/trophies/trophy-14.svg","./icons/trophies/trophy-15.svg","./icons/trophies/trophy-16.svg","./icons/trophies/trophy-17.svg","./icons/trophies/trophy-18.svg","./icons/trophies/trophy-19.svg","./icons/trophies/trophy-20.svg","./icons/trophies/trophy-21.svg","./icons/trophies/trophy-22.svg","./icons/trophies/trophy-23.svg","./icons/trophies/trophy-24.svg","./icons/trophies/trophy-25.svg","./icons/trophies/trophy-26.svg","./icons/trophies/trophy-27.svg","./icons/trophies/trophy-28.svg","./icons/trophies/trophy-29.svg","./icons/trophies/trophy-30.svg","./icons/trophies/trophy-31.svg","./icons/trophies/trophy-32.svg","./icons/trophies/trophy-33.svg","./icons/trophies/trophy-34.svg","./icons/trophies/trophy-35.svg","./icons/trophies/trophy-36.svg","./icons/trophies/trophy-37.svg","./icons/trophies/trophy-38.svg","./icons/trophies/trophy-39.svg","./icons/trophies/trophy-40.svg","./icons/trophies/trophy-41.svg","./icons/trophies/trophy-42.svg","./icons/trophies/trophy-43.svg","./icons/trophies/trophy-44.svg","./icons/trophies/trophy-45.svg","./icons/trophies/trophy-46.svg","./icons/trophies/trophy-47.svg","./icons/trophies/trophy-48.svg","./icons/trophies/trophy-49.svg","./icons/trophies/trophy-50.svg","./icons/hd-dashboard.svg","./icons/hd-tasks.svg","./icons/hd-notes.svg","./icons/hd-solutions.svg","./icons/hd-projects.svg","./icons/hd-documents.svg","./icons/hd-companies.svg","./icons/hd-settings.svg","./icons/hd-career.svg","./","./index.html","./styles.css","./vice-city-theme.css","./game-progression.css","./game-progression.js","./app.js","./due-presets.js","./extended.js","./task-projects.js","./table-editor.js","./dictation.js","./config.js","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/logo-full.webp","./icons/nav-vicecity.webp","./icons/nav-dashboard.webp","./icons/nav-tasks.webp","./icons/nav-notes.webp","./icons/nav-career.webp","./icons/nav-solutions.webp","./icons/nav-projects.webp","./icons/nav-documents.webp","./icons/nav-companies.webp","./icons/nav-settings.webp","./icons/prestige-1.webp","./icons/prestige-2.webp","./icons/prestige-3.webp","./icons/prestige-4.webp","./icons/prestige-5.webp","./icons/prestige-6.webp","./icons/prestige-7.webp","./icons/prestige-8.webp","./icons/prestige-9.webp","./icons/prestige-10.webp","./icons/prestige-master.webp"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate",event=>{
- event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+ event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith(CACHE_PREFIX)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 self.addEventListener("fetch",event=>{
  const req=event.request;
- if(req.method!=="GET" || new URL(req.url).origin!==location.origin)return;
+ if(req.method!=="GET" || !ownRequest(req.url))return;
  // OAuth callback URLs include one-time codes. Never save query strings in Cache Storage.
  const u=new URL(req.url);
- if(req.mode==="navigate" && u.search){
-  event.respondWith(fetch(req,{cache:"no-store"}).catch(()=>caches.match("./index.html")));
+ if(u.search){
+  event.respondWith(fetch(req,{cache:"no-store"}).catch(()=>req.mode==="navigate"?caches.open(CACHE).then(cache=>cache.match(new URL("./index.html",SCOPE).href)):Response.error()));
   return;
  }
- event.respondWith(fetch(req).then(res=>{
-  if(res.ok){const copy=res.clone();caches.open(CACHE).then(cache=>cache.put(req,copy));}
-  return res;
- }).catch(()=>caches.match(req)));
+ event.respondWith((async()=>{
+  try{const res=await fetch(req);if(res.ok){try{await (await caches.open(CACHE)).put(req,res.clone());}catch{}}return res;}
+  catch{return await (await caches.open(CACHE)).match(req)||Response.error();}
+ })());
 });
 self.addEventListener("push",event=>{
  let payload={};
@@ -33,18 +37,18 @@ self.addEventListener("push",event=>{
  event.waitUntil(self.registration.showNotification(title,{
   body:String(payload.body||"Du hast eine Aufgabe.").slice(0,300),
   icon:"./icons/icon-192.png",badge:"./icons/icon-192.png",
-  tag:String(payload.tag||"trummplaner-reminder"),
+  tag:CACHE_PREFIX+String(payload.tag||"reminder"),
   timestamp:Date.now(),
   data:{url}
  }));
 });
 self.addEventListener("notificationclick",event=>{
  event.notification.close();
- const url=event.notification.data?.url||self.registration.scope;
+ const url=ownURL(event.notification.data?.url||SCOPE.href);
  event.waitUntil((async()=>{
   const windows=await clients.matchAll({type:"window",includeUncontrolled:true});
   for(const client of windows){
-   if(new URL(client.url).origin===new URL(url).origin){
+   if(ownRequest(client.url)){
     if("navigate" in client) await client.navigate(url).catch(()=>{});
     return client.focus();
    }

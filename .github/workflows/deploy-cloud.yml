@@ -30,6 +30,7 @@ jobs:
           node --check cloud/public/dictation.js
           node --check cloud/public/due-presets.js
           node --check cloud/public/sw.js
+          node cloud/tests/pwa-isolation-smoke.mjs
           node -e "JSON.parse(require('fs').readFileSync('cloud/public/manifest.webmanifest','utf8'))"
       - name: Word-Dokumente und Formatierungen testen
         run: |
