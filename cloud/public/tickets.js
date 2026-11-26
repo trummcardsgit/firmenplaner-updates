@@ -68,7 +68,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  });
  function reset(){epoch++;prefsGeneration++;preferences=new Map();prefsReady=false;prefsSaving=false;restorePending=true;focusId="";data=null;tab="all";firm="";status="open";search="";busy=false;setMenuVisible(false)}
  async function read(background=false){
-  const u=uid(),token=++epoch;if(!u)return;
+  const u=uid(),token=++epoch;if(!u)return;const filterRevision=prefsGeneration;
   const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
   const keys=["tickets","candidates","members","companies","events","notifications","taskLinks"];
   const results=await Promise.all(names.map(async n=>{
@@ -96,13 +96,14 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
    try{
     const p=await db.from("tp_ticket_filter_preferences").select("category,company_filter,status_filter,search_filter").eq("owner_id",u).range(0,2);
     if(token!==epoch||uid()!==u)return;
+    if(filterRevision!==prefsGeneration||prefsSaving)return;
     if(p.error)throw p.error;
     preferences=readTicketFilters(p.data,next.companies);prefsReady=true;
    }catch(e){if(token!==epoch||uid()!==u)return;prefsReady=false;console.warn("Ticketfilter konnten nicht geladen werden",e);}
   }
   const changed=JSON.stringify(data)!==JSON.stringify(next);
   if(background&&(busy||root()?.querySelector('dialog[open]')||root()?.contains(document.activeElement)&&document.activeElement?.matches('input,textarea,select,summary')))return;
-  data=next;if(restorePending){restoreFilters();restorePending=false;}syncMenu();
+  data=next;if(restorePending){restoreFilters();restorePending=!prefsReady;}syncMenu();
   if(!background||changed){
    if(background&&(busy||root()?.querySelector("dialog[open]")||root()?.contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary")))return;
    const expanded=[...root()?.querySelectorAll("article details[open]")||[]].map(d=>d.closest("article")?.dataset.ticketId);

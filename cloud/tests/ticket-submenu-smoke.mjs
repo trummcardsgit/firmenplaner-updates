@@ -6,8 +6,15 @@ const dom=new JSDOM(readFileSync(new URL("../public/index.html",import.meta.url)
 globalThis.document=dom.window.document;
 const timer=globalThis.setInterval;globalThis.setInterval=()=>0;
 const data={tp_tickets:[{id:1,title:"One",description:"A",status:"open",company_id:"c"},{id:2,title:"Two",description:"B",status:"accepted",assignee_id:"u",company_id:"c"},{id:3,title:"Three",description:"C",status:"open",company_id:"c"}],tp_ticket_candidates:[{ticket_id:1,user_id:"u",response:"pending"}],tp_companies:[{id:"c",name:"Firma"}],tp_members:[{user_id:"u",active:true,display_name:"Test"}]};
-const db={from(table){const query={select(){return this},eq(){return this},order(){return this},async range(){return {data:data[table]||[]}}};return query}};
-const center=createTicketCenter({db,userId:()=>"u",isAdmin:()=>false,notice(){},fail(e){throw e}});
+const prefs=new Map();let currentUser="u";
+const db={from(table){
+ if(table==="tp_ticket_filter_preferences"){
+  let row=null,remove=false,filters={};
+  return {select(){if(remove){prefs.delete(filters.owner_id+":"+filters.category);return Promise.resolve({data:[]})}return this},eq(k,v){filters[k]=v;return this},async range(){return {data:[...prefs.values()].filter(r=>r.owner_id===filters.owner_id)}},upsert(v){row=v;return this},async single(){prefs.set(row.owner_id+":"+row.category,row);return {data:{category:row.category}}},delete(){remove=true;return this}};
+ }
+ return {select(){return this},eq(){return this},order(){return this},async range(){return {data:data[table]||[]}}};
+}};
+const center=createTicketCenter({db,userId:()=>currentUser,isAdmin:()=>false,notice(){},fail(e){throw e}});
 globalThis.setInterval=timer;
 const nav=document.getElementById("tp-ticket-subnav");
 const selectedStatus=()=>document.querySelector("#tp-ticket-status").value;
@@ -56,3 +63,16 @@ center.setMenuVisible(true);await center.open();assert.equal(selectedStatus(),"o
 center.setMenuVisible(false);
 center.reset();assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["–","–","–"]);
 console.log("Ticket submenu: order, navigation, counts, refresh, mobile and reset passed");
+
+document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();
+const selectTab=k=>nav.querySelector('[data-ticket-category="'+k+'"]').click();
+const save=async()=>await document.querySelector('[data-tp-action="save-filter"]').onclick();
+chooseStatus("");await save();assert.equal(prefs.get("u:all").status_filter,"");
+selectTab("open");chooseStatus("open");await save();
+selectTab("my");chooseStatus("closed");await save();assert.equal(prefs.get("u:my").status_filter,"closed");
+selectTab("all");assert.equal(selectedStatus(),"");selectTab("my");assert.equal(selectedStatus(),"closed");
+center.setMenuVisible(false);center.setMenuVisible(true);await center.open();assert.equal(selectedStatus(),"closed");
+center.reset();document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();assert.equal(selectedStatus(),"");
+selectTab("my");assert.equal(selectedStatus(),"closed");await document.querySelector('[data-tp-action="reset-filter"]').onclick();assert.equal(selectedStatus(),"open");assert.equal(prefs.has("u:my"),false);
+center.reset();currentUser="another";document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();assert.equal(selectedStatus(),"open");
+console.log("Saved filters: independent categories, reopen, sign-in, reset and user separation passed");
