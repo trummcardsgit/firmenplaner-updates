@@ -1,6 +1,7 @@
 // Build a separate staging ZIP directory. Never modify the production checkout.
 import {cpSync,writeFileSync,mkdirSync,readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import {prepareVendor} from "./prepare-vendor.mjs";
 const out=resolve("cloud/staging-preview");
 const url=process.env.TP_STAGING_URL||"https://cpycfxolqpidfjbhhsmr.supabase.co";
 const key=process.env.TP_STAGING_PUBLISHABLE_KEY||"sb_publishable_oS2Ri8VlhEqv1XDBwkUahQ_zVEEtyHG";
@@ -13,7 +14,9 @@ cpSync("cloud/public",out,{recursive:true});
 writeFileSync(out+"/config.js","window.TRUMMPLANER_CONFIG = "+JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,staging:true})+";\n");
 let html=readFileSync(out+"/index.html","utf8").replace("<title>RHTFLOW</title>","<title>RHTFLOW 2.0 – TEST</title>");
 html=html.replace('<div id="setup-warning" class="warning hidden">Die Supabase-Verbindung wurde noch nicht eingerichtet. Siehe README.md.</div>','<div class="warning">TESTVERSION – keine produktiven Daten verwenden.</div><div id="setup-warning" class="warning hidden">Die Test-Datenbank wurde noch nicht eingerichtet.</div>');
+html=html.replaceAll("ilmwoapvcluoravpsrjv.supabase.co","cpycfxolqpidfjbhhsmr.supabase.co");
 writeFileSync(out+"/index.html",html);
+await prepareVendor(out);
 const manifest=JSON.parse(readFileSync(out+"/manifest.webmanifest","utf8"));manifest.name="RHTFLOW 2.0 TEST";manifest.short_name="RHTFLOW TEST";writeFileSync(out+"/manifest.webmanifest",JSON.stringify(manifest,null,2));
 let worker=readFileSync(out+"/sw.js","utf8").replace('trummplaner-pwa-v2.0.0-dev.7','rhtflow-staging-v2.0.0-dev.7').replace('k.startsWith("trummplaner-pwa-v")||k.startsWith("rhtflow-pwa-v")','k.startsWith("trummplaner-staging-v")||k.startsWith("rhtflow-staging-v")');writeFileSync(out+"/sw.js",worker);
 console.log(url?"Staging build configured":"Staging build with login disabled until configured");

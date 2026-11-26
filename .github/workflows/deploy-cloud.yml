@@ -39,6 +39,7 @@ jobs:
         run: |
           python3 -m pip install --user Pillow==11.3.0
           python3 cloud/prepare-production-branding.py
+          node cloud/prepare-vendor.mjs cloud/public
           node cloud/verify-production-build.mjs
           for f in cloud/public/*.js; do node --check "$f"; done
           touch cloud/public/.nojekyll

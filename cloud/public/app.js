@@ -5,7 +5,7 @@ import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.
 import {createActivation} from "./activation.js";
 import {solutionDeleteButton,deleteSolution} from "./solution-admin.js";
 import {createRecovery} from "./recovery.js";
-import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
+
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
 import {createTaskProjectSelector} from "./task-projects.js";
@@ -70,6 +70,7 @@ async function changeShowcase(id){
  if(uid===state.user?.id&&epoch===showcaseEpoch)await syncShowcases();
 }
 function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>{b.disabled=showcaseBusy||!showcaseReady;b.onclick=()=>changeShowcase(Number(b.dataset.trophyFavorite))});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
+const {createClient}=globalThis.supabase;
 const cfg=window.TRUMMPLANER_CONFIG||{};
 if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.includes("ilmwoapvcluoravpsrjv"))){
  document.getElementById("setup-warning")?.classList.remove("hidden");

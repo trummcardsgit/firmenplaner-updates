@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {verifyVendor} from './prepare-vendor.mjs';
 const root='cloud/public';
 const file=path.join(root,'sw.js');
 const sw=fs.readFileSync(file,'utf8');
@@ -30,3 +31,5 @@ const ico=files.find(f=>/^\.\/icons\/rhtflow-taskbar-v2-[a-f0-9]+\.ico$/.test(f)
 if(!ico||!html.includes('href="'+ico+'"'))throw Error('Missing Windows ICO fallback');
 const icoBytes=fs.readFileSync(path.join(root,ico));if(icoBytes.readUInt16LE(0)!==0||icoBytes.readUInt16LE(2)!==1||icoBytes.readUInt16LE(4)<4)throw Error('Invalid Windows ICO');
 console.log('Verified new Windows taskbar icon URLs, ICO sizes and unchanged application identity');
+
+verifyVendor(root);

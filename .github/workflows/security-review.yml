@@ -1,0 +1,47 @@
+name: RHTFLOW security review (no deployment)
+on:
+  push:
+    branches: [security/rhtflow-browser-hardening]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node cloud/tests/security-published-baseline.mjs
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: trummcardsgit/rhtflow-test
+          ref: 4f0f45bfb8d79c5bc923548585f22e69976f2847
+          path: branding-source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing app tests and redirect regression
+        run: |
+          npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund --ignore-scripts docx@9.15.3 jsdom@26.1.0 jszip@3.10.1 playwright@1.58.2
+          for f in cloud/public/*.js; do node --check "$f"; done
+          for f in cloud/tests/*-smoke.mjs; do node "$f"; done
+          node cloud/tests/security-redirect.mjs
+      - name: Build production and TEST without publishing
+        run: |
+          node cloud/build-staging.mjs
+          python3 -m pip install --user Pillow==11.3.0
+          python3 cloud/prepare-production-branding.py
+          node cloud/prepare-vendor.mjs cloud/public
+          node cloud/verify-production-build.mjs
+          node cloud/tests/pwa-isolation-smoke.mjs cloud/staging-preview/sw.js
+      - name: Chromium CSP, SDK and PWA checks (mock auth and REST)
+        run: |
+          cloud/node_modules/.bin/playwright install --with-deps chromium
+          node cloud/tests/security-browser.mjs
