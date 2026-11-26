@@ -28,7 +28,18 @@ document.querySelector('.tp-ticket-mobile-subnav [data-ticket-category="all"]').
 assert.equal(document.querySelectorAll("[data-ticket-id]").length,3);
 data.tp_tickets.push({id:4,title:"Four",description:"D",status:"closed",assignee_id:"u",company_id:"c"});
 await center.open();
-assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["4","1","2"]);
+assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["3","1","1"]);
+// Closing an assigned ticket reduces both All and My, without hiding history.
+data.tp_tickets[1]={...data.tp_tickets[1],status:"closed"};
+await center.open();
+assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["2","1","0"]);
+assert.deepEqual([...document.querySelectorAll(".tp-ticket-mobile-subnav .tp-ticket-subnav-count")].map(b=>b.textContent),["2","1","0"]);
+assert.equal(document.querySelectorAll("[data-ticket-id]").length,4);
+nav.querySelector('[data-ticket-category="my"]').click();
+assert.equal(document.querySelectorAll("[data-ticket-id]").length,2);
+data.tp_tickets[0]={...data.tp_tickets[0],status:"rejected"};
+await center.open();
+assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["1","0","0"]);
 center.setMenuVisible(false);assert.equal(nav.hidden,true);
 center.reset();assert.deepEqual([...nav.querySelectorAll(".tp-ticket-subnav-count")].map(b=>b.textContent),["–","–","–"]);
 console.log("Ticket submenu: order, navigation, counts, refresh, mobile and reset passed");

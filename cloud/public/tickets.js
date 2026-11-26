@@ -4,6 +4,10 @@ export function filterTickets(tickets,candidates,uid,tab,firm="",status="",searc
  const pending=new Set(candidates.filter(c=>c.user_id===uid&&c.response==="pending").map(c=>String(c.ticket_id)));
  return tickets.filter(t=>(tab==="all"||tab==="my"&&t.assignee_id===uid||tab==="open"&&t.status==="open"&&pending.has(String(t.id)))&&(!firm||String(t.company_id)===firm)&&(!status||t.status===status)&&(!search||(t.title+" "+t.description+" "+t.id).toLowerCase().includes(search.toLowerCase())));
 }
+// Navigation counters represent outstanding work, not the historical list.
+export function countActiveTickets(tickets,candidates,uid,category){
+ return filterTickets(tickets,candidates,uid,category).filter(t=>t.status==="open"||t.status==="accepted").length;
+}
 export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
 export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  let data=null,tab="all",firm="",status="",search="",busy=false,epoch=0,focusId="",polling=false;
@@ -15,7 +19,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  const date=s=>s?new Date(s).toLocaleString("de-AT"):"";
  const options=(o,val)=>Object.entries(o).map(([k,v])=>'<option value="'+esc(k)+'"'+(String(val)===k?" selected":"")+'>'+esc(v)+'</option>').join("");
  const memberOptions=()=>data.members.filter(m=>m.active).map(m=>'<label class="tp-ticket-check"><input type="checkbox" name="candidate" value="'+esc(m.user_id)+'"> '+esc(m.display_name)+'</label>').join("");
- function count(category){return data?filterTickets(data.tickets,data.candidates,uid(),category).length:null}
+ function count(category){return data?countActiveTickets(data.tickets,data.candidates,uid(),category):null}
  function syncMenu(){
   document.querySelectorAll("[data-ticket-category]").forEach(button=>{
    const key=button.dataset.ticketCategory;
@@ -103,7 +107,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  }
  async function call(fn,args,button){
   if(busy)return;busy=true;const u=uid();if(button)button.disabled=true;
-  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");if(["tp_import_ticket_task","tp_close_ticket","tp_publish_ticket_solution","tp_reassign_ticket"].includes(fn)&&refreshApp){await refreshApp()}else await read()}
+  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");if(["tp_import_ticket_task","tp_close_ticket","tp_publish_ticket_solution","tp_reassign_ticket"].includes(fn)&&refreshApp){await refreshApp();if(uid()===u&&root())await read()}else await read()}
   catch(e){if(uid()===u){fail(e);if(fn==="tp_respond_ticket")await read().catch(error)}}
   finally{if(uid()===u){busy=false;if(button)button.disabled=false}}
  }
