@@ -5,6 +5,8 @@ import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
+import {createTicketCenter} from "./tickets.js";
+
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
 const trophyKey=()=> "tp-trophy-prefs-"+state.user?.id;
 function readTrophyPrefs(){try{const p=JSON.parse(localStorage.getItem(trophyKey())||"{}");trophyFavorites=Array.isArray(p.favorites)?p.favorites.filter(Number.isInteger).slice(0,3):[];trophySound=p.sound===true}catch{trophyFavorites=[];trophySound=false}}
@@ -13,6 +15,7 @@ async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const 
 function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.onclick=()=>{const next=toggleFavorite(trophyFavorites,Number(b.dataset.trophyFavorite),trophyItems);if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei Trophäen.");return}trophyFavorites=next;saveTrophyPrefs();redraw()});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
 const cfg=window.TRUMMPLANER_CONFIG||{};
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail});
 const $=id=>document.getElementById(id);
 let inviteFlow=new URLSearchParams(location.hash.slice(1)).get("type")==="invite";
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
@@ -99,7 +102,7 @@ async function load(){
  await syncTrophies();
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){ticketCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -190,10 +193,11 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+admin+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;const names={dashboard:"Übersicht",career:"Karriere",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career"].includes(state.view)?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+function render(){if(!state.user)return;const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets"].includes(state.view)?"none":"block";
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)):state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career")bindTrophies();
+if(state.view==="tickets")ticketCenter.open();
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
 const filter=$("status-filter");if(filter){filter.value=state.filter;filter.addEventListener("change",e=>{state.filter=e.target.value;render()})}
 const firmFilter=$("task-company-filter");if(firmFilter){firmFilter.value=features.taskCompany;firmFilter.addEventListener("change",e=>{

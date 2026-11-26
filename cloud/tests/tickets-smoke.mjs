@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import {filterTickets} from "../public/tickets.js";
+const tickets=[{id:1,company_id:1,status:"open",title:"VPN",description:"Test"},{id:2,company_id:2,status:"accepted",assignee_id:"a",title:"Drucker",description:"Test"},{id:3,company_id:1,status:"accepted",assignee_id:"b",title:"Netz",description:"Test"},{id:4,company_id:2,status:"open",title:"PC",description:"Test"}];
+const candidates=[{ticket_id:1,user_id:"a",response:"pending"},{ticket_id:3,user_id:"a",response:"withdrawn"},{ticket_id:4,user_id:"a",response:"declined"}];
+assert.deepEqual(filterTickets(tickets,candidates,"a","all").map(t=>t.id),[1,2,3,4]);
+assert.deepEqual(filterTickets(tickets,candidates,"a","my").map(t=>t.id),[2]);
+assert.deepEqual(filterTickets(tickets,candidates,"a","open").map(t=>t.id),[1]);
+assert.deepEqual(filterTickets(tickets,candidates,"a","all","2").map(t=>t.id),[2,4]);
+assert.deepEqual(filterTickets(tickets,candidates,"a","all","","accepted","drucker").map(t=>t.id),[2]);
+assert.deepEqual(filterTickets(tickets.map(t=>t.id===1?{...t,status:"accepted",assignee_id:"b"}:t),candidates,"a","open"),[]);
+console.log("Ticket filtering smoke tests passed");
