@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');const assert=require('node:assert/strict');
 const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
-const {validateRepo,compareVersions,packZip,unpackZip,getFiles,sha256,applyUpdate,latestRelease}=require('../update-core');
+const {validateRepo,getTrustedUpdateRepo,assertTrustedUpdateRepo,compareVersions,packZip,unpackZip,getFiles,sha256,applyUpdate,latestRelease}=require('../update-core');
 const root=path.resolve(__dirname,'..');
 test('versions and safe repositories',()=>{
   assert.equal(compareVersions('1.1.0','1.0.9'),1);
@@ -10,6 +10,16 @@ test('versions and safe repositories',()=>{
   assert.equal(validateRepo('meinname/FirmenPlaner'),'meinname/FirmenPlaner');
   assert.throws(()=>validateRepo('https://evil.com'),/Repository/);
   assert.throws(()=>validateRepo('foo/../bar'),/Repository/);
+});
+test('update publisher is pinned outside browser settings',()=>{
+  const official=getTrustedUpdateRepo({});
+  assert.equal(official,'trummcardsgit/firmenplaner-updates');
+  assert.equal(getTrustedUpdateRepo({FIRMENPLANER_UPDATE_REPO:'example/FirmenPlaner'}),'example/FirmenPlaner');
+  assert.equal(assertTrustedUpdateRepo(undefined,official),official);
+  assert.equal(assertTrustedUpdateRepo(official,official),official);
+  assert.throws(()=>assertTrustedUpdateRepo('attacker/release',official),/Administrator/);
+  assert.throws(()=>assertTrustedUpdateRepo({repo:official},official),/Administrator/);
+  assert.throws(()=>getTrustedUpdateRepo({FIRMENPLANER_UPDATE_REPO:'https://evil.example/release'}),/Repository/);
 });
 test('release archive includes program, no user data and CRC verification',()=>{
   const zip=packZip(getFiles(root)),entries=unpackZip(zip);

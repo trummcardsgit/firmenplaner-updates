@@ -1,19 +1,19 @@
 'use strict';
-// Launches FirmenPlaner, checks signed-in user's configured GitHub Releases,
+// Launches FirmenPlaner, checks the administrator-configured GitHub Releases,
 // downloads + verifies updates, backs up the old program, and restarts server.
 const fs=require('node:fs');
 const path=require('node:path');
 const {fork}=require('node:child_process');
-const {validateRepo,compareVersions,latestRelease,fetchBytes,sha256,applyUpdate}=require('./update-core');
+const {getTrustedUpdateRepo,assertTrustedUpdateRepo,compareVersions,latestRelease,fetchBytes,sha256,applyUpdate}=require('./update-core');
 const ROOT=__dirname;
 const DATA_DIR=path.resolve(process.env.DATA_DIR||path.join(ROOT,'data'));
 const CONFIG=path.join(DATA_DIR,'update-settings.json');
+const TRUSTED_UPDATE_REPO=getTrustedUpdateRepo();
 fs.mkdirSync(DATA_DIR,{recursive:true});
-let settings={repo:'trummcardsgit/firmenplaner-updates',autoOnStart:true};
+let settings={autoOnStart:true};
 if(fs.existsSync(CONFIG)) {
   try {const s=JSON.parse(fs.readFileSync(CONFIG,'utf8'));
-    if(typeof s.repo==='string'&&s.repo) validateRepo(s.repo);
-    settings={repo:s.repo||'trummcardsgit/firmenplaner-updates',autoOnStart:s.autoOnStart!==false};
+    settings={autoOnStart:s.autoOnStart!==false};
   }catch(e){console.error('[Update] Einstellungen fehlerhaft:',e.message);}
 }
 const currentVersion=()=>JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8')).version;
@@ -21,7 +21,7 @@ let latest=null, checking=null, installing=false, serverChild=null, stopping=fal
 let status={phase:'idle',lastChecked:null,message:'Noch nicht geprüft'};
 function saveSettings(){const temp=CONFIG+'.tmp';fs.writeFileSync(temp,JSON.stringify(settings,null,2)+'\n',{mode:0o600});fs.renameSync(temp,CONFIG);}
 function publicStatus(){return {
-  managed:true,version:currentVersion(),repo:settings.repo,autoOnStart:settings.autoOnStart,
+  managed:true,version:currentVersion(),repo:TRUSTED_UPDATE_REPO,autoOnStart:settings.autoOnStart,
   availableVersion:latest&&compareVersions(latest.version,currentVersion())>0?latest.version:null,
   phase:status.phase,message:status.message,lastChecked:status.lastChecked,
   busy:installing||Boolean(checking)
@@ -29,11 +29,10 @@ function publicStatus(){return {
 async function checkUpdates(){
   if(checking){await checking;return publicStatus();}
   if(installing)throw new Error('Update wird gerade installiert');
-  if(!settings.repo){latest=null;status={phase:'not-configured',lastChecked:null,message:'Bitte einmalig ein GitHub-Repository als Updatequelle eintragen.'};return publicStatus();}
   checking=(async()=>{
     status.phase='checking';status.message='Suche nach neuen Versionen ...';
     try{
-      const release=await latestRelease(settings.repo);
+      const release=await latestRelease(TRUSTED_UPDATE_REPO);
       latest=release;status.lastChecked=new Date().toISOString();
       const newer=compareVersions(release.version,currentVersion())>0;
       status.phase=newer?'available':'current';
@@ -86,12 +85,12 @@ async function handleRequest(child,message){
     if(action==='check'){const result=await checkUpdates();return answer(child,id,result);}
     if(action==='config'){
       if(installing)throw new Error('Während eines Updates nicht möglich');
-      const repo=String(payload?.repo||'').trim();if(repo)validateRepo(repo);
+      assertTrustedUpdateRepo(payload?.repo,TRUSTED_UPDATE_REPO);
       if(typeof payload?.autoOnStart!=='boolean')throw new Error('Ungültige Update-Einstellungen');
-      settings={repo,autoOnStart:payload.autoOnStart};saveSettings();latest=null;
-      status={phase:repo?'idle':'not-configured',lastChecked:null,message:repo?'Updatequelle gespeichert.':'Keine Updatequelle eingerichtet.'};
+      settings={autoOnStart:payload.autoOnStart};saveSettings();latest=null;
+      status={phase:'idle',lastChecked:null,message:'Update-Einstellungen gespeichert.'};
       answer(child,id,publicStatus());
-      if(repo)void checkUpdates();return;
+      void checkUpdates();return;
     }
     if(action==='install'){
       if(installing)throw new Error('Ein Update läuft bereits.');
@@ -133,15 +132,15 @@ async function installUpdate(){
 }
 async function start(){
   // On normal Windows launch, optionally install a new release BEFORE opening the UI.
-  if(settings.repo&&settings.autoOnStart){
+  if(settings.autoOnStart){
     await checkUpdates();
     if(latest&&compareVersions(latest.version,currentVersion())>0){
       try{await installUpdate();}catch(e){console.error('[Update] Auto-Update:',e.message);}
     }
   }
   if(!serverChild)await startServer();
-  if(settings.repo&&!settings.autoOnStart)void checkUpdates();
-  setInterval(()=>{if(settings.repo&&!installing)void checkUpdates();},6*60*60*1000).unref();
+  if(!settings.autoOnStart)void checkUpdates();
+  setInterval(()=>{if(!installing)void checkUpdates();},6*60*60*1000).unref();
   console.log('[FirmenPlaner] Update-Manager aktiv. Version:',currentVersion());
 }
 process.on('SIGINT',()=>{shuttingDown=true;void stopServer().then(()=>process.exit(0));});
