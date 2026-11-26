@@ -1,4 +1,6 @@
 # Beispiel: Domain und Server-IP/Port anpassen. HTTPS-Zertifikat wird von Caddy beschafft.
+# Neue Instanzen zuerst lokal einrichten, bevor dieser Proxy öffentlich erreichbar ist.
+# Danach den Server mit APP_ORIGIN=https://aufgaben.beispiel.at und TRUST_PROXY=loopback starten.
 aufgaben.beispiel.at {
     encode zstd gzip
     reverse_proxy 127.0.0.1:4173

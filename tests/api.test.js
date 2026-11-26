@@ -7,21 +7,34 @@ const path=require('node:path');
 const datadir=fs.mkdtempSync(path.join(os.tmpdir(),'firmenplaner-test-'));
 process.env.DATA_DIR=datadir;
 const { server }=require('../server');
+const setupTokenPath=path.join(datadir,'firmenplaner-setup-token.txt');
+const setupToken=fs.readFileSync(setupTokenPath,'utf8').trim();
 
 test('single-user setup, login, firms, notes, tasks, export and delete',async t=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(()=>{server.close();fs.rmSync(datadir,{recursive:true,force:true});});
   const origin=`http://127.0.0.1:${server.address().port}`;
   let session='';
-  async function req(route,method='GET',body){
-    const res=await fetch(origin+route,{method,headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(session?{Cookie:session}:{})},body:body===undefined?undefined:JSON.stringify(body)});
-    if(res.headers.get('set-cookie'))session=res.headers.get('set-cookie').split(';')[0];
-    return {status:res.status,data:await res.json()};
+  async function req(route,method='GET',body,requestOrigin=origin,extraHeaders={}){
+    const res=await fetch(origin+route,{method,headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(requestOrigin?{Origin:requestOrigin}:{}),...(session?{Cookie:session}:{}),...extraHeaders},body:body===undefined?undefined:JSON.stringify(body)});
+    const setCookie=res.headers.get('set-cookie');
+    if(setCookie)session=setCookie.split(';')[0];
+    return {status:res.status,data:await res.json(),setCookie};
   }
   assert.equal((await req('/api/setup')).data.setupRequired,true);
   assert.equal((await req('/api/bootstrap')).status,401);
   assert.equal((await req('/api/setup','POST',{password:'123'})).status,400);
-  assert.equal((await req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!'})).status,201);
+  assert.equal((await req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!',setupToken},null)).status,403);
+  assert.equal((await req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!',setupToken},'http://evil.example',{Host:'evil.example'})).status,403);
+  assert.equal((await req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!',setupToken:'falsch'})).status,403);
+  const setupResults=await Promise.all([
+    req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!',setupToken}),
+    req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!',setupToken})
+  ]);
+  assert.deepEqual(setupResults.map(result=>result.status).sort(),[201,409]);
+  assert.equal(setupResults.filter(result=>result.setCookie).length,1);
+  assert.equal(fs.existsSync(setupTokenPath),false);
+  assert.equal((await req('/api/setup','POST',{password:'EinSehrSicheresPasswort123!'})).status,409);
   assert.equal((await req('/api/bootstrap')).status,200);
   const company=(await req('/api/companies','POST',{name:'Firma A',contact:'IT-Abteilung'})).data;
   assert.ok(company.id);

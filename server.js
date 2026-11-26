@@ -4,7 +4,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { URL } = require('node:url');
-const { createVapid, sendPush } = require('./push');
+const { createVapid, validatePushEndpoint, sendPush } = require('./push');
 // Update management runs in the parent process, never via user-submitted shell commands.
 const updaterRequests = new Map();
 process.on('message', message => {
@@ -36,6 +36,10 @@ const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'firmenplaner.json');
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '127.0.0.1';
+const SETUP_TOKEN_FILE = path.join(DATA_DIR, 'firmenplaner-setup-token.txt');
+const APP_ORIGIN = parseCanonicalOrigin(process.env.APP_ORIGIN);
+const TRUST_PROXY = process.env.TRUST_PROXY || 'none';
+if (!['none', 'loopback'].includes(TRUST_PROXY)) throw new Error('TRUST_PROXY muss "none" oder "loopback" sein');
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const attemptMap = new Map();
 let isChecking = false;
@@ -53,6 +57,7 @@ function persist() {
   fs.renameSync(tmp, DATA_FILE);
 }
 persist();
+let setupToken = loadOrCreateSetupToken();
 
 const iso = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
@@ -69,6 +74,49 @@ function passwordMatches(password, stored) {
   const given = crypto.scryptSync(password, salt, expected.length);
   return crypto.timingSafeEqual(expected, given);
 }
+function parseCanonicalOrigin(value) {
+  if (!value) return null;
+  let parsed;
+  try { parsed = new URL(value); }
+  catch { throw new Error('APP_ORIGIN muss eine vollständige HTTP- oder HTTPS-Origin sein'); }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    throw new Error('APP_ORIGIN darf nur Schema, Host und optional Port enthalten');
+  }
+  return parsed.origin;
+}
+function readSetupTokenFile() {
+  const token = fs.readFileSync(SETUP_TOKEN_FILE, 'utf8').trim();
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new Error(`Ungültiges Einrichtungstoken in ${SETUP_TOKEN_FILE}`);
+  return token;
+}
+function loadOrCreateSetupToken() {
+  if (db.user) {
+    fs.rmSync(SETUP_TOKEN_FILE, { force: true });
+    return null;
+  }
+  try { return readSetupTokenFile(); }
+  catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const token = crypto.randomBytes(32).toString('base64url');
+  try { fs.writeFileSync(SETUP_TOKEN_FILE, `${token}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' }); }
+  catch (error) {
+    if (error.code === 'EEXIST') return readSetupTokenFile();
+    throw error;
+  }
+  return token;
+}
+function setupTokenMatches(value) {
+  if (!setupToken || typeof value !== 'string') return false;
+  const expected = Buffer.from(sha(setupToken), 'hex');
+  const provided = Buffer.from(sha(value), 'hex');
+  return crypto.timingSafeEqual(expected, provided);
+}
+function consumeSetupToken() {
+  setupToken = null;
+  try { fs.rmSync(SETUP_TOKEN_FILE, { force: true }); }
+  catch (error) { console.error(`Einrichtungstoken konnte nicht gelöscht werden: ${error.message}`); }
+}
 function sendJson(res, status, data, extraHeaders = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders });
   res.end(JSON.stringify(data));
@@ -84,8 +132,8 @@ function getSession(req) {
   return db.sessions.find(s => s.hash === tokenHash && s.expiresAt > Date.now()) || null;
 }
 function cookieFor(req, token, maxAge) {
-  const forwardedHttps = req.headers['x-forwarded-proto'] === 'https';
-  const secure = Boolean(req.socket.encrypted || forwardedHttps);
+  const forwardedHttps = TRUST_PROXY === 'loopback' && isLoopback(req.socket.remoteAddress) && req.headers['x-forwarded-proto'] === 'https';
+  const secure = Boolean(req.socket.encrypted || APP_ORIGIN?.startsWith('https:') || forwardedHttps);
   return `fp_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 }
 function newSession(req, res) {
@@ -105,12 +153,25 @@ async function readJson(req) {
   }
   try { return JSON.parse(data || '{}'); } catch { throw Object.assign(new Error('Ungültiges JSON'), { code: 400 }); }
 }
+function isLoopback(address) {
+  return address === '::1' || /^127\./.test(address || '') || /^::ffff:127\./i.test(address || '');
+}
+function allowedOrigins(req) {
+  if (APP_ORIGIN) return new Set([APP_ORIGIN]);
+  const port = req.socket.localPort;
+  return new Set([
+    new URL(`http://localhost:${port}`).origin,
+    new URL(`http://127.0.0.1:${port}`).origin,
+    new URL(`http://[::1]:${port}`).origin
+  ]);
+}
 function validateOrigin(req) {
-  if (!req.headers.origin) return true;
+  if (req.method === 'GET' || req.method === 'HEAD') return true;
+  if (typeof req.headers.origin !== 'string') return false;
   try {
     const source = new URL(req.headers.origin);
-    const ownHost = req.headers.host;
-    return source.host === ownHost && (source.protocol === 'http:' || source.protocol === 'https:');
+    if (!['http:', 'https:'].includes(source.protocol) || source.username || source.password || source.pathname !== '/' || source.search || source.hash) return false;
+    return allowedOrigins(req).has(source.origin);
   } catch { return false; }
 }
 const validDatetime = value => value === null || (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)));
@@ -141,9 +202,7 @@ function normalizeTask(body, previous = null) {
 function safeSubscription(body) {
   const subscription = body?.subscription;
   if (!subscription?.endpoint || typeof subscription.endpoint !== 'string' || subscription.endpoint.length > 2500) throw Object.assign(new Error('Ungültiges Push-Abonnement'), { code: 400 });
-  let u;
-  try { u = new URL(subscription.endpoint); } catch { throw Object.assign(new Error('Ungültige Push-Adresse'), { code: 400 }); }
-  if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) throw Object.assign(new Error('Ungültige Push-Adresse'), { code: 400 });
+  try { validatePushEndpoint(subscription.endpoint); } catch { throw Object.assign(new Error('Ungültige Push-Adresse'), { code: 400 }); }
   if (!subscription.keys || typeof subscription.keys.p256dh !== 'string' || typeof subscription.keys.auth !== 'string') throw Object.assign(new Error('Push-Schlüssel fehlen'), { code: 400 });
   if (Buffer.from(subscription.keys.p256dh, 'base64url').length !== 65 || Buffer.from(subscription.keys.auth, 'base64url').length < 16) throw Object.assign(new Error('Ungültige Push-Schlüssel'), { code: 400 });
   return { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } };
@@ -214,15 +273,17 @@ async function handler(req, res) {
   if (!validateOrigin(req)) return fail(res, 403, 'Ungültige Herkunft');
   const method = req.method;
   if (method === 'GET' && pathname === '/api/setup') return sendJson(res, 200, {
-    setupRequired: !db.user, authenticated: Boolean(getSession(req)), publicVapidKey: db.vapid.publicKey
+    setupRequired: !db.user, setupTokenRequired: !db.user, authenticated: Boolean(getSession(req)), publicVapidKey: db.vapid.publicKey
   });
   if (method === 'POST' && pathname === '/api/setup') {
-    if (db.user) return fail(res, 409, 'Konto ist schon eingerichtet');
     const body = await readJson(req);
     if (typeof body.password !== 'string' || body.password.length < 10 || body.password.length > 128) return fail(res, 400, 'Passwort muss 10 bis 128 Zeichen lang sein');
+    if (db.user) return fail(res, 409, 'Konto ist schon eingerichtet');
+    if (!setupTokenMatches(body.setupToken)) return fail(res, 403, 'Einrichtungstoken ist ungültig');
     db.user = { passwordHash: hashPassword(body.password), createdAt: iso() };
+    db.sessions = [];
     newSession(req, res);
-    persist();
+    consumeSetupToken();
     return sendJson(res, 201, { ok: true });
   }
   if (method === 'POST' && pathname === '/api/login') {
@@ -341,6 +402,8 @@ if (require.main === module) {
   server.listen(PORT, HOST, () => {
     console.log(`FirmenPlaner gestartet: http://${HOST}:${PORT}`);
     console.log(`Datenspeicher: ${DATA_FILE}`);
+    if (setupToken) console.log(`Ersteinrichtung: Token aus ${SETUP_TOKEN_FILE} im Browser eingeben.`);
+    if (APP_ORIGIN) console.log(`Erlaubte Browser-Origin: ${APP_ORIGIN}`);
     if (process.send) process.send({type:'server:ready'});
     if (HOST === '0.0.0.0') console.log('ACHTUNG: Fuer Zugang aus dem Internet zwingend HTTPS-Reverse-Proxy verwenden.');
   });

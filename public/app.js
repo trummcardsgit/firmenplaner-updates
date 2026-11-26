@@ -48,10 +48,13 @@
     $('gate').hidden = false; $('app').hidden = true;
     $('auth-kicker').textContent = setupRequired ? 'ERSTE EINRICHTUNG' : 'WILLKOMMEN ZURÜCK';
     $('auth-heading').textContent = setupRequired ? 'Dein Konto einrichten' : 'FirmenPlaner öffnen';
-    $('auth-description').textContent = setupRequired ? 'Lege ein Passwort für deine persönliche Aufgabenverwaltung fest.' : 'Gib dein Passwort ein, um deine Aufgaben zu öffnen.';
+    $('auth-description').textContent = setupRequired ? 'Gib das lokale Einrichtungstoken ein und lege dein Passwort fest.' : 'Gib dein Passwort ein, um deine Aufgaben zu öffnen.';
     $('auth-submit').textContent = setupRequired ? 'Konto erstellen' : 'Anmelden';
     $('auth-hint').hidden = !setupRequired;
     $('auth-password').autocomplete = setupRequired ? 'new-password' : 'current-password';
+    $('auth-setup-token-field').hidden = !setupRequired;
+    $('auth-setup-token').required = setupRequired;
+    if (!setupRequired) $('auth-setup-token').value = '';
   }
   async function reload() {
     const result = await api('/api/bootstrap');
@@ -77,8 +80,11 @@
     const button = $('auth-submit'); button.disabled = true;
     try {
       const password = $('auth-password').value;
-      await post(state.setupRequired ? '/api/setup' : '/api/login', { password });
+      const body = { password };
+      if (state.setupRequired) body.setupToken = $('auth-setup-token').value;
+      await post(state.setupRequired ? '/api/setup' : '/api/login', body);
       $('auth-password').value = '';
+      $('auth-setup-token').value = '';
       await openApp();
       if (state.setupRequired) toast('Dein Konto wurde eingerichtet! Lege jetzt die erste Firma an.');
     } catch(error) { showError('auth-error', error.message); }
