@@ -75,11 +75,16 @@ try{
    assert.equal(await page.evaluate(()=>window.__injected),undefined);
    assert.ok(!external.includes("example.invalid"),"Unapproved script network request");
    assert.ok(!external.includes("esm.sh"),"External SDK request");
+   // Simulate opening an email link in a fresh document, not a same-document hash change.
+   await page.goto("about:blank");
    await page.goto(url+"#error=access_denied&error_code=otp_expired&error_description=expired");
    await page.locator("#recovery-panel").waitFor({state:"visible"});
    await page.waitForFunction(()=>!location.hash);
    assert.equal(await page.locator("#recovery-message").textContent(),"Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");
-   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>typeof window.supabase?.createClient==="function");
+   assert.deepEqual(await page.evaluate(()=>window.__csp),[],"Unexpected CSP violations on recovery link");
+   assert.equal(errors.length,0,errors.join("\n"));
+   console.log(environment+": expired recovery link opened in fresh document and fragment cleared");
+   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>typeof window.supabase?.createClient==="function"&&document.querySelector("#recovery-open").onclick!==null);
    assert.equal(await page.locator("#auth-form").isVisible(),true);
    console.log(environment+": Chromium: local SDK, login request (mock), REST query (mock), recovery screen, blocked injected script, SW install/cache and offline reload passed.");
   }finally{await context.close();}
