@@ -1,3 +1,4 @@
+import {createActivation} from "./activation.js";
 import {solutionDeleteButton,deleteSolution} from "./solution-admin.js";
 import {createRecovery} from "./recovery.js";
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
@@ -148,10 +149,10 @@ const recoveryClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{au
 const recoveryUI={
  message:m=>{$("recovery-message").textContent=m},
  busy:v=>document.querySelectorAll("#recovery-panel button,#recovery-panel input").forEach(el=>el.disabled=v),
- open:value=>{$("auth-form").classList.add("hidden");$("recovery-open").classList.add("hidden");$("recovery-panel").classList.remove("hidden");$("recovery-request").classList.remove("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-password-form").classList.add("hidden");$("recovery-email").value=value;$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value="";$("recovery-message").textContent="";},
+ open:value=>{$("activation-open").classList.add("hidden");$("auth-form").classList.add("hidden");$("recovery-open").classList.add("hidden");$("recovery-panel").classList.remove("hidden");$("recovery-request").classList.remove("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-password-form").classList.add("hidden");$("recovery-email").value=value;$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value="";$("recovery-message").textContent="";},
  code:()=>{$("recovery-code-form").classList.remove("hidden");$("recovery-code").value="";$("recovery-code").focus()},
  password:()=>{$("recovery-request").classList.add("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-code").value="";$("recovery-password-form").classList.remove("hidden");$("recovery-password").focus()},
- done:()=>{$("recovery-panel").classList.add("hidden");$("auth-form").classList.remove("hidden");$("recovery-open").classList.remove("hidden");$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value=""}
+ done:()=>{$("activation-open").classList.remove("hidden");$("recovery-panel").classList.add("hidden");$("auth-form").classList.remove("hidden");$("recovery-open").classList.remove("hidden");$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value=""}
 };
 const recovery=createRecovery(recoveryClient.auth,recoveryUI,new URL("./",location.href).href);
 $("recovery-open").onclick=()=>recovery.open($("login-email").value);
@@ -159,6 +160,24 @@ $("recovery-request").onsubmit=e=>{e.preventDefault();recovery.request($("recove
 $("recovery-code-form").onsubmit=e=>{e.preventDefault();recovery.verify($("recovery-code").value.trim())};
 $("recovery-password-form").onsubmit=e=>{e.preventDefault();recovery.save($("recovery-password").value,$("recovery-repeat").value)};
 $("recovery-cancel").onclick=()=>recovery.cancel();
+const activationClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-activation-only",persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+const activation=createActivation(activationClient.auth);
+function activationScreen(open){
+ $("activation-panel").classList.toggle("hidden",!open);
+ $("auth-form").classList.toggle("hidden",open);
+ $("activation-open").classList.toggle("hidden",open);
+ $("recovery-open").classList.toggle("hidden",open);
+ if(!open){$("activation-code").value="";$("activation-password").value="";$("activation-repeat").value="";}
+}
+$("activation-open").onclick=()=>{$("activation-email").value=$("login-email").value;$("activation-message").textContent="";activationScreen(true)};
+$("activation-cancel").onclick=async()=>{await activation.cancel();activationScreen(false)};
+$("activation-form").onsubmit=async e=>{
+ e.preventDefault();const fields=[...e.currentTarget.querySelectorAll("input,button")];fields.forEach(x=>x.disabled=true);
+ try{const email=$("activation-email").value;const ok=await activation.activate({email,code:$("activation-code").value.trim(),password:$("activation-password").value,repeat:$("activation-repeat").value});if(ok){activationScreen(false);$("login-email").value=email;notice("Konto aktiviert. Bitte mit deinem neuen Passwort anmelden.");}}
+ catch(err){$("activation-message").textContent=err.message||"Aktivierung fehlgeschlagen.";}
+ finally{fields.forEach(x=>x.disabled=false);}
+};
+
 const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
 if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
 
@@ -220,9 +239,9 @@ function openResolution(entry){
 function companies(){return '<div class="toolbar"><button id="new-company" class="primary">+ Firma anlegen</button><span class="counter">'+state.companies.length+' gemeinsame Firmen</span></div><div class="grid2">'+(state.companies.map(c=>'<article class="item"><h3 class="company-badge">'+esc(c.name)+'</h3><p class="muted">'+esc(c.contact||"")+(c.email?" · "+esc(c.email):"")+'</p><p>'+esc(c.phone||"")+'</p><span class="counter">'+state.entries.filter(e=>e.company_id===c.id&&e.kind==="task"&&e.status==="open").length+' eigene offene Aufgaben</span><div class="actions">'+((state.isAdmin||c.owner_id===state.user.id)?'<button data-company-edit="'+c.id+'">Bearbeiten</button>':'')+(state.isAdmin?'<button data-company-delete="'+c.id+'" class="danger">Löschen</button>':'')+'</div></article>').join("")||'<div class="empty">Noch keine Firma angelegt.</div>')+"</div>";}
 function invitePanel(){
  const admin=state.isAdmin?
- '<div class="panel"><h2>Benutzer einladen</h2><p>Nur du als Administrator kannst weitere Personen freischalten. Sie erhalten einen Einladungslink per E-Mail und legen danach ihr eigenes Passwort fest.</p>'+
- '<form id="invite-form"><label>E-Mail-Adresse des neuen Benutzers<input type="email" id="invite-email" required autocomplete="off" placeholder="person@firma.at"></label><button class="primary" type="submit">Einladung senden</button></form>'+
- (state.inviteLink?'<div class="warning" style="margin-top:18px"><strong>Einladungslink erstellt</strong><p>Der SMTP-Versand ist für diese Adresse nicht verfügbar. Kopiere diesen vertraulichen Link und sende ihn ausschließlich an die eingeladene Person.</p><input type="text" id="invite-share-link" readonly value="'+esc(state.inviteLink)+'"><button type="button" class="subtle" id="copy-invite-link" style="margin-top:10px">Einladungslink kopieren</button></div>':'')+
+ '<div class="panel"><h2>Benutzer einladen</h2><p>Nur du als Administrator kannst weitere Personen freischalten. Erstelle einen persönlichen Aktivierungscode und übergib ihn vertraulich. Neue Konten erhalten die Mitarbeiterrolle.</p>'+
+ '<form id="invite-form"><label>Vor- und Nachname<input id="invite-name" required maxlength="120" autocomplete="off"></label><label>E-Mail-Adresse des neuen Benutzers<input type="email" id="invite-email" required autocomplete="off" placeholder="person@firma.at"></label><button class="primary" type="submit">Aktivierungscode erstellen</button></form>'+
+ (state.inviteLink?'<div class="warning" style="margin-top:18px"><strong>Aktivierungscode erstellt</strong><p>Nur privat an die eingeladene Person übergeben. Der Code ist einmalig gültig.</p><input type="text" id="invite-share-link" readonly value="'+esc(state.inviteLink)+'"><button type="button" class="subtle" id="copy-invite-link" style="margin-top:10px">Aktivierungscode kopieren</button><button type="button" id="clear-invite-code">Code ausblenden</button></div>':'')+
  '<h3 style="margin-top:24px">Bisherige Einladungen</h3>'+
  (state.invites.length?state.invites.map(i=>'<p class="muted">'+esc(i.email)+' · '+esc(i.status==="sent"?"Gesendet":i.status==="pending"?"In Bearbeitung":"Fehlgeschlagen")+' · '+esc(fmt(i.created_at))+'</p>').join(""):'<p class="muted">Noch keine Einladungen</p>')+
  '</div>':"";
@@ -325,10 +344,11 @@ if(b.dataset.status){
  notice("Aufgabe wurde wieder geöffnet. Die Lösung bleibt in der Wissensdatenbank.");
  return await load();
 }
+if(b.id==="clear-invite-code"){state.inviteLink=null;render();return;}
 if(b.id==="copy-invite-link"){
  if(!state.isAdmin||!state.inviteLink)return;
  await navigator.clipboard.writeText(state.inviteLink);
- notice("Einladungslink kopiert. Nur privat weitergeben.");
+ notice("Aktivierungscode kopiert. Nur privat weitergeben.");
  return;
 }
 if(b.id==="enable-notifications")return await enablePush();
@@ -341,20 +361,20 @@ $("content").addEventListener("submit",async event=>{
  if(event.target.id==="invite-form"){
   event.preventDefault();
   if(!state.isAdmin)return notice("Keine Administratorberechtigung.");
-  const email=$("invite-email").value.trim().toLowerCase(),btn=event.target.querySelector('button[type="submit"]');
+  const name=$("invite-name").value.trim(),email=$("invite-email").value.trim().toLowerCase(),btn=event.target.querySelector('button[type="submit"]');
   btn.disabled=true;
   try{
    const {data:{session}}=await db.auth.getSession();
    if(!session?.access_token)throw new Error("Bitte neu anmelden.");
-   const res=await fetch(cfg.supabaseUrl+"/functions/v1/tp-invite-user",{
+   const res=await fetch(cfg.supabaseUrl+"/functions/v1/tp-activation-invite",{
     method:"POST",
     headers:{"content-type":"application/json","apikey":cfg.supabasePublishableKey,"authorization":"Bearer "+session.access_token},
-    body:JSON.stringify({email})
+    body:JSON.stringify({email,name})
    });
    const body=await res.json().catch(()=>({error:"Ungültige Serverantwort"}));
    if(!res.ok)throw new Error(body.error||"Einladung fehlgeschlagen (HTTP "+res.status+")");
-   state.inviteLink=body.delivery==="manual"&&typeof body.link==="string"?body.link:null;
-   notice(state.inviteLink?"Einladungslink erstellt. Bitte unten kopieren und privat versenden.":"Einladung wurde an "+email+" versendet.");
+   state.inviteLink=typeof body.code==="string"?body.code:null;
+   notice("Aktivierungscode für "+email+" erstellt. Bitte vertraulich weitergeben.");
    await load();
   }catch(err){fail(err)}
   finally{btn.disabled=false;}

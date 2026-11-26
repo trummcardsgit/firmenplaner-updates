@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import {createActivation,parseActivationCode} from "../public/activation.js";
+const code="I-"+"a".repeat(64);
+assert.equal(parseActivationCode(code).type,"invite");
+assert.equal(parseActivationCode("R-"+"b".repeat(64)).type,"recovery");
+assert.throws(()=>parseActivationCode("123456"));
+let calls=[],rejectPassword=false;
+const auth={verifyOtp:async p=>{calls.push(["verify",p]);return {data:{session:{},user:{email:"person@example.invalid"}}}},updateUser:async p=>{calls.push(["password",p]);return rejectPassword?{error:{}}:{}},signOut:async p=>{calls.push(["out",p]);return {}}};
+const controller=createActivation(auth);
+const form={email:"person@example.invalid",code,password:"unique-test-password",repeat:"unique-test-password"};
+await assert.rejects(controller.activate({...form,repeat:"wrong"}));assert.equal(calls.length,0);
+await assert.rejects(controller.activate({...form,email:"other@example.invalid"}));assert.equal(calls.some(x=>x[0]==="password"),false);
+calls=[];rejectPassword=true;await assert.rejects(controller.activate(form));rejectPassword=false;assert.equal(await controller.activate(form),true);
+assert.equal(calls.filter(x=>x[0]==="verify").length,1);assert.equal(calls.at(-1)[1].scope,"local");
+console.log("Activation: native one-time token, email match, password validation, isolated session and retry passed");
