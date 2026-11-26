@@ -21,8 +21,14 @@ const labels={
 const views=Object.keys(labels);
 const desktop=doc.querySelectorAll("#nav button[data-view]");
 const mobile=doc.querySelectorAll(".bottom-nav button[data-view]");
-assert.equal(desktop.length,9,"Eight original sections plus Karriere");
-assert.equal(mobile.length,9,"Eight original sections plus mobile Karriere");
+assert.equal(desktop.length,11,"Nine original sections plus Tickets and Admin");
+assert.equal(mobile.length,11,"Nine original sections plus mobile Tickets and Admin");
+for(const nav of ["#nav",".bottom-nav"]){
+ const admin=doc.querySelector(nav+' button[data-view="admin"]');
+ assert.ok(admin?.hidden,"Admin must be hidden before authorization");
+ assert.ok(doc.querySelector(nav+' button[data-view="tickets"]'),"Ticket menu entry missing");
+}
+assert.ok(read("admin.css").includes("[data-view=admin][hidden]"),"Hidden admin navigation must override layout styles");
 for(const [root,label] of [["#nav","Karriere"],[".bottom-nav","Rang"]]){
  const career=doc.querySelector(root+' button[data-view="career"]');
  assert.ok(career,"Karriere entry missing");

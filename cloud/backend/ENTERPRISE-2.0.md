@@ -5,3 +5,9 @@ The isolated CI fixture includes callable legacy RPC stubs, storage policies, an
 
 ## Preview artifact
 The enterprise workflow now executes the complete legacy smoke suite and races two separate PostgreSQL clients for one ticket. On success it creates a downloadable staging preview artifact, never a GitHub Pages deployment. Set repository variables TP_STAGING_URL and TP_STAGING_PUBLISHABLE_KEY to an independently provisioned Supabase project; otherwise login is deliberately disabled. The builder rejects the production project URL. The organization is on the free plan; no new billable Supabase project or branch is created automatically. Preview artifacts must be served on a separate origin (or localhost) from production to isolate browser storage and service workers. For real auth and push tests configure the staging redirect and function origins before starting the test.
+
+## Release gate
+- Full database and frontend workflow must pass for the exact release commit.
+- Preview must use a separate database and origin; never repurpose an unrelated production or paused test project without approval.
+- Verify invitations, recovery, account lockout, shared solutions (review existing content), push notifications on two real devices, and simultaneous acceptance. Record results before production.
+- Before production, prepare a verified backup and a coordinated maintenance/rollback plan for database, edge function and Pages deployment. No automatic merge or live deploy from enterprise-2.0.
