@@ -1,0 +1,2 @@
+# Enterprise 2.0 staging
+Ticket schema and RPCs: enterprise-tickets.sql. Apply only on a separate test database after reviewing current schema and Supabase documentation. No production deployment. Existing admin IDs are enrolled; other accounts require explicit enrollment. Shared company directory is separate from existing private company records. Ticket text is company-visible by design. Personal data and shared solutions policies, admin account provisioning, notification dispatch, attachment storage, transfer, XP and tests remain pending. No credentials in client.
