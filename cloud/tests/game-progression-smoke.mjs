@@ -17,7 +17,7 @@ assert.ok(doc.getElementById("tp-prestige-confirm"));
 assert.ok(doc.getElementById("tp-xp-reward"));
 assert.match(sw,/game-progression\.js/);
 assert.match(sw,/game-progression\.css/);
-assert.match(sw,/const CACHE=CACHE_PREFIX\+"v2\.0\.(?:0(?:-dev\.8[^"]*)?|(?:[123456789]|1[01]))"/);
+assert.match(sw,/const CACHE=CACHE_PREFIX\+"v\d+\.\d+\.\d+(?:-dev\.\d+)?(?:-[a-z0-9.-]+)?"/,"PWA cache must be versioned");
 assert.match(app,/db\.from\("tp_game_profiles"\)/);
 assert.match(app,/db\.from\("tp_game_xp_events"\)/);
 assert.match(app,/db\.rpc\("tp_game_enter_prestige"\)/);
