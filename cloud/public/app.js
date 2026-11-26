@@ -73,7 +73,9 @@ const features=createFeatures({
 });
 async function load(){
  if(!state.user)return;
+ const loadingUser=state.user.id;
  const membership=await db.from("tp_members").select("active").eq("user_id",state.user.id).maybeSingle();
+ if(state.user?.id!==loadingUser)return;
  if(membership.error)throw membership.error;
  if(!membership.data?.active){await db.auth.signOut();showApp(null);notice("Konto noch nicht freigeschaltet oder gesperrt.");return;}
  const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents,members,awardRows,closedTickets]=await Promise.all([
@@ -88,6 +90,7 @@ async function load(){
   db.from("tp_ticket_awards").select("threshold,awarded_at").eq("owner_id",state.user.id),
   db.from("tp_tickets").select("id",{count:"exact",head:true}).eq("assignee_id",state.user.id).eq("status","closed")
  ]);
+ if(state.user?.id!==loadingUser)return;
  if(a.error)throw a.error;
  if(b.error)throw b.error;
  if(adminStatus.error)throw adminStatus.error;
@@ -109,14 +112,17 @@ async function load(){
  if(new URLSearchParams(location.search).has("ticket"))state.view="tickets";
  if(state.isAdmin){
   const invites=await db.from("tp_invites").select("email,status,created_at").order("created_at",{ascending:false}).limit(40);
+  if(state.user?.id!==loadingUser)return;
   if(invites.error)throw invites.error;
   state.invites=invites.data||[];
  }else state.invites=[];
  await features.load();
+ if(state.user?.id!==loadingUser)return;
  await syncTrophies();
+ if(state.user?.id!==loadingUser)return;
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -211,7 +217,7 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+function render(){if(!state.user)return;document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
 $("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career")bindTrophies();

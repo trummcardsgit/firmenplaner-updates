@@ -49,5 +49,14 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004'
 do $$ begin
  if exists(select 1 from public.tp_tickets) or exists(select 1 from public.tp_solutions) then raise exception 'Inactive user can read';end if;
 end $$;
+-- Inactive user cannot call privileged legacy RPCs (when present).
+do $ begin
+ if to_regprocedure('public.tp_game_enter_prestige()') is not null then
+  begin perform public.tp_game_enter_prestige(); raise exception 'Disabled member allowed'; exception when raise_exception then if sqlerrm <> 'Access denied' then raise; end if; end;
+ end if;
+ if to_regprocedure('public.tp_sync_trophies()') is not null then
+  begin perform public.tp_sync_trophies(); raise exception 'Disabled member allowed'; exception when raise_exception then if sqlerrm <> 'Access denied' then raise; end if; end;
+ end if;
+end $;
 reset role;
 rollback;
