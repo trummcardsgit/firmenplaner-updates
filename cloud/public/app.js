@@ -1,3 +1,4 @@
+import {createRecovery} from "./recovery.js";
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
 import {installDictation} from "./dictation.js";
@@ -142,6 +143,24 @@ async function login(){
  finally{$("login-submit").disabled=false;}
 }
 $("auth-form").addEventListener("submit",e=>{e.preventDefault();login()});
+const recoveryClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-recovery-only",persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+const recoveryUI={
+ message:m=>{$("recovery-message").textContent=m},
+ busy:v=>document.querySelectorAll("#recovery-panel button,#recovery-panel input").forEach(el=>el.disabled=v),
+ open:value=>{$("auth-form").classList.add("hidden");$("recovery-open").classList.add("hidden");$("recovery-panel").classList.remove("hidden");$("recovery-request").classList.remove("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-password-form").classList.add("hidden");$("recovery-email").value=value;$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value="";$("recovery-message").textContent="";},
+ code:()=>{$("recovery-code-form").classList.remove("hidden");$("recovery-code").value="";$("recovery-code").focus()},
+ password:()=>{$("recovery-request").classList.add("hidden");$("recovery-code-form").classList.add("hidden");$("recovery-code").value="";$("recovery-password-form").classList.remove("hidden");$("recovery-password").focus()},
+ done:()=>{$("recovery-panel").classList.add("hidden");$("auth-form").classList.remove("hidden");$("recovery-open").classList.remove("hidden");$("recovery-code").value="";$("recovery-password").value="";$("recovery-repeat").value=""}
+};
+const recovery=createRecovery(recoveryClient.auth,recoveryUI,new URL("./",location.href).href);
+$("recovery-open").onclick=()=>recovery.open($("login-email").value);
+$("recovery-request").onsubmit=e=>{e.preventDefault();recovery.request($("recovery-email").value)};
+$("recovery-code-form").onsubmit=e=>{e.preventDefault();recovery.verify($("recovery-code").value.trim())};
+$("recovery-password-form").onsubmit=e=>{e.preventDefault();recovery.save($("recovery-password").value,$("recovery-repeat").value)};
+$("recovery-cancel").onclick=()=>recovery.cancel();
+const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
+if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
+
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
 function nav(view){if(view==="admin"&&!state.isAdmin)return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));

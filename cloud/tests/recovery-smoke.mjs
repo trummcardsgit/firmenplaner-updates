@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";import {createRecovery} from "../public/recovery.js";
+const calls=[];const auth={resetPasswordForEmail:async(e,o)=>{calls.push(["request",e,o]);return {}},verifyOtp:async(o)=>{calls.push(["verify",o]);return o.token==="123456"?{data:{session:{}}}:{error:{}}},updateUser:async(o)=>{calls.push(["update",o]);return {}},signOut:async(o)=>{calls.push(["signOut",o]);return {}}};
+const ui={message:m=>calls.push(["msg",m]),busy(){},open(){},code(){calls.push(["code"])},password(){calls.push(["password"])},done(){calls.push(["done"])}};
+const recovery=createRecovery(auth,ui,"https://example.invalid/test/");
+recovery.open();await recovery.save("longpassword123","longpassword123");assert.equal(calls.some(x=>x[0]==="update"),false);
+await recovery.request("test@example.invalid");assert.equal(calls.find(x=>x[0]==="request")[2].redirectTo,"https://example.invalid/test/");
+await recovery.verify("000000");assert.equal(calls.some(x=>x[0]==="password"),false);
+await recovery.verify("123456");assert.equal(calls.findLast(x=>x[0]==="verify")[1].type,"recovery");assert.ok(calls.some(x=>x[0]==="password"));
+await recovery.save("short","short");assert.equal(calls.some(x=>x[0]==="update"),false);
+await recovery.save("longpassword123","wrongpassword");assert.equal(calls.some(x=>x[0]==="update"),false);
+await recovery.save("longpassword123","longpassword123");assert.equal(calls.filter(x=>x[0]==="update").length,1);assert.equal(calls.find(x=>x[0]==="signOut")[1].scope,"global");assert.ok(calls.some(x=>x[0]==="done"));
+await recovery.save("longpassword123","longpassword123");assert.equal(calls.filter(x=>x[0]==="update").length,1);console.log("Recovery: request, rejected invalid code, verification, password validation, session revocation passed");
