@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
+const root="https://trummcardsgit.github.io/firmenplaner-updates/";
+const get=async path=>{const r=await fetch(root+path,{redirect:"error",cache:"no-store",signal:AbortSignal.timeout(20000)});assert.ok(r.ok,path+" "+r.status);return r};
+const html=await get("");console.log("HTTP headers",JSON.stringify({csp:html.headers.get("content-security-policy"),frame:html.headers.get("x-frame-options")}));
+const markup=await html.text(),extended=await (await get("extended.js")).text();
+assert.equal(extended,readFileSync("cloud/public/extended.js","utf8"));
+assert.match(markup,/script-src 'self' https:\/\/cdn.jsdelivr.net\/npm\/docx@9.15.3/);
+assert.match(extended,/docx@9.15.3\/dist\/index.iife.js/);assert.match(extended,/mammoth@1.13.0\/mammoth.browser.js/);
+const sdk=Buffer.from(await (await get("vendor/supabase-2.95.3.js")).arrayBuffer());const hash="sha384-"+createHash("sha384").update(sdk).digest("base64");
+assert.ok(markup.includes('integrity="'+hash+'"'));assert.equal(hash,JSON.parse(readFileSync("cloud/vendor-lock.json")).bundleIntegrity);
+console.log("Live extended.js matches source, CDN imports and existing SDK SRI confirmed.");

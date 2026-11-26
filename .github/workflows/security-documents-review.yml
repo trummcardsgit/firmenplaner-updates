@@ -1,0 +1,29 @@
+name: RHTFLOW document security baseline (no deploy)
+on:
+  push:
+    branches: [security/rhtflow-local-documents-review]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node cloud/tests/security-documents-baseline.mjs
+      - name: Inspect exact npm archives and browser bundles
+        run: |
+          mkdir -p /tmp/rht-vendor
+          cd /tmp/rht-vendor
+          for spec in docx@9.15.3 mammoth@1.13.0; do
+            npm view "$spec" version license dist.integrity dist.tarball --json
+            npm pack "$spec" --ignore-scripts --silent
+          done
+          for entry in 'docx-9.15.3.tgz:package/dist/index.iife.js' 'mammoth-1.13.0.tgz:package/mammoth.browser.js'; do
+            archive=${entry%%:*}; asset=${entry#*:}
+            tar -tzf "$archive" | grep -Ei '(^|/)(license|notice|copying)([.]|$)'
+            tar -xOzf "$archive" "$asset" | openssl dgst -sha384 -binary | openssl base64 -A
+            echo
+          done
