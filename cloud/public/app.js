@@ -1,3 +1,4 @@
+import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
 import {createActivation} from "./activation.js";
 import {solutionDeleteButton,deleteSolution} from "./solution-admin.js";
 import {createRecovery} from "./recovery.js";
@@ -17,7 +18,55 @@ const trophyKey=()=> (cfg.staging?"rhtflow-test-trophy-prefs-":"tp-trophy-prefs-
 function readTrophyPrefs(){try{const p=JSON.parse(localStorage.getItem(trophyKey())||"{}");trophyFavorites=Array.isArray(p.favorites)?p.favorites.filter(Number.isInteger).slice(0,3):[];trophySound=p.sound===true}catch{trophyFavorites=[];trophySound=false}}
 function saveTrophyPrefs(){try{localStorage.setItem(trophyKey(),JSON.stringify({favorites:trophyFavorites,sound:trophySound}))}catch{}}
 async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const {data,error}=await db.rpc("tp_sync_trophies");if(state.user?.id!==uid)return;if(error)throw error;trophyItems=Array.isArray(data?.trophies)?data.trophies:[];if(data?.profile)state.gameProfile=data.profile;trophyError=false;announceTrophies(trophyItems,data?.new||[],trophySound)}catch(e){if(state.user?.id===uid){trophyError=true;console.warn("Trophäen-Sync",e)}}}
-function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.onclick=()=>{const next=toggleFavorite(trophyFavorites,Number(b.dataset.trophyFavorite),trophyItems);if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei Trophäen.");return}trophyFavorites=next;saveTrophyPrefs();redraw()});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
+let showcaseRows=[],showcaseCatalog=[],showcaseReady=false,showcaseBusy=false,showcaseError=false,showcaseEpoch=0;
+function resetShowcases(){showcaseEpoch++;showcaseRows=[];showcaseCatalog=[];showcaseReady=false;showcaseBusy=false;showcaseError=false;}
+function showcaseMarkup(){return showcasePanel(state.members||[],showcaseRows,showcaseCatalog,state.user?.id,showcaseError,!showcaseReady&&!showcaseError);}
+function redrawShowcases(){
+ const panel=$("tp-colleague-showcases");if(panel){panel.outerHTML=showcaseMarkup();bindShowcases();}
+ const cabinet=$("tp-trophy-cabinet");if(cabinet){cabinet.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies();}
+}
+function bindShowcases(){const button=$("tp-showcase-refresh");if(button){button.disabled=showcaseBusy;button.onclick=()=>syncShowcases();}}
+async function syncShowcases(){
+ const uid=state.user?.id,epoch=showcaseEpoch;if(!uid||showcaseBusy)return;
+ const current=()=>state.user?.id===uid&&showcaseEpoch===epoch;
+ showcaseBusy=true;bindShowcases();
+ try{
+  let rows=await readAllShowcases(db);if(!current())return;
+  let own=rows.find(r=>r.owner_id===uid);
+  if(!own&&trophyItems.length&&!trophyError){
+   const ids=validFavorites(trophyFavorites,trophyItems);
+   const {error}=await db.from("tp_trophy_showcases").insert({owner_id:uid,trophy_ids:ids});
+   if(error&&error.code!=="23505")throw error;
+   rows=await readAllShowcases(db);if(!current())return;
+   own=rows.find(r=>r.owner_id===uid);
+  }
+  if(!own&&!trophyItems.length){showcaseReady=false;return;}
+  if(own){trophyFavorites=validFavorites(own.trophy_ids,trophyItems);saveTrophyPrefs();}
+  const ids=[...new Set(rows.flatMap(r=>r.trophy_ids||[]))].filter(id=>Number.isInteger(id)&&id>=1&&id<=50);
+  let catalog=[];
+  if(ids.length){const {data,error}=await db.from("tp_trophy_definitions").select("id,title,rarity").in("id",ids);if(error)throw error;catalog=data||[];}
+  if(!current())return;
+  showcaseRows=rows;showcaseCatalog=catalog;showcaseReady=true;showcaseError=false;
+ }catch(e){if(current()){showcaseError=true;showcaseReady=false;console.warn("Vitrinen-Sync",e)}}
+ finally{if(current()){showcaseBusy=false;if(state.view==="career")redrawShowcases();}}
+}
+async function changeShowcase(id){
+ if(showcaseBusy||!showcaseReady){notice("Vitrine wird noch geladen. Bitte aktualisieren.");return;}
+ const next=toggleFavorite(trophyFavorites,id,trophyItems);
+ if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei freigeschaltete Trophäen.");return;}
+ const uid=state.user?.id,epoch=showcaseEpoch;if(!uid)return;
+ showcaseBusy=true;bindShowcases();
+ try{
+  const {error}=await db.from("tp_trophy_showcases").upsert({owner_id:uid,trophy_ids:next},{onConflict:"owner_id"});
+  if(error)throw error;
+  if(uid!==state.user?.id||epoch!==showcaseEpoch)return;
+  trophyFavorites=next;saveTrophyPrefs();
+  notice("Vitrine gespeichert und für Kollegen sichtbar.");
+ }catch(e){if(uid===state.user?.id&&epoch===showcaseEpoch)fail(e)}
+ finally{if(uid===state.user?.id&&epoch===showcaseEpoch){showcaseBusy=false;if(state.view==="career")redrawShowcases();}}
+ if(uid===state.user?.id&&epoch===showcaseEpoch)await syncShowcases();
+}
+function bindTrophies(){const root=$("tp-trophy-cabinet");if(!root)return;const redraw=()=>{root.outerHTML=trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound);bindTrophies()};$("tp-trophy-filter").onchange=e=>{trophyFilter=e.target.value;redraw()};$("tp-trophy-category").onchange=e=>{trophyCategory=e.target.value;redraw()};$("tp-trophy-sound").onchange=e=>{trophySound=e.target.checked;saveTrophyPrefs()};root.querySelectorAll("[data-trophy-favorite]").forEach(b=>{b.disabled=showcaseBusy||!showcaseReady;b.onclick=()=>changeShowcase(Number(b.dataset.trophyFavorite))});const retry=$("tp-trophy-retry");if(retry)retry.onclick=async()=>{retry.disabled=true;await syncTrophies();render()}}
 const cfg=window.TRUMMPLANER_CONFIG||{};
 if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.includes("ilmwoapvcluoravpsrjv"))){
  document.getElementById("setup-warning")?.classList.remove("hidden");
@@ -139,7 +188,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -277,8 +326,8 @@ function settings(){
 }
 function render(){if(!state.user)return;ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
-if(state.view==="career")bindTrophies();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="admin")adminCenter.open();
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});

@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import {validFavorites,showcasePanel,readAllShowcases} from "../public/trophy-showcases.js";
+const items=[{id:1,unlocked_at:"now"},{id:2},{id:3,unlocked_at:"now"}];
+assert.deepEqual(validFavorites([1,1,2,3,99],items),[1,3]);
+const members=[{user_id:"me",display_name:"Me",active:true},{user_id:"other",display_name:"<script>",active:true},{user_id:"disabled",display_name:"Hidden",active:false}];
+const markup=showcasePanel(members,[{owner_id:"other",trophy_ids:[1]}],[{id:1,title:"Winner",rarity:"gold"}],"me");
+assert.match(markup,/Winner/);assert.match(markup,/&lt;script&gt;/);assert.doesNotMatch(markup,/<script>|Hidden/);assert.match(markup,/trophy-1.svg/);assert.equal((markup.match(/Freier Platz/g)||[]).length,2);
+let ranges=[];const db={from(){return {select(){return this},order(){return this},async range(a,b){ranges.push([a,b]);return {data:a===0?Array.from({length:500},()=>({})):[]}}}}};
+assert.equal((await readAllShowcases(db)).length,500);assert.deepEqual(ranges,[[0,499],[500,999]]);
+console.log("Shared trophy showcase: unlocked favorites, escaped names, active coworkers, slots and pagination passed");
