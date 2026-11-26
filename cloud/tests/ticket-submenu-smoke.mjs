@@ -66,14 +66,13 @@ console.log("Ticket submenu: order, navigation, counts, refresh, mobile and rese
 
 document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();
 const selectTab=k=>nav.querySelector('[data-ticket-category="'+k+'"]').click();
-assert.ok(document.querySelector('[data-member-avatar="u"]'));
 const filterButtons=["refresh","save-filter","reset-filter"].map(action=>document.querySelector('[data-tp-action="'+action+'"]'));
 assert.ok(filterButtons.every(Boolean));
 assert.equal(filterButtons[1].className,filterButtons[0].className);
 assert.equal(filterButtons[1].className,filterButtons[2].className);
 assert.equal(filterButtons[1].textContent,"Filter speichern");
 const save=async()=>await document.querySelector('[data-tp-action="save-filter"]').onclick();
-chooseStatus("");await save();assert.equal(prefs.get("u:all").status_filter,"");
+chooseStatus("");assert.ok(document.querySelector('[data-member-avatar="u"]'));await save();assert.equal(prefs.get("u:all").status_filter,"");
 selectTab("open");chooseStatus("open");await save();
 selectTab("my");chooseStatus("closed");await save();assert.equal(prefs.get("u:my").status_filter,"closed");
 selectTab("all");assert.equal(selectedStatus(),"");selectTab("my");assert.equal(selectedStatus(),"closed");
