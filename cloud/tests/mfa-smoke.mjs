@@ -17,5 +17,13 @@ assert.equal((await mfa.factors()).verified.length,1);await assert.rejects(mfa.e
 assert.deepEqual(await mfaStatus({rpc:async n=>{assert.equal(n,"tp_mfa_status");return {data:{active:true,fresh:false}}}}),{active:true,fresh:false});
 await assert.rejects(mfaStatus({rpc:async()=>({error:{}})}));
 const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
+assert.ok(app.includes('storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false'));
 assert.ok(app.includes("await checkMfaAccess()"));assert.ok(app.includes("await mfaStatus(activationClient)"));assert.ok(!app.includes("if(data.session?.user)showApp"));
+assert.ok(app.includes('const pushEndpoint=cfg.supabaseUrl+"/functions/v1/tp-background-push"'));
+for(const file of ["tp-background-push.ts","tp-background-push-mfa.ts"]){
+ const push=readFileSync(new URL("../backend/"+file,import.meta.url),"utf8");
+ assert.match(push,/if\(action==="dispatch"\)\{[\s\S]*?\}else\{[\s\S]*?auth\.getUser\(jwt\)[\s\S]*?scoped\.rpc\("tp_mfa_status"\)[\s\S]*?security\?\.active!==true\|\|security\?\.fresh!==true\)return response\(\{error:"Zwei-Faktor-Bestätigung erforderlich\."\},403\);[\s\S]*?admin\.from\("tp_members"\)/);
+ assert.ok(push.indexOf('scoped.rpc("tp_mfa_status")')<push.indexOf('if(action==="setup")'));
+ assert.ok(push.indexOf('scoped.rpc("tp_mfa_status")')<push.indexOf('if(action==="test")'));
+}
 console.log("MFA flow: enrollment, code validation, native challenge, server status, activation separation passed");
