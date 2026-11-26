@@ -10,6 +10,7 @@ for(const [own,other] of [["/firmenplaner-updates/","/rhtflow-test/"],["/rhtflow
  const otherClient={url:origin+other,focus:async()=>focused.push("foreign"),navigate:async()=>focused.push("foreign navigation")};
  const ownClient={url:origin+own,focus:async()=>focused.push("own"),navigate:async url=>focused.push(url)};
  const context={URL,location:{origin},self:{registration:{scope:origin+own,showNotification:async(t,o)=>notified.push(o)},addEventListener:(n,f)=>listeners[n]=f,skipWaiting:async()=>{}},clients:{claim:async()=>{},matchAll:async()=>[otherClient,ownClient],openWindow:async u=>opened.push(u)},caches:{keys:async()=>[prefix+"old",foreign,"unrelated","rhtflow-staging-v2.0.0-dev.7","trummplaner-pwa-v1.8.0"],delete:async k=>deleted.push(k),open:async k=>{assert.ok(k.startsWith(prefix));return mockCache}},fetch:async()=>{throw Error("offline")},Date,String};
+ context.self.clients=context.clients;
  vm.runInNewContext(source,context);
  const call=async(name,data={})=>{let p;listeners[name]({...data,waitUntil:x=>p=x,respondWith:x=>p=x});return await p};
  await call("activate");assert.deepEqual(deleted,[prefix+"old"]);
