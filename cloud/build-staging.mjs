@@ -15,5 +15,5 @@ let html=readFileSync(out+"/index.html","utf8").replace("<title>RHTFLOW</title>"
 html=html.replace('<div id="setup-warning" class="warning hidden">Die Supabase-Verbindung wurde noch nicht eingerichtet. Siehe README.md.</div>','<div class="warning">TESTVERSION – keine produktiven Daten verwenden.</div><div id="setup-warning" class="warning hidden">Die Test-Datenbank wurde noch nicht eingerichtet.</div>');
 writeFileSync(out+"/index.html",html);
 const manifest=JSON.parse(readFileSync(out+"/manifest.webmanifest","utf8"));manifest.name="RHTFLOW 2.0 TEST";manifest.short_name="RHTFLOW TEST";writeFileSync(out+"/manifest.webmanifest",JSON.stringify(manifest,null,2));
-let worker=readFileSync(out+"/sw.js","utf8").replace('trummplaner-pwa-v','trummplaner-staging-v');writeFileSync(out+"/sw.js",worker);
+let worker=readFileSync(out+"/sw.js","utf8").replace('trummplaner-pwa-v2.0.0-dev.7','rhtflow-staging-v2.0.0-dev.7').replace('k.startsWith("trummplaner-pwa-v")||k.startsWith("rhtflow-pwa-v")','k.startsWith("trummplaner-staging-v")||k.startsWith("rhtflow-staging-v")');writeFileSync(out+"/sw.js",worker);
 console.log(url?"Staging build configured":"Staging build with login disabled until configured");
