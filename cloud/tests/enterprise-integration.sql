@@ -50,13 +50,41 @@ do $$ begin
  if exists(select 1 from public.tp_tickets) or exists(select 1 from public.tp_solutions) then raise exception 'Inactive user can read';end if;
 end $$;
 -- Inactive user cannot call privileged legacy RPCs (when present).
-do $ begin
+do $$ begin
  if to_regprocedure('public.tp_game_enter_prestige()') is not null then
   begin perform public.tp_game_enter_prestige(); raise exception 'Disabled member allowed'; exception when raise_exception then if sqlerrm <> 'Access denied' then raise; end if; end;
  end if;
  if to_regprocedure('public.tp_sync_trophies()') is not null then
   begin perform public.tp_sync_trophies(); raise exception 'Disabled member allowed'; exception when raise_exception then if sqlerrm <> 'Access denied' then raise; end if; end;
  end if;
-end $;
+end $$;
+
+-- Actual member deactivation rather than only an unregistered account.
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+select public.tp_create_ticket(1,'Erinnerung','Test ohne Antwort','normal',array['00000000-0000-0000-0000-000000000003']::uuid[]) as reminder_id \gset
+reset role;
+update public.tp_tickets set updated_at=now()-interval '6 days' where id=:reminder_id;
+set role service_role;
+do $$ declare n integer; begin
+ n:=public.tp_ticket_remind();
+ if n<>1 or public.tp_ticket_remind()<>0 then raise exception 'Reminder must be exactly once';end if;
+ if (select count(*) from public.tp_ticket_claim_notifications(100))=0 then raise exception 'Empty push queue';end if;
+ if (select count(*) from public.tp_ticket_claim_notifications(100))<>0 then raise exception 'Duplicate claim';end if;
+end $$;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+do $$ begin
+ if (select count(*) from storage.objects where bucket_id='tp-private-files')<>1 then raise exception 'Active member storage missing';end if;
+ perform public.tp_sync_trophies();
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+select public.tp_admin_member('00000000-0000-0000-0000-000000000002','Mitarbeiter 2',false,false);
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+do $$ begin
+ if exists(select 1 from public.tp_entries) or exists(select 1 from storage.objects) or exists(select 1 from public.tp_tickets) then raise exception 'Deactivated member data leaked';end if;
+ begin perform public.tp_sync_trophies();raise exception 'Deactivated RPC allowed';exception when raise_exception then if sqlerrm<>'Access denied' then raise;end if;end;
+end $$;
 reset role;
 rollback;
+

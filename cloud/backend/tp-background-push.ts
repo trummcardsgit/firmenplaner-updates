@@ -83,6 +83,8 @@ Deno.serve(async req=>{
       const res=await admin.auth.getUser(jwt);
       if(res.error||!res.data.user)return response({error:"Session invalid"},401);
       userId=res.data.user.id;
+      const member=await admin.from("tp_members").select("active").eq("user_id",userId).maybeSingle();
+      if(member.error||!member.data?.active)return response({error:"Konto nicht freigeschaltet"},403);
     }
     if(action==="setup"){
       const {data:isAdmin,error}=await admin.from("tp_app_admins").select("user_id").eq("user_id",userId).maybeSingle();

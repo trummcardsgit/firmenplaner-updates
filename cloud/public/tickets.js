@@ -57,7 +57,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   const list=filterTickets(data.tickets,data.candidates,uid(),tab,firm,status,search);
   const count=t=>filterTickets(data.tickets,data.candidates,uid(),t).length;
   el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>TRUMMPLANER · ENTERPRISE</small><h2>Ticket-Center</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-tabs">'+[["all","All Tickets"],["my","My Tickets"],["open","Open Tickets"]].map(([k,n])=>'<button type="button" data-tp-tab="'+k+'" aria-pressed="'+(tab===k)+'">'+n+' <b>'+count(k)+'</b></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button></div></div>'+
-  (data.notifications.length?'<details class="tp-ticket-panel"><summary>Benachrichtigungen ('+data.notifications.length+')</summary>'+data.notifications.slice(0,20).map(n=>'<p>'+esc(n.message)+' <small>'+esc(date(n.created_at))+'</small></p>').join("")+'</details>':'')+
+  (data.notifications.length?'<details class="tp-ticket-panel"><summary>Benachrichtigungen ('+data.notifications.filter(n=>!n.read_at).length+' ungelesen)</summary><button type="button" data-tp-action="read-notifications">Alle als gelesen markieren</button>'+data.notifications.slice(0,20).map(n=>'<p>'+esc(n.message)+' <small>'+esc(date(n.created_at))+'</small></p>').join("")+'</details>':'')+
   '<div class="tp-ticket-list">'+(list.map(t=>{
    const cs=data.candidates.filter(c=>String(c.ticket_id)===String(t.id));
    const can=t.status==="open"&&cs.some(c=>c.user_id===uid()&&c.response==="pending");
@@ -89,6 +89,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  }
  function action(a,id,b){
   if(a==="refresh"){open();return}
+  if(a==="read-notifications"){call("tp_read_ticket_notifications",{},b);return}
   if(a==="task"){call("tp_import_ticket_task",{p_ticket:id},b);return}
   if(a==="publish"){call("tp_publish_ticket_solution",{p_ticket:id},b);return}
   if(a==="reassign"){dialog("Ticket weiterleiten",'<fieldset><legend>Neue zuständige Mitarbeiter</legend>'+memberOptions()+'</fieldset>',(f,btn)=>{const users=f.getAll("candidate");if(!users.length){notice("Bitte Mitarbeiter auswählen.");return}call("tp_reassign_ticket",{p_ticket:id,p_users:users},btn)});return}

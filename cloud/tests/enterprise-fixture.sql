@@ -79,3 +79,20 @@ insert into auth.users values
  ('00000000-0000-0000-0000-000000000003','employee3@example.invalid'),
  ('00000000-0000-0000-0000-000000000004','inactive@example.invalid');
 insert into public.tp_app_admins values('00000000-0000-0000-0000-000000000001');
+
+-- Simulate the two existing privileged RPCs so the hardening migration actually exercises its rewrite.
+create function public.tp_game_enter_prestige() returns public.tp_game_profiles language plpgsql security definer set search_path='' as $$
+begin
+ return null;
+end;
+$$;
+create function public.tp_sync_trophies() returns jsonb language plpgsql security definer set search_path='' as $$
+begin
+ return '{}'::jsonb;
+end;
+$$;
+revoke all on function public.tp_game_enter_prestige(),public.tp_sync_trophies() from public,anon;
+grant execute on function public.tp_game_enter_prestige(),public.tp_sync_trophies() to authenticated;
+insert into storage.buckets(id,name,public) values('tp-private-files','tp-private-files',false);
+create policy fixture_private_storage on storage.objects for select to authenticated using(bucket_id='tp-private-files' and (storage.foldername(name))[1]=auth.uid()::text);
+insert into storage.objects(bucket_id,name) values('tp-private-files','00000000-0000-0000-0000-000000000002/test.pdf');
