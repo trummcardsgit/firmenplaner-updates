@@ -24,7 +24,7 @@ export async function prepareAvatar(file){
   throw new Error("Bild konnte nicht ausreichend verkleinert werden.");
  }finally{URL.revokeObjectURL(url);}
 }
-export function createProfile({document,db,userId,info,notice,prepare=prepareAvatar}){
+export function createProfile({document,db,userId,info,notice,onAvatarChange=()=>{},prepare=prepareAvatar}){
  const el=id=>document.getElementById(id),dialog=el("tp-avatar-dialog"),input=el("tp-avatar-file"),msg=el("tp-avatar-message"),preview=el("tp-avatar-preview"),save=el("tp-avatar-save"),remove=el("tp-avatar-remove");
  let avatar=null,draft=null,epoch=0,revision=0,busy=false,ready=false,reading=0;
  function paint(node,value,initials){
@@ -72,7 +72,7 @@ export function createProfile({document,db,userId,info,notice,prepare=prepareAva
    const {data,error}=value?await table.upsert({owner_id:uid,avatar:value},{onConflict:"owner_id"}).select("avatar").single():await table.delete().eq("owner_id",uid).select("owner_id");
    if(error||value&&!validAvatar(data?.avatar))throw error||new Error("Speicherung nicht bestätigt");
    if(epoch!==e||userId()!==uid)return;
-   avatar=value?validAvatar(data.avatar):null;draft=null;ready=true;render();dialog.close();notice(value?"Profilbild gespeichert.":"Profilbild entfernt.");
+   avatar=value?validAvatar(data.avatar):null;draft=null;ready=true;render();onAvatarChange();dialog.close();notice(value?"Profilbild gespeichert.":"Profilbild entfernt.");
   }catch{if(epoch===e&&userId()===uid)msg.textContent="Profilbild konnte nicht gespeichert werden. Bitte erneut versuchen.";}
   finally{if(epoch===e&&userId()===uid){busy=false;controls();}}
  }
@@ -82,4 +82,44 @@ export function createProfile({document,db,userId,info,notice,prepare=prepareAva
  dialog.addEventListener("cancel",e=>{if(busy)e.preventDefault();});
  dialog.addEventListener("close",()=>{draft=null;input.value="";preview.replaceChildren();msg.textContent="";});
  return {render,reset,load,open};
+}
+
+const memberEscape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+export function memberLabel(id,name){
+ const label=String(name||"Unbekannt"),initials=label.trim().split(/\s+/).slice(0,2).map(s=>Array.from(s)[0]||"").join("").toLocaleUpperCase("de-AT")||"?";
+ return '<span class="tp-member-label"><span class="tp-member-avatar" aria-hidden="true" data-member-avatar="'+memberEscape(id||"")+'" data-initials="'+memberEscape(initials)+'">'+memberEscape(initials)+'</span><span>'+memberEscape(label)+'</span></span>';
+}
+export function createMemberAvatars({document,db,userId}){
+ let cache=new Map(),painted=new WeakMap(),epoch=0,running=false,scheduled=false;
+ const nodes=()=>[...document.querySelectorAll("[data-member-avatar]")];
+ function paint(node,value){
+  if(painted.has(node)&&painted.get(node)===value)return;
+  painted.set(node,value);node.textContent=node.dataset.initials||"?";
+  if(value){const img=document.createElement("img");img.alt="";img.loading="lazy";img.src=value;img.onerror=()=>{if(node.contains(img))node.textContent=node.dataset.initials||"?";};node.replaceChildren(img);}
+ }
+ function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;void sync();});}
+ async function sync(){
+  const uid=userId(),e=epoch;if(!uid||running)return;
+  const current=()=>epoch===e&&userId()===uid;
+  const visible=nodes();
+  for(const node of visible)if(cache.has(node.dataset.memberAvatar))paint(node,cache.get(node.dataset.memberAvatar));
+  const ids=[...new Set(visible.map(n=>n.dataset.memberAvatar).filter(id=>id&&!cache.has(id)))];
+  if(!ids.length)return;
+  running=true;
+  try{
+   for(let i=0;i<ids.length;i+=50){
+    const batch=ids.slice(i,i+50);
+    const {data,error}=await db.from("tp_profile_avatars").select("owner_id,avatar").in("owner_id",batch);
+    if(!current())return;
+    for(const id of batch)cache.set(id,null);
+    if(!error)for(const row of data||[])if(batch.includes(row.owner_id))cache.set(row.owner_id,validAvatar(row.avatar));
+   }
+  }catch{if(current())for(const id of ids)if(!cache.has(id))cache.set(id,null);}
+  finally{if(current()){running=false;schedule();}}
+ }
+ function reset(){epoch++;running=false;cache.clear();for(const node of nodes())paint(node,null);}
+ function refresh(){reset();schedule();}
+ const observer=new document.defaultView.MutationObserver(records=>{if(records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&(n.matches("[data-member-avatar]")||n.querySelector("[data-member-avatar]")))))schedule();});
+ observer.observe(document.body,{childList:true,subtree:true});
+ return {refresh,reset,sync};
 }

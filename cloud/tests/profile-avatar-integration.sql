@@ -9,7 +9,8 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002'
 select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000002','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now())::bigint)))::text,true);
 insert into public.tp_profile_avatars values(auth.uid(),'data:image/jpeg;base64,/9j/BBBB');
 do $$ begin
- if (select count(*) from public.tp_profile_avatars)<>1 then raise exception 'Other avatar exposed';end if;
+ if (select count(*) from public.tp_profile_avatars)<>2 then raise exception 'Active colleague avatar not visible';end if;
+ if not exists(select 1 from public.tp_profile_avatars where owner_id='00000000-0000-0000-0000-000000000001') then raise exception 'Colleague avatar not readable';end if;
  update public.tp_profile_avatars set avatar='data:image/jpeg;base64,/9j/CCCC' where owner_id='00000000-0000-0000-0000-000000000001';
  if found then raise exception 'Other avatar modified';end if;
  delete from public.tp_profile_avatars where owner_id='00000000-0000-0000-0000-000000000001';

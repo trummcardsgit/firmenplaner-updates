@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {JSDOM} from "jsdom";
-import {profileInfo,validAvatar,createProfile} from "../public/profile-avatar.js";
+import {profileInfo,validAvatar,createProfile,memberLabel,createMemberAvatars} from "../public/profile-avatar.js";
 const avatar="data:image/jpeg;base64,/9j/AAAA";
 assert.equal(validAvatar(avatar),avatar);assert.equal(validAvatar("data:image/svg+xml,<svg/>"),null);assert.equal(validAvatar("data:image/jpeg;base64,/9j/"+"A".repeat(96000)),null);
 const user={id:"u",email:"private@example.invalid"},members=[{user_id:"u",display_name:"Test Person"}];
@@ -15,3 +15,14 @@ const profile=createProfile({document:doc,db,userId:()=>uid,info:()=>profileInfo
 profile.render();assert.equal(doc.querySelector("[data-profile-name]").textContent,"Test Person");assert.equal(doc.querySelector("[data-profile-level]").textContent,"Level 9");await profile.load(uid);assert.equal(doc.querySelectorAll("[data-profile-picture] img").length,2);
 doc.querySelector("[data-profile-picture]").click();assert.ok(dialog.open);profile.reset();assert.equal(dialog.open,false);assert.equal(doc.querySelectorAll("[data-profile-picture] img").length,0);
 console.log("Profile avatar: safe JPEG, rank, account name, desktop/mobile, dialog and account reset passed");
+
+const people=new JSDOM('<main>'+memberLabel("u","Test Person")+memberLabel("v","<script>")+memberLabel("v","Colleague")+'</main>').window.document;
+let account="u",requests=0;const directory=createMemberAvatars({document:people,userId:()=>account,db:{from(table){assert.equal(table,"tp_profile_avatars");return {select(){return this},async in(column,ids){requests++;assert.equal(column,"owner_id");assert.deepEqual(ids,["u","v"]);return {data:[{owner_id:"u",avatar},{owner_id:"v",avatar:"data:image/svg+xml,invalid"}]};}}}}});
+await directory.sync();await Promise.resolve();
+assert.equal(people.querySelectorAll("[data-member-avatar] img").length,1);
+assert.equal(people.querySelector("[data-member-avatar=u] img").getAttribute("src"),avatar);
+assert.equal(people.querySelector("[data-member-avatar=v]").textContent,"<");
+assert.equal(people.querySelectorAll("script").length,0);
+assert.equal(requests,1);
+account=null;directory.reset();assert.equal(people.querySelectorAll("[data-member-avatar] img").length,0);
+console.log("Member avatar directory: batching, safe formats, initials, escaped names and session reset passed");

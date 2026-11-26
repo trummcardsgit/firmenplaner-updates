@@ -1,4 +1,4 @@
-import {createProfile,profileInfo} from "./profile-avatar.js";
+import {createProfile,profileInfo,memberLabel,createMemberAvatars} from "./profile-avatar.js";
 import {normalizeMenu,applyMenu,createMenuEditor} from "./menu-preferences.js";
 import {createMfa,mfaStatus} from "./mfa.js";
 import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
@@ -105,7 +105,8 @@ const $=id=>document.getElementById(id);
 let inviteFlow=["invite","recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"));
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
 let profileRankReady=false;
-const profile=createProfile({document,db,userId:()=>state.user?.id,info:()=>profileInfo(state.user,state.members,profileRankReady?state.gameProfile:undefined),notice});
+const memberAvatars=createMemberAvatars({document,db,userId:()=>state.user?.id});
+const profile=createProfile({document,db,userId:()=>state.user?.id,info:()=>profileInfo(state.user,state.members,profileRankReady?state.gameProfile:undefined),notice,onAvatarChange:()=>memberAvatars.refresh()});
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -171,7 +172,7 @@ async function load(){
   db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id),
   db.from("tp_game_profiles").select("*").eq("owner_id",state.user.id).maybeSingle(),
   db.from("tp_game_xp_events").select("id,entry_id,entry_title,xp,rank_before,rank_after,prestige,stage,awarded_at").eq("owner_id",state.user.id).order("id",{ascending:false}).limit(30),
-  db.from("tp_members").select("user_id,display_name"),
+  db.from("tp_members").select("user_id,display_name,active"),
   db.from("tp_ticket_awards").select("threshold,awarded_at").eq("owner_id",state.user.id),
   db.from("tp_tickets").select("id",{count:"exact",head:true}).eq("assignee_id",state.user.id).eq("status","closed")
  ]);
@@ -207,9 +208,9 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  await syncTrophies();
  if(state.user?.id!==loadingUser)return;
- render();
+ render();memberAvatars.refresh();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -374,7 +375,7 @@ function solutionResults(){
  '<input id="search" type="search" aria-label="Lösungen durchsuchen" placeholder="Problem, Fehlermeldung oder Lösungsbegriff suchen …" value="'+esc(state.search)+'">'+
  '<p class="counter" style="margin-top:10px">'+filtered.length+' Lösungen gefunden</p></div>'+
  (filtered.length?filtered.map(s=>'<article class="item"><div class="meta"><span class="pill gold">'+esc(s.company_name||"Ohne Firma")+'</span><span>'+esc(fmt(s.updated_at))+'</span></div>'+
- '<h3>'+esc(s.problem_title)+'</h3><p class="muted">Erstellt von: '+esc(state.members?.find(m=>m.user_id===s.owner_id)?.display_name||"Ehemaliger Mitarbeiter")+'</p>'+
+ '<h3>'+esc(s.problem_title)+'</h3><p class="muted">Erstellt von: '+memberLabel(s.owner_id,state.members?.find(m=>m.user_id===s.owner_id)?.display_name||"Ehemaliger Mitarbeiter")+'</p>'+
  (s.problem_description?'<p><strong>Problembeschreibung:</strong> '+esc(s.problem_description)+'</p>':'')+
  '<div style="border-left:3px solid #e2af48;padding:12px;background:#242630;border-radius:9px"><strong>✔ Lösung</strong><p style="margin:8px 0 0;white-space:pre-wrap">'+esc(s.solution_text)+'</p></div>'+
  solutionDeleteButton(s,state.isAdmin,esc)+'</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');

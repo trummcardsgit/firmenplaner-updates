@@ -66,6 +66,7 @@ console.log("Ticket submenu: order, navigation, counts, refresh, mobile and rese
 
 document.getElementById("content").innerHTML=center.page();center.setMenuVisible(true);await center.open();
 const selectTab=k=>nav.querySelector('[data-ticket-category="'+k+'"]').click();
+assert.ok(document.querySelector('[data-member-avatar="u"]'));
 const filterButtons=["refresh","save-filter","reset-filter"].map(action=>document.querySelector('[data-tp-action="'+action+'"]'));
 assert.ok(filterButtons.every(Boolean));
 assert.equal(filterButtons[1].className,filterButtons[0].className);
