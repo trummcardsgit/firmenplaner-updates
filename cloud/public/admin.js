@@ -1,0 +1,29 @@
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+export function createAdminCenter({db,userId,isAdmin,notice,fail,settingsPanel}){
+ let rows=[],companies=[],generation=0,busy=false;
+ const root=()=>document.getElementById("tp-admin-root");
+ function reset(){generation++;rows=[];companies=[];busy=false}
+ function page(){return '<section id="tp-admin-root" class="tp-ticket-center"><p>Benutzer werden geladen …</p></section>'}
+ async function open(){
+  if(!isAdmin()||!userId())return;
+  const token=++generation,u=userId();
+  try{
+   const [a,b]=await Promise.all([db.rpc("tp_admin_directory"),db.from("tp_ticket_companies").select("*").order("name")]);
+   if(token!==generation||u!==userId()||!isAdmin()||!root())return;
+   if(a.error||b.error)throw a.error||b.error;
+   rows=a.data||[];companies=b.data||[];draw();
+  }catch(e){if(token===generation&&root()){root().textContent="Benutzerverwaltung nicht verfügbar. Enterprise-Datenbank prüfen.";fail(e)}}
+ }
+ function draw(){
+  const el=root();if(!el||!isAdmin())return;
+  el.innerHTML='<div class="tp-ticket-panel"><small>TRUMMPLANER · ADMINISTRATION</small><h2>Benutzerverwaltung</h2><div class="tp-ticket-meta"><b>'+rows.length+' Konten</b><span>'+rows.filter(r=>r.active).length+' aktiv</span><span>'+rows.filter(r=>!r.active).length+' nicht freigeschaltet</span></div><p>Neue Mitarbeiter zuerst einladen, anschließend hier aktivieren. Standardrolle ist Benutzer.</p><button type="button" id="tp-admin-refresh">Aktualisieren</button></div>'+settingsPanel()+'<div class="tp-ticket-panel"><h3>Benutzerkonten</h3>'+rows.map(r=>'<form class="tp-admin-member" data-user="'+esc(r.user_id)+'"><strong>'+esc(r.email)+'</strong><label>Anzeigename<input name="name" required maxlength="120" value="'+esc(r.display_name)+'"></label><label>Rolle<select name="role"><option value="member"'+(!r.is_admin?' selected':'')+'>Benutzer</option><option value="admin"'+(r.is_admin?' selected':'')+'>Administrator</option></select></label><label class="tp-ticket-check"><input type="checkbox" name="active"'+(r.active?' checked':'')+'> Aktiv</label>'+(r.user_id===userId()?'<p>Dein eigenes Administratorkonto (geschützt)</p>':'<button type="submit">Speichern</button>')+'</form>').join("")+'</div><div class="tp-ticket-panel"><h3>Gemeinsame Ticket-Firmen</h3>'+companies.map(c=>'<p>'+esc(c.name)+'</p>').join("")+'<form id="tp-admin-company"><label>Firmenname<input name="company" required maxlength="200"></label><button type="submit">Firma hinzufügen</button></form></div>';
+  el.querySelector("#tp-admin-refresh").onclick=open;
+  el.querySelectorAll(".tp-admin-member").forEach(form=>{if(form.dataset.user===userId()){form.querySelectorAll("input,select").forEach(x=>x.disabled=true);return}form.onsubmit=e=>{e.preventDefault();e.stopPropagation();const f=new FormData(form);save("tp_admin_member",{p_user:form.dataset.user,p_name:f.get("name"),p_active:f.has("active"),p_admin:f.get("role")==="admin"},form)}});
+  el.querySelector("#tp-admin-company").onsubmit=e=>{e.preventDefault();e.stopPropagation();save("tp_admin_company",{p_name:new FormData(e.currentTarget).get("company")},e.currentTarget)};
+ }
+ async function save(fn,args,form){
+  if(busy||!isAdmin())return;busy=true;const u=userId(),button=form.querySelector('[type="submit"]');if(button)button.disabled=true;
+  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(u!==userId())return;notice("Änderung gespeichert.");await open()}catch(e){if(u===userId())fail(e)}finally{if(u===userId()){busy=false;if(button)button.disabled=false}}
+ }
+ return {page,open,reset};
+}
