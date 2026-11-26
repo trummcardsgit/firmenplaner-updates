@@ -11,3 +11,6 @@ The enterprise workflow now executes the complete legacy smoke suite and races t
 - Preview must use a separate database and origin; never repurpose an unrelated production or paused test project without approval.
 - Verify invitations, recovery, account lockout, shared solutions (review existing content), push notifications on two real devices, and simultaneous acceptance. Record results before production.
 - Before production, prepare a verified backup and a coordinated maintenance/rollback plan for database, edge function and Pages deployment. No automatic merge or live deploy from enterprise-2.0.
+
+## Dedicated TEST setup
+The existing TEST project (cpycfxolqpidfjbhhsmr) is explicitly authorized for repurposing. First inspect and remove old app objects and storage via supported APIs; never delete managed Supabase schemas. Apply staging-baseline.sql before the five enterprise migrations. The baseline is schema-only and excludes the production administrator identity. Bootstrap a new test administrator using a separate invitation; do not copy production Auth accounts or push configuration. Verify the baseline on the restored project before using the preview.

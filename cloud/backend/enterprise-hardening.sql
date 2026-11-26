@@ -5,7 +5,7 @@ create policy enterprise_private_storage_gate on storage.objects as restrictive 
  using(bucket_id not in ('tp-private-files','tp-ticket-attachments') or tp_private.enterprise_member())
  with check(bucket_id not in ('tp-private-files','tp-ticket-attachments') or tp_private.enterprise_member());
 do $$ declare t text; begin
- foreach t in array array['tp_app_admins','tp_invites','tp_trophy_definitions'] loop
+ foreach t in array array['tp_app_admins','tp_invites','tp_trophy_definitions','tp_attachments'] loop
  if to_regclass('public.'||t) is not null then
  execute format('create policy enterprise_active_gate on public.%I as restrictive for all to authenticated using (tp_private.enterprise_member()) with check (tp_private.enterprise_member())',t);
  end if;
