@@ -9,12 +9,14 @@ const ROOT=__dirname;
 const DATA_DIR=path.resolve(process.env.DATA_DIR||path.join(ROOT,'data'));
 const CONFIG=path.join(DATA_DIR,'update-settings.json');
 fs.mkdirSync(DATA_DIR,{recursive:true});
-let settings={repo:'trummcardsgit/firmenplaner-updates',autoOnStart:true};
-if(fs.existsSync(CONFIG)) {
-  try {const s=JSON.parse(fs.readFileSync(CONFIG,'utf8'));
-    if(typeof s.repo==='string'&&s.repo) validateRepo(s.repo);
-    settings={repo:s.repo||'trummcardsgit/firmenplaner-updates',autoOnStart:s.autoOnStart!==false};
-  }catch(e){console.error('[Update] Einstellungen fehlerhaft:',e.message);}
+let settings;
+try {const s=JSON.parse(fs.readFileSync(CONFIG,'utf8'));
+  if(!s||typeof s!=='object'||Array.isArray(s)||typeof s.repo!=='string'||typeof s.autoOnStart!=='boolean')throw new Error('Ungültige Update-Einstellungen');
+  if(s.repo)validateRepo(s.repo);
+  settings={repo:s.repo,autoOnStart:s.autoOnStart};
+}catch(e){
+  if(e?.code==='ENOENT')settings={repo:'trummcardsgit/firmenplaner-updates',autoOnStart:true};
+  else{settings={repo:'',autoOnStart:false};console.error('[Update] Einstellungen fehlerhaft:',e.message);}
 }
 const currentVersion=()=>JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8')).version;
 let latest=null, checking=null, installing=false, serverChild=null, stopping=false, shuttingDown=false;

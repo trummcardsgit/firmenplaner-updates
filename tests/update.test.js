@@ -1,8 +1,28 @@
 'use strict';
 const test=require('node:test');const assert=require('node:assert/strict');
 const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
+const {execFileSync}=require('node:child_process');
 const {validateRepo,compareVersions,packZip,unpackZip,getFiles,sha256,applyUpdate,latestRelease}=require('../update-core');
 const root=path.resolve(__dirname,'..');
+function managerStatus(dataDir){
+  const script="const manager=require(process.argv[1]);process.stdout.write(JSON.stringify(manager.publicStatus()));";
+  return JSON.parse(execFileSync(process.execPath,['-e',script,path.join(root,'manager.js')],{encoding:'utf8',env:{...process.env,DATA_DIR:dataDir}}));
+}
+test('update settings distinguish missing, cleared, valid, and malformed configurations',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'firmenplaner-settings-')),config=path.join(dir,'update-settings.json');
+  try{
+    let status=managerStatus(dir);
+    assert.equal(status.repo,'trummcardsgit/firmenplaner-updates');assert.equal(status.autoOnStart,true);
+    fs.writeFileSync(config,JSON.stringify({repo:'',autoOnStart:true}));status=managerStatus(dir);
+    assert.equal(status.repo,'');assert.equal(status.autoOnStart,true);
+    fs.writeFileSync(config,JSON.stringify({repo:'example/FirmenPlaner',autoOnStart:false}));status=managerStatus(dir);
+    assert.equal(status.repo,'example/FirmenPlaner');assert.equal(status.autoOnStart,false);
+    for(const malformed of ['{',JSON.stringify({repo:7,autoOnStart:true}),JSON.stringify({repo:'example/FirmenPlaner',autoOnStart:'yes'})]){
+      fs.writeFileSync(config,malformed);status=managerStatus(dir);
+      assert.equal(status.repo,'');assert.equal(status.autoOnStart,false);
+    }
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
 test('versions and safe repositories',()=>{
   assert.equal(compareVersions('1.1.0','1.0.9'),1);
   assert.equal(compareVersions('1.1.0','v1.1.0'),0);
