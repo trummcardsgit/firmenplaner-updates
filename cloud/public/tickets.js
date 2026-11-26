@@ -1,5 +1,5 @@
 import {memberLabel} from "./profile-avatar.js";
-import {ticketTextHtml,canEditTicketDescription,ticketEditorMarkup,mountTicketEditor} from "./ticket-text-editor.js";
+import {ticketTextHtml,canEditTicketDescription,ticketEditorMarkup,mountTicketEditor,syncTicketEditor} from "./ticket-text-editor.js";
 import {applyTicketOrder,normalizeTicketOrder,ticketMenuItems} from "./menu-preferences.js";
 import {defaultTicketFilters,normalizeTicketFilters,readTicketFilters} from "./ticket-filter-preferences.js";
 import {attachmentAccept,validateAttachments,uploadAttachments,canAttach} from "./ticket-attachments.js";
@@ -153,7 +153,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   const d=document.getElementById("tp-ticket-dialog");if(!d)return;
   d.innerHTML='<form id="tp-ticket-local-form"><h2>'+esc(title)+'</h2>'+body+'<div class="tp-ticket-actions"><button type="button" id="tp-ticket-cancel">Abbrechen</button><button type="submit" class="primary">Speichern</button></div></form>';
   d.querySelector("#tp-ticket-cancel").onclick=()=>d.close();
-  d.querySelector("form").onsubmit=e=>{e.preventDefault();e.stopPropagation();submit(new FormData(e.currentTarget),e.currentTarget.querySelector('[type="submit"]'))};
+  d.querySelector("form").onsubmit=e=>{e.preventDefault();e.stopPropagation();if(![...e.currentTarget.querySelectorAll("[data-ticket-editor]")].every(syncTicketEditor))return;submit(new FormData(e.currentTarget),e.currentTarget.querySelector('[type="submit"]'))};
   d.querySelectorAll("[data-ticket-editor]").forEach(mountTicketEditor);
   d.showModal();
  }

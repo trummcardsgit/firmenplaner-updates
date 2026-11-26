@@ -39,6 +39,17 @@ jobs:
           node cloud/tests/ticket-submenu-smoke.mjs
           node cloud/tests/ticket-text-editor-smoke.mjs
 
+  editor-browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund --ignore-scripts playwright@1.58.2
+      - run: cloud/node_modules/.bin/playwright install --with-deps chromium
+      - run: node cloud/tests/ticket-editor-browser.mjs
+
   database:
     runs-on: ubuntu-latest
     services:
@@ -95,7 +106,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/ticket-description-edit-integration.sql
 
   preview:
-    needs: [checks, database]
+    needs: [checks, database, editor-browser]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
