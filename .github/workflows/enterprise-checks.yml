@@ -1,7 +1,7 @@
 name: Enterprise staging checks
 on:
   push:
-    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9]
+    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9, release/rhtflow-2.0.10]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
           node cloud/tests/showcase-smoke.mjs
           node cloud/tests/game-progression-smoke.mjs
           node cloud/tests/menu-preferences-smoke.mjs
+          node cloud/tests/profile-avatar-smoke.mjs
           node cloud/tests/editor-smoke.mjs
           node cloud/tests/table-editor-smoke.mjs
           node cloud/tests/dictation-smoke.mjs
@@ -81,6 +82,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/mfa-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-menu-preferences.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/menu-preferences-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-profile-avatars.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/profile-avatar-integration.sql
 
   preview:
     needs: [checks, database]

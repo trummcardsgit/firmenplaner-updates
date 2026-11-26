@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {JSDOM} from "jsdom";
+import {profileInfo,validAvatar,createProfile} from "../public/profile-avatar.js";
+const avatar="data:image/jpeg;base64,/9j/AAAA";
+assert.equal(validAvatar(avatar),avatar);assert.equal(validAvatar("data:image/svg+xml,<svg/>"),null);assert.equal(validAvatar("data:image/jpeg;base64,/9j/"+"A".repeat(96000)),null);
+const user={id:"u",email:"private@example.invalid"},members=[{user_id:"u",display_name:"Test Person"}];
+assert.deepEqual(profileInfo(user,members,{level:9,prestige:2}),{name:"Test Person",initials:"TP",level:"Level 9 · Prestige 2"});
+assert.equal(profileInfo(user,[],undefined).level,"Level …");assert.equal(profileInfo(user,[],null).name,"Mein Profil");
+const doc=new JSDOM(readFileSync(new URL("../public/index.html",import.meta.url),"utf8")).window.document;
+const dialog=doc.getElementById("tp-avatar-dialog");dialog.showModal=()=>dialog.setAttribute("open","");dialog.close=()=>dialog.removeAttribute("open");
+let uid="u",stored=avatar,notice="";
+const db={from(t){assert.equal(t,"tp_profile_avatars");return {select(){return this},eq(k,v){assert.equal(v,uid);return this},async maybeSingle(){return {data:stored?{avatar:stored}:null}},upsert(v){assert.equal(v.owner_id,uid);stored=v.avatar;return this},async single(){return {data:{avatar:stored}}}}}};
+const profile=createProfile({document:doc,db,userId:()=>uid,info:()=>profileInfo(user,members,{level:9}),notice:v=>notice=v,prepare:async()=>avatar});
+profile.render();assert.equal(doc.querySelector("[data-profile-name]").textContent,"Test Person");assert.equal(doc.querySelector("[data-profile-level]").textContent,"Level 9");await profile.load(uid);assert.equal(doc.querySelectorAll("[data-profile-picture] img").length,2);
+doc.querySelector("[data-profile-picture]").click();assert.ok(dialog.open);profile.reset();assert.equal(dialog.open,false);assert.equal(doc.querySelectorAll("[data-profile-picture] img").length,0);
+console.log("Profile avatar: safe JPEG, rank, account name, desktop/mobile, dialog and account reset passed");

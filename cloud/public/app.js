@@ -1,3 +1,4 @@
+import {createProfile,profileInfo} from "./profile-avatar.js";
 import {normalizeMenu,applyMenu,createMenuEditor} from "./menu-preferences.js";
 import {createMfa,mfaStatus} from "./mfa.js";
 import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
@@ -103,6 +104,8 @@ const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>st
 const $=id=>document.getElementById(id);
 let inviteFlow=["invite","recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"));
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
+let profileRankReady=false;
+const profile=createProfile({document,db,userId:()=>state.user?.id,info:()=>profileInfo(state.user,state.members,profileRankReady?state.gameProfile:undefined),notice});
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=x=>x?new Date(x).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"–";
 const inDate=x=>{if(!x)return "";const d=new Date(x),p=x=>String(x).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -186,12 +189,12 @@ async function load(){
  state.ticketAwards=awardRows.data||[];state.closedTickets=closedTickets.count||0;
  state.solutions=sol.data||[];
  state.pushSubs=pushDevices.data||[];
- state.gameProfile=gameProfile.data||null;
+ state.gameProfile=gameProfile.data||null;profileRankReady=true;profile.render();
  state.gameEvents=xpEvents.data||[];
  state.companies=a.data||[];
  state.entries=b.data||[];
  state.isAdmin=!!adminStatus.data;
- await loadMenuPreferences(loadingUser);
+ await Promise.all([loadMenuPreferences(loadingUser),profile.load(loadingUser)]);
  if(state.user?.id!==loadingUser)return;
  if(new URLSearchParams(location.search).has("ticket"))state.view="tickets";
  if(state.isAdmin){
@@ -206,7 +209,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();menuEditor.reset();menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -425,7 +428,7 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern, Menüpunkte aus- und wieder einblenden.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+function render(){if(!state.user)return;profile.render();if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
 $("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}

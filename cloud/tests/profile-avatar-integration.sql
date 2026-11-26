@@ -1,0 +1,28 @@
+begin;
+insert into auth.sessions values('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','aal2',null),('10000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002','aal2',null);
+insert into auth.mfa_factors values('20000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','totp','verified'),('20000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002','totp','verified');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000001','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now())::bigint)))::text,true);
+insert into public.tp_profile_avatars values(auth.uid(),'data:image/jpeg;base64,/9j/AAAA');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000002','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now())::bigint)))::text,true);
+insert into public.tp_profile_avatars values(auth.uid(),'data:image/jpeg;base64,/9j/BBBB');
+do $$ begin
+ if (select count(*) from public.tp_profile_avatars)<>1 then raise exception 'Other avatar exposed';end if;
+ update public.tp_profile_avatars set avatar='data:image/jpeg;base64,/9j/CCCC' where owner_id='00000000-0000-0000-0000-000000000001';
+ if found then raise exception 'Other avatar modified';end if;
+ delete from public.tp_profile_avatars where owner_id='00000000-0000-0000-0000-000000000001';
+ if found then raise exception 'Other avatar deleted';end if;
+ begin update public.tp_profile_avatars set avatar='data:image/svg+xml,invalid' where owner_id=auth.uid();raise exception 'Invalid format accepted';exception when check_violation then null;end;
+ update public.tp_profile_avatars set avatar='data:image/jpeg;base64,/9j/DDDD' where owner_id=auth.uid();
+ if not found then raise exception 'Own replacement failed';end if;
+ delete from public.tp_profile_avatars where owner_id=auth.uid();
+ if not found then raise exception 'Own removal failed';end if;
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims','{"aal":"aal1"}',true);
+do $$ begin if exists(select 1 from public.tp_profile_avatars) then raise exception 'MFA bypass';end if;end $$;
+reset role;
+do $$ begin if has_table_privilege('anon','public.tp_profile_avatars','SELECT') then raise exception 'Anonymous avatar access';end if;end $$;
+rollback;
