@@ -10,7 +10,7 @@ import {createAdminCenter} from "./admin.js";
 import {ticketAwardsPanel} from "./ticket-awards.js";
 
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
-const trophyKey=()=> "tp-trophy-prefs-"+state.user?.id;
+const trophyKey=()=> (cfg.staging?"rhtflow-test-trophy-prefs-":"tp-trophy-prefs-")+state.user?.id;
 function readTrophyPrefs(){try{const p=JSON.parse(localStorage.getItem(trophyKey())||"{}");trophyFavorites=Array.isArray(p.favorites)?p.favorites.filter(Number.isInteger).slice(0,3):[];trophySound=p.sound===true}catch{trophyFavorites=[];trophySound=false}}
 function saveTrophyPrefs(){try{localStorage.setItem(trophyKey(),JSON.stringify({favorites:trophyFavorites,sound:trophySound}))}catch{}}
 async function syncTrophies(){const uid=state.user?.id;if(!uid)return;try{const {data,error}=await db.rpc("tp_sync_trophies");if(state.user?.id!==uid)return;if(error)throw error;trophyItems=Array.isArray(data?.trophies)?data.trophies:[];if(data?.profile)state.gameProfile=data.profile;trophyError=false;announceTrophies(trophyItems,data?.new||[],trophySound)}catch(e){if(state.user?.id===uid){trophyError=true;console.warn("Trophäen-Sync",e)}}}
@@ -21,7 +21,9 @@ if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.
  document.querySelectorAll("#auth-form input,#auth-form button").forEach(el=>el.disabled=true);
  throw new Error("Supabase connection is not configured for this build");
 }
-const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
+// Preserve the Supabase project-specific production session key; TEST uses its own ref.
+const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),resetPassword:async email=>{const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error}});
 const $=id=>document.getElementById(id);
@@ -472,4 +474,4 @@ features.init();
 installDictation(document,window);
 window.addEventListener("tp-refresh-view",()=>render());
 db.auth.getUser().then(r=>showApp(r.data.user||null)).catch(fail);
-if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(console.warn);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js",{scope:"./",updateViaCache:"none"}).catch(console.warn);
