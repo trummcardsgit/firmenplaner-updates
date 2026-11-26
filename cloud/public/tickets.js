@@ -1,3 +1,4 @@
+import {defaultTicketFilters,normalizeTicketFilters,readTicketFilters} from "./ticket-filter-preferences.js";
 import {attachmentAccept,validateAttachments,uploadAttachments,canAttach} from "./ticket-attachments.js";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const priorities={low:"Niedrig",normal:"Normal",high:"Hoch",urgent:"Dringend"},statuses={open:"Offen",accepted:"In Bearbeitung",rejected:"Abgelehnt",closed:"Erledigt"};
@@ -12,7 +13,26 @@ export function countActiveTickets(tickets,candidates,uid,category){
 export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
 export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  let data=null,tab="all",firm="",status="open",search="",busy=false,epoch=0,focusId="",polling=false,menuVisible=false;
+ let preferences=new Map(),prefsReady=false,prefsSaving=false,prefsGeneration=0,restorePending=true;
  const pageSize=500;
+ function currentFilters(){return normalizeTicketFilters({company_filter:firm,status_filter:status,search_filter:search},data?.companies||[]);}
+ function restoreFilters(){const p=normalizeTicketFilters(preferences.get(tab)||defaultTicketFilters(),data?.companies||[]);firm=p.company_filter;status=p.status_filter;search=p.search_filter;focusId="";}
+ async function saveFilters(reset=false){
+  if(prefsSaving||!prefsReady||!uid())return;
+  const u=uid(),category=tab,generation=prefsGeneration;
+  const p=reset?defaultTicketFilters():currentFilters();
+  prefsSaving=true;draw();
+  try{
+   const q=db.from("tp_ticket_filter_preferences");
+   const r=reset?await q.delete().eq("owner_id",u).eq("category",category).select("category"):await q.upsert({owner_id:u,category,...p},{onConflict:"owner_id,category"}).select("category").single();
+   if(r.error||(!reset&&r.data?.category!==category))throw r.error||new Error("Speicherung nicht bestätigt");
+   if(uid()!==u||generation!==prefsGeneration)return;
+   if(reset){preferences.delete(category);if(tab===category)restoreFilters();}
+   else preferences.set(category,p);
+   notice(reset?"Standardfilter wiederhergestellt.":"Filter für "+ticketCategories.find(([k])=>k===category)[1]+" gespeichert.");
+  }catch(e){if(uid()===u&&generation===prefsGeneration)fail(e);}
+  finally{if(uid()===u&&generation===prefsGeneration){prefsSaving=false;draw();}}
+ }
  const root=()=>document.getElementById("tp-ticket-root");
  const uid=()=>userId();
  const name=id=>data?.members.find(m=>m.user_id===id)?.display_name||"Unbekannt";
@@ -31,7 +51,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   });
  }
  function setMenuVisible(visible){
-  if(visible&&!menuVisible){status="open";firm="";search="";focusId=""}
+  if(visible&&!menuVisible){restoreFilters();restorePending=true;}
   menuVisible=visible;
   const menu=document.getElementById("tp-ticket-subnav");
   if(menu)menu.hidden=!visible;
@@ -39,14 +59,14 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   syncMenu();
  }
  function selectCategory(key){
-  if(!ticketCategories.some(([id])=>id===key)||!root()||busy)return;
-  tab=key;firm="";status="open";search="";focusId="";draw();syncMenu();
+  if(!ticketCategories.some(([id])=>id===key)||!root()||busy||prefsSaving)return;
+  tab=key;restoreFilters();restorePending=!prefsReady;draw();syncMenu();
  }
  document.getElementById("tp-ticket-subnav")?.addEventListener("click",e=>{
   const button=e.target.closest("[data-ticket-category]");
   if(button)selectCategory(button.dataset.ticketCategory);
  });
- function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="open";search="";busy=false;setMenuVisible(false)}
+ function reset(){epoch++;prefsGeneration++;preferences=new Map();prefsReady=false;prefsSaving=false;restorePending=true;focusId="";data=null;tab="all";firm="";status="open";search="";busy=false;setMenuVisible(false)}
  async function read(background=false){
   const u=uid(),token=++epoch;if(!u)return;
   const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
@@ -72,9 +92,17 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   }));
   if(token!==epoch||uid()!==u)return;
   const next=Object.fromEntries(results.map((r,i)=>[keys[i],r]));
+  if(!background&&(!prefsReady||restorePending)&&!prefsSaving){
+   try{
+    const p=await db.from("tp_ticket_filter_preferences").select("category,company_filter,status_filter,search_filter").eq("owner_id",u).range(0,2);
+    if(token!==epoch||uid()!==u)return;
+    if(p.error)throw p.error;
+    preferences=readTicketFilters(p.data,next.companies);prefsReady=true;
+   }catch(e){if(token!==epoch||uid()!==u)return;prefsReady=false;console.warn("Ticketfilter konnten nicht geladen werden",e);}
+  }
   const changed=JSON.stringify(data)!==JSON.stringify(next);
   if(background&&(busy||root()?.querySelector('dialog[open]')||root()?.contains(document.activeElement)&&document.activeElement?.matches('input,textarea,select,summary')))return;
-  data=next;syncMenu();
+  data=next;if(restorePending){restoreFilters();restorePending=false;}syncMenu();
   if(!background||changed){
    if(background&&(busy||root()?.querySelector("dialog[open]")||root()?.contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary")))return;
    const expanded=[...root()?.querySelectorAll("article details[open]")||[]].map(d=>d.closest("article")?.dataset.ticketId);
@@ -84,12 +112,12 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  }
  function page(){return '<section id="tp-ticket-root" class="tp-ticket-center"><p>Tickets werden geladen …</p></section>'}
  function error(e){if(root())root().innerHTML='<div class="tp-ticket-panel"><p>Ticket-Center nicht verfügbar. Die Enterprise-Datenbank muss eingerichtet sein.</p><button type="button" id="tp-ticket-retry">Erneut laden</button></div>';document.getElementById("tp-ticket-retry")?.addEventListener("click",()=>open());fail(e)}
- function open(id=""){if(id){focusId=String(id);tab="all";firm="";status="";search=""}syncMenu();if(data)draw();return read().catch(error)}
+ function open(id=""){if(id){restorePending=false;focusId=String(id);tab="all";firm="";status="";search=""}syncMenu();if(data)draw();return read().catch(error)}
  function draw(){
   const el=root();if(!el||!data)return;
   const list=filterTickets(data.tickets,data.candidates,uid(),tab,firm,status,search);
   const categoryLabel=ticketCategories.find(([key])=>key===tab)?.[1]||"All Tickets";
-  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+ticketCategories.map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button></div></div>'+
+  el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+ticketCategories.map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" maxlength="200" value="'+esc(search)+'"><button type="button" data-tp-action="refresh">Aktualisieren</button><button type="button" class="primary tp-filter-save" data-tp-action="save-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>💾 Filter speichern</button><button type="button" data-tp-action="reset-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Standardfilter</button></div><small class="tp-filter-state" role="status">'+(!prefsReady?'Gespeicherte Filter konnten noch nicht geladen werden. Bitte aktualisieren.':prefsSaving?'Filter werden gespeichert …':JSON.stringify(currentFilters())===JSON.stringify(preferences.get(tab))?'Persönlicher Filter gespeichert':preferences.has(tab)?'Filter geändert · zum Übernehmen speichern':'Noch kein persönlicher Filter gespeichert')+'</small></div>'+
   (data.notifications.length?'<details class="tp-ticket-panel"><summary>Benachrichtigungen ('+data.notifications.filter(n=>!n.read_at).length+' ungelesen)</summary><button type="button" data-tp-action="read-notifications">Alle als gelesen markieren</button>'+data.notifications.slice(0,20).map(n=>'<p>'+esc(n.message)+' <small>'+esc(date(n.created_at))+'</small></p>').join("")+'</details>':'')+
   '<div class="tp-ticket-list">'+(list.map(t=>{
    const cs=data.candidates.filter(c=>String(c.ticket_id)===String(t.id));
@@ -153,6 +181,8 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   }finally{d?.removeEventListener("cancel",preventClose);if(uid()===u){busy=false;btn.disabled=false;if(cancel)cancel.disabled=false;}}
  }
  function action(a,id,b){
+  if(a==="save-filter"){return saveFilters()}
+  if(a==="reset-filter"){return saveFilters(true)}
   if(a==="refresh"){open();return}
   if(a==="read-notifications"){call("tp_read_ticket_notifications",{},b);return}
   if(a==="task"){call("tp_import_ticket_task",{p_ticket:id},b);return}
@@ -198,7 +228,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   d.showModal();
  }
  async function poll(){
-  if(polling||busy||!uid()||!root()||document.hidden||root().querySelector("dialog[open]"))return;
+  if(polling||busy||prefsSaving||!uid()||!root()||document.hidden||root().querySelector("dialog[open]"))return;
   if(root().contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary"))return;
   polling=true;try{await read(true)}catch(e){console.warn("Ticket refresh failed",e)}finally{polling=false}
  }
