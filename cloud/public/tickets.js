@@ -1,3 +1,4 @@
+import {attachmentAccept,validateAttachments,uploadAttachments,canAttach} from "./ticket-attachments.js";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const priorities={low:"Niedrig",normal:"Normal",high:"Hoch",urgent:"Dringend"},statuses={open:"Offen",accepted:"In Bearbeitung",rejected:"Abgelehnt",closed:"Erledigt"};
 export function filterTickets(tickets,candidates,uid,tab,firm="",status="",search=""){
@@ -97,7 +98,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
    const imported=data.taskLinks?.some(l=>String(l.ticket_id)===String(t.id));
    const comment=t.creator_id===uid()||t.assignee_id===uid()||can||isAdmin();
    const events=data.events.filter(e=>String(e.ticket_id)===String(t.id));
-   return '<article data-ticket-id="'+esc(t.id)+'" class="tp-ticket-panel tp-ticket-card '+esc(t.priority)+'"><div class="tp-ticket-head"><small>#'+esc(t.id)+' · '+esc(company(t.company_id))+'</small><span class="tp-ticket-priority">'+esc(priorities[t.priority]||t.priority)+'</span></div><h3>'+esc(t.title)+'</h3><p class="tp-ticket-description">'+esc(t.description)+'</p><div class="tp-ticket-meta"><b>'+esc(statuses[t.status]||t.status)+'</b><span>Erstellt von: '+esc(name(t.creator_id))+'</span><span>'+esc(date(t.created_at))+'</span>'+(t.assignee_id?'<span>Bearbeiter: '+esc(name(t.assignee_id))+'</span>':'')+'</div><details><summary>Zuweisungen und Verlauf</summary>'+cs.map(c=>'<p>'+esc(name(c.user_id))+' · '+esc(({pending:"Wartet",accepted:"Angenommen",declined:"Abgelehnt",withdrawn:"Anderweitig vergeben"})[c.response]||c.response)+'</p>').join("")+events.map(e=>'<div class="tp-ticket-event"><small>'+esc(date(e.created_at))+' · '+esc(e.actor_id?name(e.actor_id):"System")+' · '+esc(({created:"Erstellt",accepted:"Angenommen",declined:"Abgelehnt",closed:"Abgeschlossen",comment:"Kommentar",five_day_reminder:"5-Tage-Erinnerung"})[e.kind]||e.kind)+'</small><p>'+esc(e.message)+'</p></div>').join("")+'</details>'+(t.resolution?'<div class="tp-ticket-resolution"><b>Lösung</b><p>'+esc(t.resolution)+'</p></div>':'')+'<div class="tp-ticket-actions">'+(can?'<button type="button" data-tp-action="accept" data-id="'+esc(t.id)+'">✓ Annehmen</button><button type="button" data-tp-action="decline" data-id="'+esc(t.id)+'">× Ablehnen</button>':'')+(finish?'<button type="button" data-tp-action="close" data-id="'+esc(t.id)+'">Ticket abschließen</button>':'')+(t.status==="accepted"&&t.assignee_id===uid()?'<button type="button" data-tp-action="task" data-id="'+esc(t.id)+'" '+(imported?'disabled':'')+'>'+(imported?'Als Aufgabe übernommen':'Als Aufgabe übernehmen')+'</button>':'')+(t.status==="closed"&&(t.assignee_id===uid()||isAdmin())?'<button type="button" data-tp-action="publish" data-id="'+esc(t.id)+'">Lösung veröffentlichen</button>':'')+(comment?'<button type="button" data-tp-action="comment" data-id="'+esc(t.id)+'">Kommentar</button>':'')+((t.status!=="closed"&&(t.creator_id===uid()||t.assignee_id===uid()||isAdmin()))?'<button type="button" data-tp-action="reassign" data-id="'+esc(t.id)+'">Weiterleiten</button>':'')+'<button type="button" data-tp-action="files" data-id="'+esc(t.id)+'">Anhänge</button>'+'</div></article>';
+   return '<article data-ticket-id="'+esc(t.id)+'" class="tp-ticket-panel tp-ticket-card '+esc(t.priority)+'"><div class="tp-ticket-head"><small>#'+esc(t.id)+' · '+esc(company(t.company_id))+'</small><span class="tp-ticket-priority">'+esc(priorities[t.priority]||t.priority)+'</span></div><h3>'+esc(t.title)+'</h3><p class="tp-ticket-description">'+esc(t.description)+'</p><div class="tp-ticket-meta"><b>'+esc(statuses[t.status]||t.status)+'</b><span>Erstellt von: '+esc(name(t.creator_id))+'</span><span>'+esc(date(t.created_at))+'</span>'+(t.assignee_id?'<span>Bearbeiter: '+esc(name(t.assignee_id))+'</span>':'')+'</div><details><summary>Zuweisungen und Verlauf</summary>'+cs.map(c=>'<p>'+esc(name(c.user_id))+' · '+esc(({pending:"Wartet",accepted:"Angenommen",declined:"Abgelehnt",withdrawn:"Anderweitig vergeben"})[c.response]||c.response)+'</p>').join("")+events.map(e=>'<div class="tp-ticket-event"><small>'+esc(date(e.created_at))+' · '+esc(e.actor_id?name(e.actor_id):"System")+' · '+esc(({created:"Erstellt",accepted:"Angenommen",declined:"Abgelehnt",closed:"Abgeschlossen",comment:"Kommentar",five_day_reminder:"5-Tage-Erinnerung"})[e.kind]||e.kind)+'</small><p>'+esc(e.message)+'</p></div>').join("")+'</details>'+(t.resolution?'<div class="tp-ticket-resolution"><b>Lösung</b><p>'+esc(t.resolution)+'</p></div>':'')+'<div class="tp-ticket-actions">'+(can?'<button type="button" data-tp-action="accept" data-id="'+esc(t.id)+'">✓ Annehmen</button><button type="button" data-tp-action="decline" data-id="'+esc(t.id)+'">× Ablehnen</button>':'')+(finish?'<button type="button" data-tp-action="close" data-id="'+esc(t.id)+'">Ticket abschließen</button>':'')+(t.status==="accepted"&&t.assignee_id===uid()?'<button type="button" data-tp-action="task" data-id="'+esc(t.id)+'" '+(imported?'disabled':'')+'>'+(imported?'Als Aufgabe übernommen':'Als Aufgabe übernehmen')+'</button>':'')+(t.status==="closed"&&(t.assignee_id===uid()||isAdmin())?'<button type="button" data-tp-action="publish" data-id="'+esc(t.id)+'">Lösung veröffentlichen</button>':'')+(comment?'<button type="button" data-tp-action="comment" data-id="'+esc(t.id)+'">Kommentar</button>':'')+((t.status!=="closed"&&(t.creator_id===uid()||t.assignee_id===uid()||isAdmin()))?'<button type="button" data-tp-action="reassign" data-id="'+esc(t.id)+'">Weiterleiten</button>':'')+'<button type="button" data-tp-action="files" data-id="'+esc(t.id)+'">📎 Anhänge</button>'+'</div></article>';
   }).join("")||'<p class="tp-ticket-panel">Keine Tickets in dieser Ansicht.</p>')+'</div><dialog id="tp-ticket-dialog" class="tp-ticket-dialog"></dialog>';
   if(focusId){const match=[...el.querySelectorAll("[data-ticket-id]")].find(x=>x.dataset.ticketId===focusId);if(match){match.scrollIntoView({block:"center"});focusId=""}}
   el.querySelectorAll("[data-ticket-category]").forEach(b=>b.onclick=()=>selectCategory(b.dataset.ticketCategory));
@@ -120,6 +121,37 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   d.querySelector("form").onsubmit=e=>{e.preventDefault();e.stopPropagation();submit(new FormData(e.currentTarget),e.currentTarget.querySelector('[type="submit"]'))};
   d.showModal();
  }
+ const attachmentPicker='<label>Dateien anhängen (optional)<input name="attachments" type="file" multiple accept="'+attachmentAccept+'"><small>PDF, Bilder, Word, Excel, PowerPoint, CSV und Text · maximal 10 MB pro Datei</small></label>';
+ async function createWithAttachments(f,btn){
+  if(busy)return;
+  const users=f.getAll("candidate"),files=f.getAll("attachments").filter(file=>file.name);
+  if(!users.length){notice("Bitte mindestens einen Mitarbeiter auswählen.");return}
+  try{validateAttachments(files)}catch(e){fail(e);return}
+  const u=uid();if(!u)return;
+  busy=true;btn.disabled=true;
+  const d=document.getElementById("tp-ticket-dialog"),cancel=d?.querySelector("#tp-ticket-cancel");
+  if(cancel)cancel.disabled=true;
+  const preventClose=e=>e.preventDefault();d?.addEventListener("cancel",preventClose);
+  let createdId=null;
+  try{
+   const r=await db.rpc("tp_create_ticket",{p_company:f.get("company"),p_title:f.get("title"),p_description:f.get("description"),p_priority:f.get("priority"),p_users:users});
+   if(r.error)throw r.error;
+   createdId=r.data;
+   if(uid()!==u)return;
+   if(createdId===null||createdId===undefined)throw new Error("Ticket-ID fehlt.");
+   const result=files.length?await uploadAttachments(db.storage.from("tp-ticket-attachments"),createdId,u,files,()=>uid()===u):{uploaded:[],failed:[]};
+   if(uid()!==u)return;
+   d?.close();
+   notice(result.failed.length?"Ticket #"+createdId+" erstellt. "+result.failed.length+" Anhang/Anhänge fehlgeschlagen. Bitte im Ticket erneut hinzufügen.":"Ticket erstellt"+(files.length?" · "+result.uploaded.length+" Anhänge gespeichert.":"."));
+   await read();
+   if(result.failed.length&&uid()===u&&root())await showFiles(createdId,result.failed.map(x=>x.file.name+": "+x.error));
+  }catch(e){
+   if(uid()===u){
+    if(createdId!==null){d?.close();notice("Ticket #"+createdId+" wurde erstellt. Anhänge bitte im Ticket prüfen.");}
+    else fail(e);
+   }
+  }finally{d?.removeEventListener("cancel",preventClose);if(uid()===u){busy=false;btn.disabled=false;if(cancel)cancel.disabled=false;}}
+ }
  function action(a,id,b){
   if(a==="refresh"){open();return}
   if(a==="read-notifications"){call("tp_read_ticket_notifications",{},b);return}
@@ -130,25 +162,39 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   if(a==="accept"||a==="decline"){call("tp_respond_ticket",{p_ticket:id,p_accept:a==="accept"},b);return}
   if(a==="create"){
    if(!data.companies.length||!data.members.some(m=>m.active)){notice("Zuerst müssen Firmen und Mitarbeiter eingerichtet werden.");return}
-   dialog("Neues Ticket",'<label>Titel<input name="title" required maxlength="200"></label><label>Firma<select name="company" required>'+options(Object.fromEntries(data.companies.map(c=>[c.id,c.name])),"")+'</select></label><label>Priorität<select name="priority">'+options(priorities,"normal")+'</select></label><label>Problembeschreibung<textarea name="description" required maxlength="20000" rows="5"></textarea></label><fieldset><legend>Zuständige Mitarbeiter</legend>'+memberOptions()+'</fieldset>',(f,btn)=>{const users=f.getAll("candidate");if(!users.length){notice("Bitte mindestens einen Mitarbeiter auswählen.");return}call("tp_create_ticket",{p_company:f.get("company"),p_title:f.get("title"),p_description:f.get("description"),p_priority:f.get("priority"),p_users:users},btn)});
+   dialog("Neues Ticket",'<label>Titel<input name="title" required maxlength="200"></label><label>Firma<select name="company" required>'+options(Object.fromEntries(data.companies.map(c=>[c.id,c.name])),"")+'</select></label><label>Priorität<select name="priority">'+options(priorities,"normal")+'</select></label><label>Problembeschreibung<textarea name="description" required maxlength="20000" rows="5"></textarea></label><fieldset><legend>Zuständige Mitarbeiter</legend>'+memberOptions()+'</fieldset>'+attachmentPicker,createWithAttachments);
   }else if(a==="close"||a==="comment"){
    dialog(a==="close"?"Ticket abschließen":"Kommentar hinzufügen",'<label>'+(a==="close"?"Lösungsbeschreibung":"Kommentar")+'<textarea name="message" required maxlength="'+(a==="close"?20000:10000)+'" rows="6"></textarea></label>',(f,btn)=>call(a==="close"?"tp_close_ticket":"tp_ticket_comment",a==="close"?{p_ticket:id,p_resolution:f.get("message")}:{p_ticket:id,p_message:f.get("message")},btn));
   }
  }
- async function showFiles(id){
+ async function showFiles(id,errors=[]){
   const u=uid(),t=data.tickets.find(x=>String(x.id)===String(id));if(!t||!u)return;
   const bucket=db.storage.from("tp-ticket-attachments");
-  const dirs=await bucket.list(String(id),{limit:100});if(dirs.error)throw dirs.error;
-  const files=[];
-  for(const dir of dirs.data||[]){const path=id+"/"+dir.name;const r=await bucket.list(path,{limit:100});if(r.error)throw r.error;for(const f of r.data||[])if(f.id)files.push({path:path+"/"+f.name,name:f.name.slice(37)})}
+  const listAll=async path=>{const rows=[];for(let offset=0;;offset+=100){const r=await bucket.list(path,{limit:100,offset,sortBy:{column:"name",order:"asc"}});if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<100)return rows;}};
+  const dirs=await listAll(String(id)),files=[];
+  for(const dir of dirs){if(dir.id)continue;const path=id+"/"+dir.name;for(const f of await listAll(path))if(f.id)files.push({path:path+"/"+f.name,name:f.name.slice(37)})}
   if(uid()!==u||!root())return;
   const d=document.getElementById("tp-ticket-dialog");
-  const can=t.status!=="closed"&&(t.creator_id===u||t.assignee_id===u||isAdmin()||data.candidates.some(c=>String(c.ticket_id)===String(id)&&c.user_id===u&&c.response==="pending"));
-  d.innerHTML='<h2>Anhänge</h2>'+files.map((f,i)=>'<p><button type="button" data-file-index="'+i+'">'+esc(f.name)+'</button></p>').join("")+(can?'<form id="tp-attachment-form"><input type="file" required accept="image/png,image/jpeg,image/webp,application/pdf,text/plain"><button type="submit">Hochladen</button></form>':'')+'<button type="button" id="tp-ticket-cancel">Schließen</button>';
+  const can=canAttach(t,u,isAdmin(),data.candidates);
+  d.innerHTML='<h2>Dateianhänge · Ticket #'+esc(id)+'</h2>'+ (errors.length?'<p role="alert">Nicht hochgeladen:</p><ul>'+errors.map(e=>'<li>'+esc(e)+'</li>').join("")+'</ul>':"") + (files.length?files.map((f,i)=>'<p><button type="button" data-file-index="'+i+'">↓ '+esc(f.name)+'</button></p>').join(""):'<p>Keine Anhänge vorhanden.</p>')+(can?'<form id="tp-attachment-form">'+attachmentPicker+'<button type="submit" class="primary">Dateien hochladen</button></form>':'<p>Für dieses Ticket können keine weiteren Anhänge hochgeladen werden.</p>')+'<button type="button" id="tp-ticket-cancel">Schließen</button>';
   d.querySelector("#tp-ticket-cancel").onclick=()=>d.close();
   d.querySelectorAll("[data-file-index]").forEach(b=>b.onclick=async()=>{try{const f=files[Number(b.dataset.fileIndex)];const r=await bucket.download(f.path);if(r.error)throw r.error;if(uid()!==u)return;const url=URL.createObjectURL(r.data),link=document.createElement("a");link.href=url;link.download=f.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}catch(e){fail(e)}});
   const form=d.querySelector("form");
-  if(form)form.onsubmit=async e=>{e.preventDefault();e.stopPropagation();const btn=form.querySelector("button"),file=form.querySelector("input").files[0];if(!file||file.size>10485760){notice("Maximal 10 MB pro Anhang.");return}btn.disabled=true;try{const path=id+"/"+u+"/"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120);const r=await bucket.upload(path,file,{upsert:false,contentType:file.type});if(r.error)throw r.error;if(uid()!==u)return;d.close();await showFiles(id)}catch(e){fail(e)}finally{btn.disabled=false}};
+  if(form)form.onsubmit=async e=>{
+   e.preventDefault();e.stopPropagation();if(busy)return;
+   const btn=form.querySelector("button"),input=form.querySelector("input"),selected=Array.from(input.files);
+   if(!selected.length){notice("Bitte Dateien auswählen.");return}
+   try{validateAttachments(selected)}catch(e){fail(e);return}
+   const cancel=d.querySelector("#tp-ticket-cancel");const preventClose=e=>e.preventDefault();
+   busy=true;btn.disabled=true;input.disabled=true;cancel.disabled=true;d.addEventListener("cancel",preventClose);
+   try{
+    const result=await uploadAttachments(bucket,id,u,selected,()=>uid()===u);
+    if(uid()!==u)return;
+    notice(result.uploaded.length+" Datei(en) hochgeladen"+(result.failed.length?" · "+result.failed.length+" fehlgeschlagen.":"."));
+    d.close();await showFiles(id,result.failed.map(x=>x.file.name+": "+x.error));
+   }catch(e){if(uid()===u)fail(e)}
+   finally{d.removeEventListener("cancel",preventClose);if(uid()===u){busy=false;btn.disabled=false;input.disabled=false;cancel.disabled=false;}}
+  };
   d.showModal();
  }
  async function poll(){

@@ -1,0 +1,2 @@
+-- Extend only the private ticket bucket, retaining its existing RLS policies and 10 MB limit.
+update storage.buckets set allowed_mime_types=array['image/png','image/jpeg','image/webp','application/pdf','text/plain','text/csv','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.openxmlformats-officedocument.presentationml.presentation'] where id='tp-ticket-attachments' and public=false and file_size_limit=10485760;
