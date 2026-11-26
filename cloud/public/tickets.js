@@ -17,7 +17,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="";search="";busy=false}
  async function read(background=false){
   const u=uid(),token=++epoch;if(!u)return;
-  const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_ticket_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
+  const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
   const keys=["tickets","candidates","members","companies","events","notifications","taskLinks"];
   const results=await Promise.all(names.map(async n=>{
    const all=[];let offset=0;
@@ -27,6 +27,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
     if(n==="tp_ticket_candidates")q=q.order("ticket_id").order("user_id");
     else if(n==="tp_ticket_task_links")q=q.order("ticket_id");
     else if(n==="tp_members")q=q.order("user_id");
+    else if(n==="tp_companies")q=q.order("name").order("id");
     else q=q.order("id",{ascending:false});
     const r=await q.range(offset,offset+pageSize-1);
     if(r.error)throw r.error;
@@ -96,8 +97,8 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   if(a==="files"){showFiles(id).catch(fail);return}
   if(a==="accept"||a==="decline"){call("tp_respond_ticket",{p_ticket:id,p_accept:a==="accept"},b);return}
   if(a==="create"){
-   if(!data.companies.some(c=>c.active)||!data.members.some(m=>m.active)){notice("Zuerst müssen Firmen und Mitarbeiter eingerichtet werden.");return}
-   dialog("Neues Ticket",'<label>Titel<input name="title" required maxlength="200"></label><label>Firma<select name="company" required>'+options(Object.fromEntries(data.companies.filter(c=>c.active).map(c=>[c.id,c.name])),"")+'</select></label><label>Priorität<select name="priority">'+options(priorities,"normal")+'</select></label><label>Problembeschreibung<textarea name="description" required maxlength="20000" rows="5"></textarea></label><fieldset><legend>Zuständige Mitarbeiter</legend>'+memberOptions()+'</fieldset>',(f,btn)=>{const users=f.getAll("candidate");if(!users.length){notice("Bitte mindestens einen Mitarbeiter auswählen.");return}call("tp_create_ticket",{p_company:f.get("company"),p_title:f.get("title"),p_description:f.get("description"),p_priority:f.get("priority"),p_users:users},btn)});
+   if(!data.companies.length||!data.members.some(m=>m.active)){notice("Zuerst müssen Firmen und Mitarbeiter eingerichtet werden.");return}
+   dialog("Neues Ticket",'<label>Titel<input name="title" required maxlength="200"></label><label>Firma<select name="company" required>'+options(Object.fromEntries(data.companies.map(c=>[c.id,c.name])),"")+'</select></label><label>Priorität<select name="priority">'+options(priorities,"normal")+'</select></label><label>Problembeschreibung<textarea name="description" required maxlength="20000" rows="5"></textarea></label><fieldset><legend>Zuständige Mitarbeiter</legend>'+memberOptions()+'</fieldset>',(f,btn)=>{const users=f.getAll("candidate");if(!users.length){notice("Bitte mindestens einen Mitarbeiter auswählen.");return}call("tp_create_ticket",{p_company:f.get("company"),p_title:f.get("title"),p_description:f.get("description"),p_priority:f.get("priority"),p_users:users},btn)});
   }else if(a==="close"||a==="comment"){
    dialog(a==="close"?"Ticket abschließen":"Kommentar hinzufügen",'<label>'+(a==="close"?"Lösungsbeschreibung":"Kommentar")+'<textarea name="message" required maxlength="'+(a==="close"?20000:10000)+'" rows="6"></textarea></label>',(f,btn)=>call(a==="close"?"tp_close_ticket":"tp_ticket_comment",a==="close"?{p_ticket:id,p_resolution:f.get("message")}:{p_ticket:id,p_message:f.get("message")},btn));
   }

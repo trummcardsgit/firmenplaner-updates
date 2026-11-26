@@ -59,6 +59,8 @@ jobs:
           done
           psql -v ON_ERROR_STOP=1 -f cloud/tests/enterprise-integration.sql
           bash cloud/tests/enterprise-concurrency.sh
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-shared-companies.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/shared-companies-integration.sql
 
   preview:
     needs: [checks, database]

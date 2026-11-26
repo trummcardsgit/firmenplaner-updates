@@ -8,4 +8,5 @@ assert.deepEqual(filterTickets(tickets,candidates,"a","open").map(t=>t.id),[1]);
 assert.deepEqual(filterTickets(tickets,candidates,"a","all","2").map(t=>t.id),[2,4]);
 assert.deepEqual(filterTickets(tickets,candidates,"a","all","","accepted","drucker").map(t=>t.id),[2]);
 assert.deepEqual(filterTickets(tickets.map(t=>t.id===1?{...t,status:"accepted",assignee_id:"b"}:t),candidates,"a","open"),[]);
+assert.deepEqual(filterTickets([{...tickets[0],company_id:"10000000-0000-0000-0000-000000000001"}],candidates,"a","all","10000000-0000-0000-0000-000000000001").map(t=>t.id),[1]);
 console.log("Ticket filtering smoke tests passed");
