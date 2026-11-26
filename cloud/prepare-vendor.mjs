@@ -11,6 +11,7 @@ const digest=(algorithm,bytes)=>algorithm+"-"+createHash(algorithm).update(bytes
 export function verifyVendor(root){
  const bytes=readFileSync(join(root,src)),html=readFileSync(join(root,"index.html"),"utf8");
  const integrity=digest("sha384",bytes);
+ if(integrity!==lock.bundleIntegrity)throw Error("Locked SDK bundle hash mismatch");
  if(!html.includes('<script src="'+src+'" integrity="'+integrity+'"></script>'))throw Error("SDK SRI mismatch");
  if(!readFileSync(join(root,"sw.js"),"utf8").includes(JSON.stringify(src)))throw Error("SDK not precached");
  if(readFileSync(join(root,"app.js"),"utf8").includes("esm.sh"))throw Error("External SDK import");
@@ -28,7 +29,7 @@ export async function prepareVendor(root){
   const metadata=JSON.parse(execFileSync("tar",["-xOzf",archive,"package/package.json"],{maxBuffer:1024*1024}));
   if(metadata.name!==lock.name||metadata.version!==lock.version)throw Error("SDK package version mismatch");
   const bytes=execFileSync("tar",["-xOzf",archive,lock.entry],{maxBuffer:8*1024*1024});
-  if(!bytes.length)throw Error("Empty SDK");
+  if(!bytes.length||digest("sha384",bytes)!==lock.bundleIntegrity)throw Error("Locked SDK bundle integrity mismatch");
   mkdirSync(join(root,"vendor"),{recursive:true});
   writeFileSync(join(root,src),bytes);
   const htmlPath=join(root,"index.html"),html=readFileSync(htmlPath,"utf8");

@@ -3,5 +3,6 @@
   "version": "2.95.3",
   "tarball": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.95.3.tgz",
   "integrity": "sha512-Fukw1cUTQ6xdLiHDJhKKPu6svEPaCEDvThqCne3OaQyZvuq2qjhJAd91kJu3PXLG18aooCgYBaB6qQz35hhABg==",
-  "entry": "package/dist/umd/supabase.js"
+  "entry": "package/dist/umd/supabase.js",
+  "bundleIntegrity": "sha384-g8TQpKstPpyDTjwOLNQvGR++9KAGGvtxWv+P5XmDd3QZQx1jie8r1hx0gVpD+cdb"
 }
