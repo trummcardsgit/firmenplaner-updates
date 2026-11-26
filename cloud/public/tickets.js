@@ -10,7 +10,7 @@ export function countActiveTickets(tickets,candidates,uid,category){
 }
 export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
 export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
- let data=null,tab="all",firm="",status="",search="",busy=false,epoch=0,focusId="",polling=false;
+ let data=null,tab="all",firm="",status="open",search="",busy=false,epoch=0,focusId="",polling=false,menuVisible=false;
  const pageSize=500;
  const root=()=>document.getElementById("tp-ticket-root");
  const uid=()=>userId();
@@ -30,6 +30,8 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
   });
  }
  function setMenuVisible(visible){
+  if(visible&&!menuVisible){status="open";firm="";search="";focusId=""}
+  menuVisible=visible;
   const menu=document.getElementById("tp-ticket-subnav");
   if(menu)menu.hidden=!visible;
   document.querySelector('#nav [data-view="tickets"]')?.setAttribute("aria-expanded",String(visible));
@@ -37,13 +39,13 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp}){
  }
  function selectCategory(key){
   if(!ticketCategories.some(([id])=>id===key)||!root()||busy)return;
-  tab=key;firm="";status="";search="";focusId="";draw();syncMenu();
+  tab=key;firm="";status="open";search="";focusId="";draw();syncMenu();
  }
  document.getElementById("tp-ticket-subnav")?.addEventListener("click",e=>{
   const button=e.target.closest("[data-ticket-category]");
   if(button)selectCategory(button.dataset.ticketCategory);
  });
- function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="";search="";busy=false;setMenuVisible(false)}
+ function reset(){epoch++;focusId="";data=null;tab="all";firm="";status="open";search="";busy=false;setMenuVisible(false)}
  async function read(background=false){
   const u=uid(),token=++epoch;if(!u)return;
   const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
