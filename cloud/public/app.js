@@ -1,3 +1,4 @@
+import {solutionDeleteButton,deleteSolution} from "./solution-admin.js";
 import {createRecovery} from "./recovery.js";
 import {createClient} from "https://esm.sh/@supabase/supabase-js@2.95.3?bundle";
 import {createFeatures} from "./extended.js";
@@ -192,7 +193,7 @@ function solutionResults(){
  '<h3>'+esc(s.problem_title)+'</h3><p class="muted">Erstellt von: '+esc(state.members?.find(m=>m.user_id===s.owner_id)?.display_name||"Ehemaliger Mitarbeiter")+'</p>'+
  (s.problem_description?'<p><strong>Problembeschreibung:</strong> '+esc(s.problem_description)+'</p>':'')+
  '<div style="border-left:3px solid #e2af48;padding:12px;background:#242630;border-radius:9px"><strong>✔ Lösung</strong><p style="margin:8px 0 0;white-space:pre-wrap">'+esc(s.solution_text)+'</p></div>'+
- '</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');
+ solutionDeleteButton(s,state.isAdmin,esc)+'</article>').join(""):'<div class="empty">Noch keine passende Lösung gefunden. Erledige eine Aufgabe und dokumentiere ihre Lösung.</div>');
 }
 function toggleSolutionFields(){
  const enabled=$("solution-save-to-library").checked;
@@ -303,6 +304,16 @@ if(b.id==="new-company")return openCompany();
 if(b.dataset.edit)return openEntry(state.entries.find(e=>e.id===b.dataset.edit));
 if(b.dataset.convert)return openEntry({...state.entries.find(e=>e.id===b.dataset.convert),kind:"task"});
 if(b.dataset.companyEdit)return openCompany(state.companies.find(c=>c.id===b.dataset.companyEdit));
+if(b.dataset.solutionDelete){
+ const solution=state.solutions.find(s=>s.id===b.dataset.solutionDelete);
+ if(!state.isAdmin||!solution||b.disabled)return;
+ b.disabled=true;
+ try{
+  const removed=await deleteSolution({db,solution,isAdmin:state.isAdmin,confirmDelete:message=>confirm(message)});
+  if(removed){notice("Lösung wurde gelöscht.");await load();}
+ }finally{b.disabled=false;}
+ return;
+}
 if(b.dataset.companyDelete){const c=state.companies.find(x=>x.id===b.dataset.companyDelete);if(!state.isAdmin||!c||!confirm("Gemeinsame Firma "+c.name+" löschen? Nur unbenutzte Firmen können gelöscht werden."))return;const {data,error}=await db.from("tp_companies").delete().eq("id",c.id).select("id");if(error?.code==="23503")return notice("Firma wird noch in Aufgaben, Projekten oder Tickets verwendet und kann nicht gelöscht werden.");if(error)throw error;if(!data?.length)return notice("Firma konnte nicht gelöscht werden.");return await load();}
 if(b.dataset.delete){if(!confirm("Diesen Eintrag endgültig löschen?"))return;const {error}=await db.from("tp_entries").delete().eq("id",b.dataset.delete);if(error)throw error;return await load();}
 if(b.dataset.status){
