@@ -37,6 +37,10 @@ jobs:
         run: |
           node cloud/build-staging.mjs
           python3 -m pip install --user Pillow==11.3.0
+          mkdir -p branding-source/source/cloud
+          ln -s "$PWD/cloud/staging-preview" branding-source/source/cloud/public
+          (cd branding-source && python3 scripts/prepare-branding.py)
+          node --input-type=module -e 'import fs from "node:fs";import path from "node:path";const root="cloud/staging-preview";const sw=fs.readFileSync(root+"/sw.js","utf8");for(const a of JSON.parse(sw.match(/const ASSETS=(\[.*?\]);/s)[1]))if(!fs.existsSync(path.join(root,a)))throw Error("Missing TEST asset "+a);console.log("All TEST precache assets present")'
           python3 cloud/prepare-production-branding.py
           node cloud/prepare-vendor.mjs cloud/public
           node cloud/verify-production-build.mjs

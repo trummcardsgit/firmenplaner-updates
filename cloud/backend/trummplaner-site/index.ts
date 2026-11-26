@@ -3,6 +3,7 @@
 import {target,legacyDestination} from "./redirect-target.mjs";
 Deno.serve(async (request) => {
   const destination = legacyDestination(request.url);
+  if (!destination) return new Response("Ungültiger Weiterleitungspfad.", {status:400, headers:{"content-type":"text/plain; charset=utf-8","cache-control":"no-store"}});
   try {
     const available = await fetch(target, {
       method: "GET",

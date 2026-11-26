@@ -34,7 +34,7 @@ try{
     if(u.pathname==="/rest/v1/tp_members")return route.fulfill({status:200,headers,body:JSON.stringify([{user_id:"test-user",display_name:"CI"}])});
     return route.fulfill({status:200,headers,body:"{}"});
    });
-   const page=await context.newPage();page.on("pageerror",e=>errors.push(e.message));
+   const page=await context.newPage();page.on("pageerror",e=>errors.push(e.message));page.on("response",r=>{if(r.status()>=400&&r.url().startsWith("http://127.0.0.1"))console.log("Local asset error:",r.status(),r.url());});
    await page.addInitScript(()=>{window.__csp=[];document.addEventListener("securitypolicyviolation",e=>window.__csp.push({directive:e.effectiveDirective,blocked:e.blockedURI}));});
    const url="http://127.0.0.1:"+server.address().port+"/"+environment+"/";
    await page.goto(url);
@@ -50,6 +50,12 @@ try{
    await page.waitForFunction(()=>!document.querySelector("#login-submit").disabled);
    await page.locator("#recovery-open").click();
    assert.equal(await page.locator("#recovery-panel").isVisible(),true);
+   await page.locator("#recovery-email").fill("ci@example.invalid");
+   const recover=page.waitForRequest(r=>r.url().includes("/auth/v1/recover"));
+   await page.locator("#recovery-request button[type=submit],#recovery-request button:not([type])").first().click();
+   const recoveryRequest=await recover;
+   assert.equal(new URL(recoveryRequest.url()).searchParams.get("redirect_to"),url);
+   await page.locator("#recovery-code-form").waitFor({state:"visible"});
    const result=await page.evaluate(async()=>{
     const cfg=window.TRUMMPLANER_CONFIG;
     const client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"ci-test-only"}});
@@ -69,6 +75,10 @@ try{
    assert.equal(await page.evaluate(()=>window.__injected),undefined);
    assert.ok(!external.includes("example.invalid"),"Unapproved script network request");
    assert.ok(!external.includes("esm.sh"),"External SDK request");
+   await page.goto(url+"#error=access_denied&error_code=otp_expired&error_description=expired");
+   await page.locator("#recovery-panel").waitFor({state:"visible"});
+   await page.waitForFunction(()=>!location.hash);
+   assert.equal(await page.locator("#recovery-message").textContent(),"Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");
    await context.setOffline(true);await page.reload();await page.waitForFunction(()=>typeof window.supabase?.createClient==="function");
    assert.equal(await page.locator("#auth-form").isVisible(),true);
    console.log(environment+": Chromium: local SDK, login request (mock), REST query (mock), recovery screen, blocked injected script, SW install/cache and offline reload passed.");
