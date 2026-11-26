@@ -161,7 +161,12 @@ $("recovery-code-form").onsubmit=e=>{e.preventDefault();recovery.verify($("recov
 $("recovery-password-form").onsubmit=e=>{e.preventDefault();recovery.save($("recovery-password").value,$("recovery-repeat").value)};
 $("recovery-cancel").onclick=()=>recovery.cancel();
 const activationClient=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-activation-only",persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-const activation=createActivation(activationClient.auth);
+const activation=createActivation(activationClient.auth,async()=>{
+ const {data:who,error}=await activationClient.auth.getUser();
+ if(error||!who.user)return false;
+ const {data,error:memberError}=await activationClient.from("tp_members").select("active").eq("user_id",who.user.id).maybeSingle();
+ return !memberError&&data?.active===true;
+});
 function activationScreen(open){
  $("activation-panel").classList.toggle("hidden",!open);
  $("auth-form").classList.toggle("hidden",open);

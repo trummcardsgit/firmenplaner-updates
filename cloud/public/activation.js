@@ -3,7 +3,7 @@ export function parseActivationCode(value){
  if(!match)throw new Error("Bitte den vollständigen Aktivierungscode kopieren.");
  return {type:match[1]==="I"?"invite":"recovery",token_hash:match[2]};
 }
-export function createActivation(auth){
+export function createActivation(auth,checkMembership){
  let verified=null,busy=false;
  return {
  async activate({email,code,password,repeat}){
@@ -21,8 +21,10 @@ export function createActivation(auth){
    }
    const {error}=await auth.updateUser({password});
    if(error)throw new Error("Passwort konnte nicht gespeichert werden. Bitte Passwortanforderungen prüfen und erneut versuchen.");
+   const active=await checkMembership();
    verified=null;
    await auth.signOut({scope:"local"});
+   if(!active)throw new Error("Passwort gespeichert, Konto aber noch nicht freigeschaltet. Bitte Administrator kontaktieren.");
    return true;
   }finally{busy=false;}
  },

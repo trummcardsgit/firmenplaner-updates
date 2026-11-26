@@ -54,6 +54,8 @@ Deno.serve(async(req)=>{
  const newId=generated.data.user.id;
  if(uid&&uid!==newId)return json({error:"Konto konnte nicht eindeutig zugeordnet werden."},409);
  // Use the high-entropy native one-time token hash, not a custom password or short code.
+ const [existingMember,existingAdmin]=await Promise.all([admin.from("tp_members").select("user_id").eq("user_id",newId).maybeSingle(),admin.from("tp_app_admins").select("user_id").eq("user_id",newId).maybeSingle()]);
+ if(existingMember.error||existingAdmin.error||existingMember.data||existingAdmin.data)return json({error:"Konto ist bereits vorhanden. Kein neuer Aktivierungscode."},409);
  const issued_at=new Date().toISOString();
  const record={user_id:newId,email,display_name:name,issued_at};
  const saved=mode==="invite"?await admin.from("tp_activation_pending").insert(record):await admin.from("tp_activation_pending").update({display_name:name,issued_at}).eq("user_id",newId).eq("email",email).select("user_id").single();

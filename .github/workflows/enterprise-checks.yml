@@ -1,7 +1,7 @@
 name: Enterprise staging checks
 on:
   push:
-    branches: [enterprise-2.0]
+    branches: [enterprise-2.0, release/rhtflow-2.0.3]
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,6 +18,7 @@ jobs:
           node cloud/tests/tickets-smoke.mjs
           node cloud/tests/pwa-isolation-smoke.mjs
           node cloud/tests/recovery-smoke.mjs
+          node cloud/tests/activation-smoke.mjs
       - run: |
           npm install --prefix cloud --no-save --no-package-lock --no-audit --no-fund docx@9.15.3 jsdom@26.1.0 jszip@3.10.1
           node cloud/tests/trophies-smoke.mjs
@@ -62,6 +63,9 @@ jobs:
           bash cloud/tests/enterprise-concurrency.sh
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-shared-companies.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/shared-companies-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/activation-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-activation.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/activation-integration.sql
 
   preview:
     needs: [checks, database]
