@@ -17,6 +17,19 @@ Deno.serve(async(req)=>{
  const [rights,member]=await Promise.all([admin.from("tp_app_admins").select("user_id").eq("user_id",caller).maybeSingle(),admin.from("tp_members").select("active").eq("user_id",caller).maybeSingle()]);
  if(rights.error||member.error||!rights.data||!member.data?.active)return json({error:"Nur aktive Administratoren."},403);
  const body=await req.json();
+ if(body.action==="cancel"){
+  const target=typeof body.user_id==="string"?body.user_id:"";
+  const address=typeof body.email==="string"?body.email.trim().toLowerCase():"";
+  if(!/^[0-9a-f-]{36}$/i.test(target)||!address||target===caller)return json({error:"Ungültiges oder eigenes Konto."},400);
+  const {error:revokeError}=await admin.rpc("tp_cancel_pending_activation",{p_user:target,p_caller:caller,p_email:address});
+  if(revokeError)return json({error:"Nur unbenutzte, noch nicht freigeschaltete Einladungen können gelöscht werden."},409);
+  // The account has no membership; the code is revoked before Auth deletion.
+  const {error:removeError}=await admin.auth.admin.deleteUser(target);
+  if(removeError)return json({error:"Einladung widerrufen, Konto konnte noch nicht entfernt werden. Bitte erneut löschen."},409);
+  const {error:cleanupError}=await admin.from("tp_invites").delete().eq("email",address).eq("status","failed");
+  if(cleanupError)return json({error:"Konto gelöscht, Einladungsverlauf konnte nicht bereinigt werden."},503);
+  return json({ok:true});
+ }
  const email=typeof body.email==="string"?body.email.trim().toLowerCase():"";
  const name=typeof body.name==="string"?body.name.trim():"";
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||name.length<1||name.length>120)return json({error:"Bitte Name und gültige E-Mail eingeben."},400);
@@ -29,6 +42,7 @@ Deno.serve(async(req)=>{
  let mode:"invite"|"recovery"="invite";
  let uid:string|undefined;
  if(pending.data){
+  if(pending.data.cancelled_at)return json({error:"Einladung widerrufen. Bitte zuerst vollständig löschen."},409);
   uid=pending.data.user_id;
   const [u,m,a]=await Promise.all([admin.auth.admin.getUserById(uid!),admin.from("tp_members").select("user_id").eq("user_id",uid).maybeSingle(),admin.from("tp_app_admins").select("user_id").eq("user_id",uid).maybeSingle()]);
   if(u.error||m.error||a.error||m.data||a.data||u.data.user?.email?.toLowerCase()!==email)return json({error:"Bestehendes Konto nicht zurücksetzen. Benutzerverwaltung verwenden."},409);
