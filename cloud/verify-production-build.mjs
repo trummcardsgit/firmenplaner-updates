@@ -20,3 +20,13 @@ for(const view of ['tickets','admin']){
 }
 
 const cfg=fs.readFileSync(path.join(root,'config.js'),'utf8');if(!cfg.includes('ilmwoapvcluoravpsrjv')||cfg.includes('cpycfxolqpidfjbhhsmr')||cfg.includes('hgdexyvtgfffcasfpjyu')||!cfg.includes('sb_publishable_'))throw Error('Production database mismatch');
+
+if(manifest.id!=='./'||manifest.start_url!=='./'||manifest.scope!=='./')throw Error('Installed app identity changed');
+for(const size of [16,24,32,48,64,128,192,256,512]){
+ const icon=manifest.icons.find(i=>i.purpose==='any'&&i.sizes===size+'x'+size);
+ if(!icon||!icon.src.includes('rhtflow-taskbar-v2-')||!files.includes(icon.src))throw Error('Missing fresh desktop icon '+size);
+}
+const ico=files.find(f=>/^\.\/icons\/rhtflow-taskbar-v2-[a-f0-9]+\.ico$/.test(f));
+if(!ico||!html.includes('href="'+ico+'"'))throw Error('Missing Windows ICO fallback');
+const icoBytes=fs.readFileSync(path.join(root,ico));if(icoBytes.readUInt16LE(0)!==0||icoBytes.readUInt16LE(2)!==1||icoBytes.readUInt16LE(4)<4)throw Error('Invalid Windows ICO');
+console.log('Verified new Windows taskbar icon URLs, ICO sizes and unchanged application identity');

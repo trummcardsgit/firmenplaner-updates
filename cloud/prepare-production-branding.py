@@ -77,3 +77,35 @@ import re
 source,n=re.subn(r'(const CACHE=CACHE_PREFIX\+"[^"]+)(")',lambda m:m[1]+'-branding.'+digest+m[2],source,count=1)
 assert n==1,'Missing scoped cache version'
 sw.write_text(source,encoding='utf8')
+
+# Desktop install identity stays unchanged; new icon URLs force a fresh fetch.
+# Windows uses small taskbar bitmaps as well as large Start menu artwork.
+manifest_path=root.parent/'manifest.webmanifest'
+manifest=json.loads(manifest_path.read_text(encoding='utf8'))
+assert manifest['id']=='./' and manifest['start_url']=='./' and manifest['scope']=='./'
+version='taskbar-v2-'+hashlib.sha256(original.read_bytes()).hexdigest()[:10]
+desktop_icons=[]
+for size in (16,24,32,48,64,128,192,256,512):
+    name=f'rhtflow-{version}-{size}.png'
+    icon=fit(size)
+    icon.save(root/name)
+    assert icon.size==(size,size) and icon.getchannel('A').getextrema()[0]==0
+    desktop_icons.append({'src':'./icons/'+name,'sizes':f'{size}x{size}','type':'image/png','purpose':'any'})
+mask_name=f'rhtflow-{version}-maskable-512.png'
+mask.convert('RGB').save(root/mask_name)
+manifest['icons']=desktop_icons+[{'src':'./icons/'+mask_name,'sizes':'512x512','type':'image/png','purpose':'maskable'}]
+manifest_path.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
+ico_name=f'rhtflow-{version}.ico'
+fit(256).save(root/ico_name,format='ICO',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+with Image.open(root/ico_name) as ico:
+    assert {(16,16),(32,32),(48,48),(256,256)}.issubset(ico.ico.sizes())
+markup=html.read_text(encoding='utf8')
+favicon='<link rel="icon" type="image/x-icon" href="./icons/'+ico_name+'"><link rel="icon" type="image/png" sizes="32x32" href="'+desktop_icons[2]['src']+'">'
+markup,n=re.subn(r'<link rel="icon" href="\./icons/icon-192\.png">',lambda _:favicon,markup,count=1)
+assert n==1,'Favicon declaration changed'
+html.write_text(markup,encoding='utf8')
+source=sw.read_text(encoding='utf8')
+assets=[i['src'] for i in manifest['icons']]+['./icons/'+ico_name]
+source=source.replace('const ASSETS=[','const ASSETS=['+','.join(json.dumps(a) for a in assets)+',',1)
+sw.write_text(source,encoding='utf8')
+print('RHTFLOW: Windows icon set generated from original logo:',version)
