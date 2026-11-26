@@ -6,10 +6,20 @@ const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 const PACKAGE_FILES = ['package.json', 'server.js', 'push.js', 'manager.js', 'update-core.js', 'start-windows.bat', 'start-linux.sh', 'README.md', 'Caddyfile.beispiel'];
 const ALLOWED = name => PACKAGE_FILES.includes(name) || /^public\/[A-Za-z0-9_.\-/]+$/.test(name);
+const DEFAULT_UPDATE_REPO = 'trummcardsgit/firmenplaner-updates';
 const repoPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 function validateRepo(repo) {
   if (typeof repo !== 'string' || !repoPattern.test(repo) || repo.includes('..')) throw new Error('Bitte GitHub-Repository als benutzer/repository angeben.');
   return repo;
+}
+function getTrustedUpdateRepo(env=process.env) {
+  const configured=typeof env.FIRMENPLANER_UPDATE_REPO==='string'?env.FIRMENPLANER_UPDATE_REPO.trim():'';
+  return validateRepo(configured||DEFAULT_UPDATE_REPO);
+}
+function assertTrustedUpdateRepo(candidate,trustedRepo) {
+  if(candidate===undefined)return trustedRepo;
+  if(typeof candidate!=='string'||candidate.trim()!==trustedRepo)throw new Error('Die Updatequelle wird vom Administrator festgelegt und kann hier nicht geändert werden.');
+  return trustedRepo;
 }
 function versionParts(version) {
   const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version || '');
@@ -148,4 +158,4 @@ function applyUpdate(root,dataDir,zip,newVersion) {
   }
   return {backup,restore};
 }
-module.exports={validateRepo,compareVersions,packZip,unpackZip,getFiles,sha256,latestRelease,fetchBytes,applyUpdate};
+module.exports={validateRepo,getTrustedUpdateRepo,assertTrustedUpdateRepo,compareVersions,packZip,unpackZip,getFiles,sha256,latestRelease,fetchBytes,applyUpdate};

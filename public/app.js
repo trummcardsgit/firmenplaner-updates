@@ -183,11 +183,11 @@
       <div class="panel setting-card"><h3>Datensicherung</h3><p>Exportiere alle Firmen, Aufgaben und Notizen in eine JSON-Sicherungsdatei. Der Server speichert außerdem dauerhaft in seinem Datenordner.</p><button class="btn btn-secondary" data-action="export">Daten als JSON exportieren</button></div>
       <div class="panel setting-card"><h3>Software-Updates</h3><p>FirmenPlaner sucht automatisch nach neuen GitHub-Releases. Bei einem Update kannst du es direkt installieren, ohne Dateien selbst herunterzuladen. Deine Aufgaben und Firmen bleiben gespeichert.</p>
         <p id="update-state" class="push-explainer" role="status" aria-live="polite">Update-Status wird geladen ...</p>
-        <label class="field-label" for="update-repo">Einmalige Updatequelle (öffentliches GitHub-Repository)</label>
-        <input id="update-repo" class="setting-input" type="text" placeholder="benutzer/firmenplaner" autocomplete="off" spellcheck="false" maxlength="180">
+        <label class="field-label" for="update-repo">Vom Administrator festgelegte Updatequelle</label>
+        <input id="update-repo" class="setting-input" type="text" readonly aria-readonly="true">
         <label class="update-toggle"><input type="checkbox" id="update-auto" checked> Neue Version beim nächsten Programmstart automatisch installieren</label>
-        <div class="update-buttons"><button class="btn btn-secondary" data-action="save-update-config">Updatequelle speichern</button><button class="btn btn-secondary" data-action="check-updates">Nach Updates suchen</button><button class="btn btn-primary" id="install-update" data-action="install-update" hidden>Update installieren und neu starten</button></div>
-        <p class="push-explainer">Updatequelle: <code>GitHub-Benutzer/Repository</code>. Erforderlich sind veröffentlichte Releases mit den Dateien <code>update.json</code> und <code>firmenplaner-update.zip</code>. Die Verbindung benötigt Internet.</p></div>
+        <div class="update-buttons"><button class="btn btn-secondary" data-action="save-update-config">Update-Einstellungen speichern</button><button class="btn btn-secondary" data-action="check-updates">Nach Updates suchen</button><button class="btn btn-primary" id="install-update" data-action="install-update" hidden>Update installieren und neu starten</button></div>
+        <p class="push-explainer">Die Updatequelle kann aus Sicherheitsgründen nicht im Browser geändert werden. Erforderlich sind veröffentlichte Releases mit den Dateien <code>update.json</code> und <code>firmenplaner-update.zip</code>. Die Verbindung benötigt Internet.</p></div>
       <div class="panel setting-card"><h3>Diese Version</h3><p>FirmenPlaner 1.1.1 · Einzelbenutzer-Konto mit gemeinsamen Aufgaben auf allen verbundenen Geräten. Für die Smartphone-Nutzung brauchst du eine HTTPS-Adresse zu deinem Server.</p><button class="btn btn-secondary" data-action="logout">Abmelden</button></div>
     </div>`;
   }
@@ -430,9 +430,8 @@
     catch(err){const el=$('update-state');if(el)el.textContent=`Update-Manager nicht erreichbar: ${err.message}. Starte die App mit start-windows.bat.`;}
   }
   async function saveUpdateConfig(){
-    const repo=$('update-repo')?.value.trim()||'';
     const autoOnStart=Boolean($('update-auto')?.checked);
-    try{showUpdateStatus(await post('/api/updates/config',{repo,autoOnStart}));toast('Update-Einstellungen gespeichert');}
+    try{showUpdateStatus(await post('/api/updates/config',{autoOnStart}));toast('Update-Einstellungen gespeichert');}
     catch(err){toast(err.message);}
   }
   async function checkForUpdates(){

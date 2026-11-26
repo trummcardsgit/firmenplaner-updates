@@ -4,7 +4,9 @@ Windows-App und Smartphone-PWA: Firmen, Notizen, Aufgaben, Fälligkeitstermine u
 
 ## Verbindung mit dem Update-System
 
-In **Einstellungen → Software-Updates** als Quelle `trummcardsgit/firmenplaner-updates` speichern und auf **Nach Updates suchen** klicken. Neue Versionen lassen sich im Programm installieren; der Update-Manager sichert Programmdateien und `data/firmenplaner.json` vor der Installation. Unter Windows immer über `start-windows.bat` starten.
+Unter **Einstellungen → Software-Updates** auf **Nach Updates suchen** klicken. Neue Versionen lassen sich im Programm installieren; der Update-Manager sichert Programmdateien und `data/firmenplaner.json` vor der Installation. Unter Windows immer über `start-windows.bat` starten.
+
+Die Updatequelle ist standardmäßig fest auf `trummcardsgit/firmenplaner-updates` eingestellt und kann nicht im Browser geändert werden. Betreiber eigener Builds können vor dem Start die Prozess-Umgebungsvariable `FIRMENPLANER_UPDATE_REPO` auf ein anderes öffentliches GitHub-Repository im Format `benutzer/repository` setzen. Damit bleibt die Auswahl der vertrauenswürdigen Herausgeber außerhalb der Browser-Sitzung.
 
 Nach der Veröffentlichung von v1.1.1 kann die bestehende Version 1.1.0 dieses Update installieren. Zunächst das vorhandene Datenverzeichnis sichern.
 
