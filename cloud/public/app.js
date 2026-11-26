@@ -40,13 +40,13 @@ async function syncShowcases(){
    rows=await readAllShowcases(db);if(!current())return;
    own=rows.find(r=>r.owner_id===uid);
   }
-  if(!own&&!trophyItems.length){showcaseReady=false;return;}
-  if(own){trophyFavorites=validFavorites(own.trophy_ids,trophyItems);saveTrophyPrefs();}
+  if(!own&&(!trophyItems.length||trophyError)){showcaseReady=false;showcaseError=!!trophyError;return;}
+  if(own&&trophyItems.length&&!trophyError){trophyFavorites=validFavorites(own.trophy_ids,trophyItems);saveTrophyPrefs();}
   const ids=[...new Set(rows.flatMap(r=>r.trophy_ids||[]))].filter(id=>Number.isInteger(id)&&id>=1&&id<=50);
   let catalog=[];
   if(ids.length){const {data,error}=await db.from("tp_trophy_definitions").select("id,title,rarity").in("id",ids);if(error)throw error;catalog=data||[];}
   if(!current())return;
-  showcaseRows=rows;showcaseCatalog=catalog;showcaseReady=true;showcaseError=false;
+  showcaseRows=rows;showcaseCatalog=catalog;showcaseReady=!!own&&trophyItems.length>0&&!trophyError;showcaseError=!!trophyError;
  }catch(e){if(current()){showcaseError=true;showcaseReady=false;console.warn("Vitrinen-Sync",e)}}
  finally{if(current()){showcaseBusy=false;if(state.view==="career")redrawShowcases();}}
 }
@@ -55,7 +55,7 @@ async function changeShowcase(id){
  const next=toggleFavorite(trophyFavorites,id,trophyItems);
  if(next===trophyFavorites){notice("Deine Vitrine hat Platz für drei freigeschaltete Trophäen.");return;}
  const uid=state.user?.id,epoch=showcaseEpoch;if(!uid)return;
- showcaseBusy=true;bindShowcases();
+ showcaseBusy=true;bindShowcases();document.querySelectorAll("[data-trophy-favorite]").forEach(b=>b.disabled=true);
  try{
   const {error}=await db.from("tp_trophy_showcases").upsert({owner_id:uid,trophy_ids:next},{onConflict:"owner_id"});
   if(error)throw error;
