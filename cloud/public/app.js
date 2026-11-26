@@ -7,6 +7,7 @@ import {careerCard,careerPage,playerRank} from "./game-progression.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
+import {ticketAwardsPanel} from "./ticket-awards.js";
 
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
 const trophyKey=()=> "tp-trophy-prefs-"+state.user?.id;
@@ -75,7 +76,7 @@ async function load(){
  const membership=await db.from("tp_members").select("active").eq("user_id",state.user.id).maybeSingle();
  if(membership.error)throw membership.error;
  if(!membership.data?.active){await db.auth.signOut();showApp(null);notice("Konto noch nicht freigeschaltet oder gesperrt.");return;}
- const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents,members]=await Promise.all([
+ const [a,b,adminStatus,sol,pushDevices,gameProfile,xpEvents,members,awardRows,closedTickets]=await Promise.all([
   db.from("tp_companies").select("*").order("name"),
   db.from("tp_entries").select("*").order("created_at",{ascending:false}),
   db.from("tp_app_admins").select("user_id").eq("user_id",state.user.id).maybeSingle(),
@@ -83,7 +84,9 @@ async function load(){
   db.from("tp_push_subscriptions").select("id,endpoint,device_name").eq("owner_id",state.user.id),
   db.from("tp_game_profiles").select("*").eq("owner_id",state.user.id).maybeSingle(),
   db.from("tp_game_xp_events").select("id,entry_id,entry_title,xp,rank_before,rank_after,prestige,stage,awarded_at").eq("owner_id",state.user.id).order("id",{ascending:false}).limit(30),
-  db.from("tp_members").select("user_id,display_name")
+  db.from("tp_members").select("user_id,display_name"),
+  db.from("tp_ticket_awards").select("threshold,awarded_at").eq("owner_id",state.user.id),
+  db.from("tp_tickets").select("id",{count:"exact",head:true}).eq("assignee_id",state.user.id).eq("status","closed")
  ]);
  if(a.error)throw a.error;
  if(b.error)throw b.error;
@@ -94,6 +97,7 @@ async function load(){
  if(xpEvents.error)throw xpEvents.error;
  if(members.error)throw members.error;
  state.members=members.data||[];
+ state.ticketAwards=awardRows.data||[];state.closedTickets=closedTickets.count||0;
  state.solutions=sol.data||[];
  state.pushSubs=pushDevices.data||[];
  state.gameProfile=gameProfile.data||null;
@@ -111,7 +115,7 @@ async function load(){
  await syncTrophies();
  render();
 }
-function showApp(user){if(state.user?.id!==user?.id){ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){ticketCenter.reset();adminCenter.reset();trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){$("user-label").textContent=user.email||"";load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -208,7 +212,7 @@ function settings(){
 }
 function render(){if(!state.user)return;document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=!state.isAdmin);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","admin"].includes(state.view)?"none":"block";
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)):state.view==="admin"?adminCenter.page():state.view==="tickets"?ticketCenter.page():state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career")bindTrophies();
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="admin")adminCenter.open();
