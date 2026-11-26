@@ -3,6 +3,8 @@ import * as webpush from "jsr:@negrel/webpush@0.5.0";
 
 const allowedOrigin = "https://trummcardsgit.github.io";
 const appUrl = "https://trummcardsgit.github.io/__APP_PATH__/";
+const maxPushSubscriptions = 10;
+const maxPushConcurrency = 3;
 const headers = {
   "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -23,25 +25,30 @@ function randomToken(): string {
   return btoa(String.fromCharCode(...b)).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
 }
 async function sendToUser(server: webpush.ApplicationServer, admin: ReturnType<typeof createClient>, ownerId: string, payload: Record<string,unknown>) {
-  const {data:subs,error}=await admin.from("tp_push_subscriptions").select("id,endpoint,p256dh,auth_secret").eq("owner_id",ownerId);
+  const {data:subs,error}=await admin.from("tp_push_subscriptions").select("id,endpoint,p256dh,auth_secret").eq("owner_id",ownerId).order("updated_at",{ascending:false}).order("id",{ascending:true}).limit(maxPushSubscriptions+1);
   if(error) throw error;
+  const capped=(subs?.length||0)>maxPushSubscriptions;
+  const targets=(subs||[]).slice(0,maxPushSubscriptions);
+  if(capped)console.error("Push subscription collection exceeded the delivery cap",ownerId);
   let sent=0,failed=0,removed=0;
-  for(const sub of subs||[]){
-    try {
-      const host=new URL(sub.endpoint).hostname;
-      if(!(host==="fcm.googleapis.com"||host==="fcm-xm.googleapis.com"||host==="android.googleapis.com"||host.endsWith(".push.apple.com")||host==="updates.push.services.mozilla.com"||host.endsWith(".notify.windows.com")))throw new Error("Push service not allowed");
-      await server.subscribe({endpoint:sub.endpoint, keys:{p256dh:sub.p256dh,auth:sub.auth_secret}}).pushTextMessage(JSON.stringify(payload),{ttl:3600});
-      sent++;
-    }catch(err){
-      failed++;
-      if(err instanceof webpush.PushMessageError && err.isGone()){
-        const {error:delError}=await admin.from("tp_push_subscriptions").delete().eq("id",sub.id).eq("owner_id",ownerId);
-        if(!delError)removed++;
+  for(let offset=0;offset<targets.length;offset+=maxPushConcurrency){
+    await Promise.all(targets.slice(offset,offset+maxPushConcurrency).map(async sub=>{
+      try {
+        const host=new URL(sub.endpoint).hostname;
+        if(!(host==="fcm.googleapis.com"||host==="fcm-xm.googleapis.com"||host==="android.googleapis.com"||host.endsWith(".push.apple.com")||host==="updates.push.services.mozilla.com"||host.endsWith(".notify.windows.com")))throw new Error("Push service not allowed");
+        await server.subscribe({endpoint:sub.endpoint, keys:{p256dh:sub.p256dh,auth:sub.auth_secret}}).pushTextMessage(JSON.stringify(payload),{ttl:3600});
+        sent++;
+      }catch(err){
+        failed++;
+        if(err instanceof webpush.PushMessageError && err.isGone()){
+          const {error:delError}=await admin.from("tp_push_subscriptions").delete().eq("id",sub.id).eq("owner_id",ownerId);
+          if(!delError)removed++;
+        }
+        console.error("Push provider rejected notification",String(err).slice(0,200));
       }
-      console.error("Push provider rejected notification",String(err).slice(0,200));
-    }
+    }));
   }
-  return {sent,failed,removed,subscribers:subs?.length||0};
+  return {sent,failed,removed,subscribers:targets.length,capped};
 }
 Deno.serve(async req=>{
   try{
@@ -105,6 +112,11 @@ Deno.serve(async req=>{
       return response({ok:true,publicKey});
     }
     if(!cfg)return response({error:"Bitte den Push-Dienst zuerst als Administrator aktivieren."},409);
+    if(action==="test"){
+      const claim=await admin.rpc("tp_claim_push_test",{p_owner:userId});
+      if(claim.error){console.error("Push test rate-limit claim failed",claim.error.message);return response({error:"Push-Test derzeit nicht verfügbar."},503);}
+      if(claim.data!==true)return response({error:"Bitte vor dem nächsten Push-Test eine Minute warten."},429);
+    }
     const vapidKeys=await webpush.importVapidKeys(cfg.vapid_jwk);
     const pushServer=await webpush.ApplicationServer.new({contactInformation:appUrl,vapidKeys});
     if(action==="test"){
@@ -145,7 +157,7 @@ Deno.serve(async req=>{
           }):{sent:0,failed:0,subscribers:0,removed:0};
           ticketStats.delivered+=sent.sent;ticketStats.failed+=sent.failed;
           // Keep the in-app notification even when the user has no subscribed device.
-          if(sent.sent>0||sent.subscribers===0||sent.removed===sent.subscribers){
+          if(sent.sent>0||sent.subscribers===0||(!sent.capped&&sent.removed===sent.subscribers)){
             const done=await admin.from("tp_ticket_notifications").update({delivered_at:new Date().toISOString(),lease_until:null}).eq("id",item.id);
             if(done.error)throw done.error;
           }

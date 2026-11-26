@@ -195,7 +195,7 @@ $fn$;
 revoke all on function public.tp_complete_task(uuid,text) from public,anon;
 grant execute on function public.tp_complete_task(uuid,text) to authenticated;
 
--- One push subscription per device/browser; each belongs to exactly one user.
+-- One push subscription per device/browser; each user may register up to ten devices.
 create table if not exists public.tp_push_subscriptions (
  id uuid primary key default gen_random_uuid(),
  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
@@ -215,6 +215,27 @@ create policy "tp_push_insert_own" on public.tp_push_subscriptions for insert to
 create policy "tp_push_update_own" on public.tp_push_subscriptions for update to authenticated using(owner_id=(select auth.uid())) with check(owner_id=(select auth.uid()));
 create policy "tp_push_delete_own" on public.tp_push_subscriptions for delete to authenticated using(owner_id=(select auth.uid()));
 
+create or replace function tp_private.enforce_push_subscription_quota()
+returns trigger language plpgsql security invoker set search_path=''
+as $$
+begin
+ if new.owner_id is null or new.owner_id is distinct from auth.uid() then
+  raise exception 'Push subscription owner mismatch' using errcode='42501';
+ end if;
+ perform pg_advisory_xact_lock(hashtextextended(new.owner_id::text,9127));
+ if not exists(
+  select 1 from public.tp_push_subscriptions where endpoint=new.endpoint
+ ) and (select count(*) from public.tp_push_subscriptions where owner_id=new.owner_id)>=10 then
+  raise exception 'Push device limit reached' using errcode='P0001';
+ end if;
+ return new;
+end;
+$$;
+revoke all on function tp_private.enforce_push_subscription_quota() from public,anon,authenticated;
+drop trigger if exists tp_push_subscription_quota on public.tp_push_subscriptions;
+create trigger tp_push_subscription_quota before insert on public.tp_push_subscriptions
+for each row execute function tp_private.enforce_push_subscription_quota();
+
 -- Private to service_role. Never read this table from a browser.
 create table if not exists public.tp_push_config (
  only_row boolean primary key default true check(only_row),
@@ -226,6 +247,29 @@ create table if not exists public.tp_push_config (
 alter table public.tp_push_config enable row level security;
 revoke all on public.tp_push_config from public,anon,authenticated;
 grant select on public.tp_push_config to service_role;
+
+-- Atomic per-user claim used by the Edge Function to rate-limit test notifications.
+create table if not exists public.tp_push_test_limits (
+ owner_id uuid primary key references auth.users(id) on delete cascade,
+ last_test_at timestamptz not null
+);
+alter table public.tp_push_test_limits enable row level security;
+revoke all on public.tp_push_test_limits from public,anon,authenticated;
+grant select,insert,update,delete on public.tp_push_test_limits to service_role;
+create or replace function public.tp_claim_push_test(p_owner uuid)
+returns boolean language plpgsql security invoker set search_path=''
+as $$
+begin
+ if p_owner is null then return false; end if;
+ insert into public.tp_push_test_limits as limits(owner_id,last_test_at)
+ values(p_owner,now())
+ on conflict(owner_id) do update set last_test_at=excluded.last_test_at
+ where limits.last_test_at<=excluded.last_test_at-interval '1 minute';
+ return found;
+end;
+$$;
+revoke all on function public.tp_claim_push_test(uuid) from public,anon,authenticated;
+grant execute on function public.tp_claim_push_test(uuid) to service_role;
 
 create or replace function public.tp_claim_due_reminders(p_limit integer default 50)
 returns table(entry_id uuid,owner_id uuid,company_id uuid,title text,due_at timestamptz,remind_at timestamptz)

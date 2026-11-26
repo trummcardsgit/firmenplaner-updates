@@ -79,7 +79,7 @@ if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||(cfg.staging&&cfg.supabaseUrl.
 }
 const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 // Preserve the Supabase project-specific production session key; TEST uses its own ref.
-const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 let menuPrefs=normalizeMenu(),menuRevision=0,menuReady=false;
 const menuEditor=createMenuEditor({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,onSaved:p=>{menuRevision++;menuPrefs=p;applyMenu(document,menuPrefs,state.isAdmin,state.view);notice("Dein Menü wurde gespeichert.");},onError:fail});
 function openMenuEditor(onlyTickets=false){if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs,onlyTickets);}
