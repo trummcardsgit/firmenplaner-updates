@@ -1,4 +1,4 @@
-name: RHTFLOW 2.0 Production PWA
+name: RHTFLOW 2.1 Production PWA
 on:
   push:
     branches: [main]

@@ -5,7 +5,18 @@ const n=v=>Math.max(0,Math.floor(Number(v)||0)),num=v=>n(v).toLocaleString("de-A
 const date=v=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)?v.split("-").reverse().join("."):"–";
 const rarity={common:"Gewöhnlich",rare:"Selten",epic:"Episch",legendary:"Legendär"};
 const groups=[["daily","Tagesaufgaben","Reset täglich um 00:00 · Alle 3: +200 BP-XP"],["weekly","Wochenaufgaben","Reset Montag um 00:00 · Alle 3: +750 BP-XP"],["season","Saisonaufgaben","Einmal pro Season"]];
+export function countdownText(startsAt,now=Date.now()){
+ const ms=Math.max(0,Date.parse(startsAt)-now);if(!Number.isFinite(ms))return "–";
+ const mins=Math.ceil(ms/60000);return Math.floor(mins/1440)+" T · "+Math.floor(mins%1440/60)+" Std · "+mins%60+" Min";
+}
+export function updateBpCountdown(doc,now=Date.now()){
+ for(const el of doc.querySelectorAll("[data-bp-start]"))el.textContent=countdownText(el.dataset.bpStart,now);
+}
 export function battlePassMarkup(data,ready=true,name="Spieler",expanded=false){
+ if(ready&&data?.pending===true&&!data.available){
+ const start=typeof data.starts_at==="string"&&Number.isFinite(Date.parse(data.starts_at))?data.starts_at:"";
+ return '<details id="tp-battlepass" class="tp-bp tp-bp-collapse"'+(expanded?' open':'')+'><summary class="tp-bp-compact"><div><small>SEASON '+String(n(data.season_id)).padStart(2,"0")+' · '+esc(data.name)+'</small><strong>Battle Pass · Start '+date(data.starts)+'</strong></div><div class="tp-bp-compact-progress"><span data-bp-start="'+esc(start)+'">'+countdownText(start)+'</span><small>Stufe 0 / '+n(data.level_count)+' · 0 BP-XP</small></div><span class="tp-bp-compact-chevron" aria-hidden="true">⌄</span></summary><p>Start am '+date(data.starts)+' um 00:00 Uhr (Österreich). Aufgaben und Belohnungen sind bis dahin gesperrt.</p></details>';
+ }
  if(!ready||!data?.available)return '<details id="tp-battlepass" class="tp-bp tp-bp-collapse"'+(expanded?' open':'')+'><summary class="tp-bp-compact"><strong>Battle Pass</strong></summary><p>'+(ready?"Keine aktive Season verfügbar.":"Fortschritt wird geladen oder ist gerade nicht verfügbar.")+'</p></details>';
  const max=Math.min(30,Math.max(1,n(data.level_count)||30)),rate=n(data.xp_per_level)||1000,total=max*rate,seasonName=esc(data.name||'Vice City'),level=Math.min(max,n(data.level)),xp=n(data.xp),part=level===max?rate:xp%rate,rewards=Array.isArray(data.rewards)?data.rewards:[],goals=Array.isArray(data.challenges)?data.challenges:[];
  const next=rewards.find(r=>n(r.level)===level+1);

@@ -21,11 +21,14 @@ assert.match(testToolsMarkup({can_install:true,cards,test_unlocked:true},true),/
 const response={cards,can_install:true,test_unlocked:true};const db={rpc:async(fn,args)=>{if(fn==="tp_test_bp_art_install")assert.deepEqual(args,{p_cards:cards});if(fn==="tp_test_bp_preset"){assert.deepEqual(args,{p_preset:"ocean"});return {data:[]};}return {data:response};}};
 assert.deepEqual(await getTestArt(db),normalizeTestArt(response));assert.deepEqual(await installTestArt(db,cards),normalizeTestArt(response));assert.deepEqual(await testPreset(db,"ocean"),[]);await assert.rejects(()=>testPreset(db,"unknown"));
 const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
-assert.match(app,/isTestBuild\(cfg\)&&!testArtLoaded/);
+assert.match(app,/if\(!testArtLoaded&&!testArtBusy\)/);
 assert.match(app,/isTestBuild\(cfg\)\|\|!state.isAdmin\|\|!testArt\?\.can_install/);
 assert.equal(testToolsMarkup({can_install:true,cards,test_unlocked:true},false),"");
 assert.equal(testToolsMarkup({can_install:true,cards,test_unlocked:true}),"");
 assert.equal(testToolsMarkup({can_install:false,cards},true),"");
-assert.match(app,/testToolsMarkup\(testArt,state.isAdmin\)/);
+assert.match(app,/testToolsMarkup\(testArt,state.isAdmin,isTestBuild\(cfg\)\)/);
+assert.doesNotMatch(testToolsMarkup({can_install:true,cards,test_unlocked:true},true,false),/data-test-bp-preset/);
+const productionDb={rpc:async(fn,args)=>{assert.ok(["tp_bp_art_get","tp_bp_art_install"].includes(fn));return {data:response};}};
+assert.deepEqual(await getTestArt(productionDb,false),normalizeTestArt(response));assert.deepEqual(await installTestArt(productionDb,cards,false),normalizeTestArt(response));
 const css=readFileSync(new URL("../public/tickets.css",import.meta.url),"utf8");for(const k of Object.keys(cards))assert.ok(css.includes("--bp-card-art-"+k));
 console.log("TEST-only premium WebP artwork validation, scoped setup, CSS variables and preset controls passed");

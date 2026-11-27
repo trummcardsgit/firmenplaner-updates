@@ -1,4 +1,9 @@
-import assert from "node:assert/strict";import {JSDOM} from "jsdom";import {generateBattlePass,bpAdminMarkup} from "../public/bp-season-admin.js";import {battlePassMarkup} from "../public/battlepass.js";import {artSource} from "../public/bp-art.js";
+import assert from "node:assert/strict";import {JSDOM} from "jsdom";import {generateBattlePass,bpAdminMarkup} from "../public/bp-season-admin.js";import {battlePassMarkup,countdownText,updateBpCountdown} from "../public/battlepass.js";import {artSource} from "../public/bp-art.js";
 const d=generateBattlePass("Winter Royale","2026-12-27");assert.equal(d.rewards.length,30);assert.equal(new Set(d.rewards.map(r=>r.kind)).size,4);assert.equal(d.missions.length,11);assert.equal(d.ends,"2027-01-26");assert.equal(generateBattlePass("Cyber City","2026-12-27",12).rewards.length,12);assert.equal(artSource({season_id:2,level:3,art:"./icons/bp-winter-3.svg"}),"./icons/bp-winter-3.svg");assert.equal(artSource({season_id:2,level:3,art:"https://evil.example"}),null);const doc=new JSDOM(battlePassMarkup({available:true,name:"Winter Royale",season_id:2,level_count:20,xp_per_level:500,xp:1000,level:2,rewards:[],challenges:[]},true,"Test",true)).window.document;assert.match(doc.body.textContent,/Winter Royale/);assert.equal(doc.querySelector(".tp-bp-compact progress").max,10000);assert.match(bpAdminMarkup([],d),/Entwurf speichern/);
 
 assert.match(doc.querySelector(".tp-bp-rank").textContent,/10[.\s]000 BP-XP/);
+
+const pending=new JSDOM(battlePassMarkup({available:false,pending:true,season_id:1,name:"Vice City",starts:"2026-12-01",starts_at:"2026-11-30T23:00:00Z",level_count:30},true,"Test",true)).window.document;
+assert.match(pending.body.textContent,/01\.12\.2026/);assert.match(pending.body.textContent,/0 BP-XP/);assert.equal(pending.querySelectorAll(".tp-bp-task").length,0);
+updateBpCountdown(pending,Date.parse("2026-11-29T23:00:00Z"));assert.equal(pending.querySelector("[data-bp-start]").textContent,"1 T · 0 Std · 0 Min");
+assert.equal(countdownText("2026-11-30T23:00:00Z",Date.parse("2026-12-01T01:00:00Z")),"0 T · 0 Std · 0 Min");

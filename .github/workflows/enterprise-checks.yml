@@ -127,6 +127,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/season-design-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-seasons.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-seasons-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-production-art.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-launch-integration.sql
 
   preview:
     needs: [checks, database, editor-browser]

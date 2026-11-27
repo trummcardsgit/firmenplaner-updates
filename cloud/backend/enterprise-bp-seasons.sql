@@ -47,7 +47,11 @@ declare u uuid:=auth.uid(); s tp_private.bp_seasons%rowtype; stamp timestamptz:=
 begin
  if u is null or not tp_private.enterprise_member() then raise exception 'Access denied';end if;
  select * into s from tp_private.bp_seasons where published and starts<=d order by starts desc limit 1;
+ if not found then
+ select * into s from tp_private.bp_seasons where published and starts>d order by starts,id limit 1;
  if not found then return jsonb_build_object('available',false);end if;
+ return jsonb_build_object('available',false,'pending',true,'season_id',s.id,'name',s.name,'starts',s.starts,'starts_at',s.starts::timestamp at time zone 'Europe/Vienna','server_now',stamp,'level_count',s.level_count,'xp_per_level',s.xp_per_level);
+ end if;
  for s in select * from tp_private.bp_seasons where published and starts<=d order by id loop
  perform pg_advisory_xact_lock(hashtextextended('tp_bp:'||u::text||':'||s.id::text,0));
  insert into tp_private.bp_claims(season_id,owner_id,period_kind,period_start,code,xp)
