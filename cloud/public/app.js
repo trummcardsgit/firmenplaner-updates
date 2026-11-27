@@ -21,7 +21,7 @@ import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
 import {createSeasonAdmin,cleanDesign,applySeasonDesign,syncSeasonPwa} from "./season-design.js";
-let seasonDesign=null,seasonRevision="",seasonRequest=0,seasonPwaRevision="";
+let seasonDesign=null,seasonRevision="",seasonRequest=0,seasonPwaRevision="",seasonPwaQueue=Promise.resolve();
 import {ticketAwardsPanel} from "./ticket-awards.js";
 
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
@@ -120,7 +120,7 @@ async function refreshSeason(){
  try{const {data,error}=await db.rpc("tp_season_branding",{p_revision:seasonRevision});if(request!==seasonRequest)return;if(error)throw error;
  if(!data?.unchanged){seasonDesign=cleanDesign(data?.design);seasonRevision=String(data?.revision||"default");}
  applySeasonDesign(document,seasonDesign,state.view);
- if(seasonRevision!==seasonPwaRevision){await syncSeasonPwa(seasonDesign,seasonRevision);if(request===seasonRequest)seasonPwaRevision=seasonRevision;}
+ if(seasonRevision!==seasonPwaRevision){const revision=seasonRevision,design=seasonDesign;seasonPwaQueue=seasonPwaQueue.catch(()=>{}).then(async()=>{if(revision!==seasonRevision)return;await syncSeasonPwa(design,revision,!!cfg.staging);if(revision===seasonRevision)seasonPwaRevision=revision;});await seasonPwaQueue;}
  }catch(e){console.warn("Season-Design",e);}
 }
 const seasonAdmin=createSeasonAdmin({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,onChange:refreshSeason});

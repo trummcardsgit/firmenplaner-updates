@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
 import {readFileSync} from "node:fs";
-import {cleanDesign,applySeasonDesign,seasonAdminMarkup,assetLabels} from "../public/season-design.js";
+import {cleanDesign,applySeasonDesign,seasonAdminMarkup,assetLabels,createSeasonAdmin} from "../public/season-design.js";
 const src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoEAAEAAUAmJaACdAGIQAD+8JCi6T9T/Rf/UGf/6gz//UGfp4AAAA==";
 const design={name:"<winter>",palette:{accent:"#123456",background:"#151525",bad:"url(evil)"},assets:{logo:src,inventory:src,appIcon:src,background:src,battlepass:src,admin:"javascript:alert(1)"}};
 assert.equal(Object.keys(assetLabels).length,17);
@@ -16,3 +16,13 @@ const markup=seasonAdminMarkup([{id:1,name:"<script>",starts:"2026-12-01",ends:"
 const editor=new JSDOM(markup).window.document;assert.equal(editor.querySelectorAll("[data-season-file]").length,17);assert.equal(editor.querySelectorAll("script").length,0);
 const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");assert.match(app,/state.view==="admin"\?seasonAdmin.page\(\)\+adminCenter.page\(\)/);assert.match(app,/seasonAdmin.editing\(\)/);assert.match(app,/adminStatus.data\?\.user_id===loadingUser/);
 console.log("Season design: all 17 asset slots, safe input, logo, navigation, header, favicon, reset and admin integration passed");
+
+const adminDoc=new JSDOM('<section id="tp-season-admin"></section>').window.document;
+const calls=[];let saved=null,changed=0;
+const admin=createSeasonAdmin({document:adminDoc,db:{async rpc(fn,args){assert.equal(fn,"tp_admin_season_design");calls.push(args);if(args.p_action==="save"){saved=args.p_payload;return {data:{id:1,...saved}};}return {data:saved?[{id:1,revision:1,...saved}]:[]};}},userId:()=>"admin",isAdmin:()=>true,notice(){},fail(e){throw e},onChange:async()=>{changed++;}});
+await admin.open();adminDoc.querySelector("[data-season-new]").click();
+assert.equal(admin.editing(),true);
+const form=adminDoc.getElementById("tp-season-form");form.elements.name.value="Winter Royale";
+form.dispatchEvent(new adminDoc.defaultView.Event("submit",{bubbles:true,cancelable:true}));
+await new Promise(r=>setTimeout(r,0));assert.equal(saved.name,"Winter Royale");assert.equal(saved.published,false);assert.equal(changed,1);assert.equal(admin.editing(),false);
+assert.match(adminDoc.body.textContent,/Winter Royale/);

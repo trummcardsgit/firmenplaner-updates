@@ -73,7 +73,7 @@ export function createSeasonAdmin({document,db,userId,isAdmin,notice,fail,onChan
  async function open(){if(!isAdmin()||!userId())return;if(busy||draft){draw();return;}const u=userId(),e=epoch;try{const list=await rpc("list");if(current(u,e)&&!draft){rows=Array.isArray(list)?list:[];draw();}}catch(err){if(current(u,e)&&root())root().textContent="Season-Verwaltung nicht verfügbar.";}}
  return {page,open,reset,editing:()=>!!draft||busy};
 }
-export async function syncSeasonPwa(design,revision){
+export async function syncSeasonPwa(design,revision,staging=false){
  if(!("caches" in window)||!("serviceWorker" in navigator))return;
  const scope=new URL("./",location.href),cacheName="tp-season-public:"+scope.pathname;
  const apple=document.querySelector('link[rel="apple-touch-icon"]');if(apple&&!apple.dataset.seasonDefault)apple.dataset.seasonDefault=apple.getAttribute("href");
@@ -81,8 +81,9 @@ export async function syncSeasonPwa(design,revision){
  const icon=design.assets.appIcon?await decodeImage(design.assets.appIcon):null,cache=await caches.open(cacheName),icons=[];const version=String(revision).replace(/[^0-9]/g,"-");
  if(icon)for(const size of [192,512]){const canvas=document.createElement("canvas");canvas.width=canvas.height=size;const ctx=canvas.getContext("2d");ctx.fillStyle=design.palette?.background||"#13142e";ctx.fillRect(0,0,size,size);const ratio=Math.min(size/icon.width,size/icon.height),w=icon.width*ratio,h=icon.height*ratio;ctx.drawImage(icon,(size-w)/2,(size-h)/2,w,h);const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));if(!blob)throw Error("PWA-Icon konnte nicht erzeugt werden.");const path="./season-icon-"+version+"-"+size+".png";await cache.put(new URL(path,scope),new Response(blob,{headers:{"Content-Type":"image/png"}}));icons.push({src:path,sizes:size+"x"+size,type:"image/png",purpose:"any"});}
  if(!icon)icons.push({src:"./icons/icon-192.png",sizes:"192x192",type:"image/png",purpose:"any"},{src:"./icons/icon-512.png",sizes:"512x512",type:"image/png",purpose:"any"},{src:"./icons/icon-maskable-512.png",sizes:"512x512",type:"image/png",purpose:"maskable"});
- const manifest={id:"./",name:"RHTFLOW",short_name:"RHTFLOW",description:"Firmen, Notizen, Aufgaben und Erinnerungen",start_url:"./",scope:"./",display:"standalone",background_color:design.palette?.background||"#13142e",theme_color:design.palette?.background||"#201735",icons};
+ const manifest={id:"./",name:staging?"RHTFLOW 2.1 TEST":"RHTFLOW",short_name:staging?"RHTFLOW TEST":"RHTFLOW",description:"Firmen, Notizen, Aufgaben und Erinnerungen",start_url:"./",scope:"./",display:"standalone",background_color:design.palette?.background||"#13142e",theme_color:design.palette?.background||"#201735",icons};
  await cache.put(new URL("./manifest.webmanifest",scope),new Response(JSON.stringify(manifest),{headers:{"Content-Type":"application/manifest+json","Cache-Control":"no-cache"}}));
  if(apple)apple.href=icon?icons[0].src:apple.dataset.seasonDefault;
+ const link=document.querySelector('link[rel="manifest"]');if(link){const original=link.getAttribute("href");link.removeAttribute("href");link.setAttribute("href",original||"./manifest.webmanifest");}
  const keep=new Set(icons.map(i=>new URL(i.src,scope).href));for(const req of await cache.keys())if(req.url.includes("/season-icon-")&&!keep.has(req.url))await cache.delete(req);
 }
