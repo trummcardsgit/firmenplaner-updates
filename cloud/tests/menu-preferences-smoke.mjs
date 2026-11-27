@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import {JSDOM} from "jsdom";
 import {normalizeMenu,moveMenu,visibleMenu,applyMenu,createMenuEditor,normalizeTicketOrder} from "../public/menu-preferences.js";
 const p=normalizeMenu({menu_order:["tickets","tasks","tickets","unknown"],hidden_items:["settings","admin","bad"]});
-assert.equal(p.menu_order.length,11);assert.equal(p.menu_order[0],"tickets");assert.deepEqual(p.hidden_items,["settings","admin"]);
+assert.equal(p.menu_order.length,12);assert.equal(p.menu_order[0],"tickets");assert.deepEqual(p.hidden_items,["settings","admin"]);
 assert.equal(moveMenu(p,"tasks",-1,false).menu_order[0],"tasks");assert.equal(visibleMenu(p,true).includes("settings"),false);assert.equal(visibleMenu({},false).includes("admin"),false);
 const doc=new JSDOM(readFileSync(new URL("../public/index.html",import.meta.url),"utf8")).window.document;
 applyMenu(doc,p,true,"tickets");
@@ -17,7 +17,7 @@ const dialog=doc.getElementById("tp-menu-dialog");dialog.showModal=()=>dialog.se
 let saved=null,uid="u",persisted=null;
 const db={from(t){assert.equal(t,"tp_menu_preferences");return {upsert(v){assert.equal(v.owner_id,uid);persisted=v;return this;},select(){return this;},async single(){return {data:persisted}}}}};
 const editor=createMenuEditor({document:doc,db,userId:()=>uid,isAdmin:()=>false,onSaved:p=>saved=p,onError:e=>{throw e}});
-editor.open({});assert.equal(doc.querySelectorAll("#tp-menu-rows .tp-menu-row").length,10);
+editor.open({});assert.equal(doc.querySelectorAll("#tp-menu-rows .tp-menu-row").length,11);
 const cb=doc.querySelector('[data-menu-key="settings"] input');cb.checked=false;cb.onchange();
 doc.querySelector('[data-menu-key="tasks"] button').onclick();await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});
 assert.ok(saved.hidden_items.includes("settings"));assert.ok(saved.menu_order.indexOf("tasks")<saved.menu_order.indexOf("tickets"));

@@ -1,7 +1,7 @@
 name: Enterprise staging checks
 on:
   push:
-    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9, release/rhtflow-2.0.10, release/rhtflow-2.0.11, release/rhtflow-2.0.12, security/rhtflow-local-documents-review, release/rhtflow-ticket-order, release/rhtflow-ticket-editor, release/rhtflow-ticket-dialog-fix]
+    branches: [enterprise-2.0, release/rhtflow-2.0.3, release/rhtflow-2.0.4, release/rhtflow-2.0.5, release/rhtflow-2.0.6, release/rhtflow-2.0.8, release/rhtflow-2.0.9, release/rhtflow-2.0.10, release/rhtflow-2.0.11, release/rhtflow-2.0.12, security/rhtflow-local-documents-review, release/rhtflow-ticket-order, release/rhtflow-ticket-editor, release/rhtflow-ticket-dialog-fix, release/rhtflow-2.1]
   workflow_dispatch:
 permissions:
   contents: read
@@ -39,6 +39,7 @@ jobs:
           node cloud/tests/ticket-submenu-smoke.mjs
           node cloud/tests/ticket-text-editor-smoke.mjs
           node cloud/tests/ticket-dialog-refresh-smoke.mjs
+          node cloud/tests/rhtflow-21-smoke.mjs
 
   editor-browser:
     runs-on: ubuntu-24.04
@@ -105,6 +106,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/security-permissions-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-ticket-description-edit.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/ticket-description-edit-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-rhtflow-21.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/rhtflow-21-integration.sql
 
   preview:
     needs: [checks, database, editor-browser]

@@ -21,8 +21,8 @@ const labels={
 const views=Object.keys(labels);
 const desktop=doc.querySelectorAll("#nav button[data-view]");
 const mobile=doc.querySelectorAll(".bottom-nav button[data-view]");
-assert.equal(desktop.length,11,"Nine original sections plus Tickets and Admin");
-assert.equal(mobile.length,11,"Nine original sections plus mobile Tickets and Admin");
+assert.equal(desktop.length,12,"Nine original sections plus Tickets and Admin");
+assert.equal(mobile.length,12,"Nine original sections plus mobile Tickets and Admin");
 for(const nav of ["#nav",".bottom-nav"]){
  const admin=doc.querySelector(nav+' button[data-view="admin"]');
  assert.ok(admin?.hidden,"Admin must be hidden before authorization");
