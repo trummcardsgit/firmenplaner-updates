@@ -121,3 +121,30 @@
 [data-member-frame="17"],[data-card-frame="17"]{outline:2px solid #c18bff!important;outline-offset:2px;box-shadow:0 0 9px #a56bff!important}
 [data-member-frame="26"],[data-card-frame="26"]{outline:2px solid #64d9fa!important;outline-offset:2px;box-shadow:0 0 9px #26a1e8!important}
 [data-member-frame="27"],[data-card-frame="27"]{outline:2px solid #ffd684!important;outline-offset:2px;box-shadow:0 0 9px #ffc365!important}
+
+/* Global scheduled season skin: identity and work flows are unchanged. */
+.tp-season-original-hidden{display:none!important}
+.vice-city-theme .tp-season-nav-icon{display:block!important;width:38px;height:38px;object-fit:contain;flex-shrink:0;border-radius:8px}
+html.tp-season-active{--vc-pink:var(--season-accent,#ff6bb6);--vc-rose:var(--season-accent,#f04f9f);--vc-lavender:var(--season-secondary,#b38cf4);--vc-surface-up:var(--season-surface,#282540);--vc-gradient:linear-gradient(115deg,var(--season-accent,#ff6bb6),var(--season-secondary,#b38cf4))}
+.tp-season-active body.vice-city-theme{background:radial-gradient(ellipse at 85% 0%,color-mix(in srgb,var(--season-accent,#ff6bb6) 22%,transparent),transparent 65%),var(--season-background,#13142e)}
+.tp-season-background body.vice-city-theme{background:linear-gradient(180deg,#0b102455,#0b1024dd),var(--season-art-background) center top/cover fixed}
+.tp-season-active .vice-city-theme .sidebar,.tp-season-active .vice-city-theme .bottom-nav{background:var(--season-background,#13142e);border-color:var(--season-accent,#ff6bb6)}
+.tp-season-active .vice-city-theme .topbar,.tp-season-active .vice-city-theme .nav.active,.tp-season-active .vice-city-theme .tp-game-mini{background:linear-gradient(120deg,var(--season-surface,#282540),color-mix(in srgb,var(--season-secondary,#b38cf4) 28%,var(--season-background,#13142e)));border-color:var(--season-accent,#ff6bb6)}
+.tp-season-active .vice-city-theme .panel,.tp-season-active .vice-city-theme .card,.tp-season-active .vice-city-theme .tp-ticket-panel,.tp-season-active .vice-city-theme .tp-bp,.tp-season-active .vice-city-theme .tp-game-panel{background:var(--season-surface,#282540);border-color:color-mix(in srgb,var(--season-accent,#ff6bb6) 55%,transparent)}
+.tp-season-active .vice-city-theme .primary{color:#111!important}
+.tp-season-active .vice-city-theme .tp-bp-compact{background:linear-gradient(110deg,var(--season-surface,#282540),var(--season-background,#13142e))}
+.tp-season-battlepass .tp-bp-hero{background-image:linear-gradient(90deg,#0d1023c9,#19132933),var(--season-art-battlepass);background-size:cover;background-position:center}
+.tp-season-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-top:1px solid #8c659944}.tp-season-row>div{flex:1;display:grid;gap:4px;min-width:140px}.tp-season-row small{color:#d5bfdf}
+#tp-season-form{display:grid;gap:14px;margin-top:16px;border-top:1px solid #8c659977;padding-top:14px}
+.tp-season-dates,.tp-season-colors,.tp-season-assets{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.tp-season-colors input{height:42px;width:100%;padding:4px}
+.tp-season-assets>div{padding:10px;min-width:0;border:1px solid #8c659977;border-radius:9px;display:grid;gap:8px}
+.tp-season-assets input{width:100%;min-width:0;font-size:.75rem}
+.tp-season-thumb{height:82px;display:grid;place-items:center;background:#151426;border-radius:7px;color:#c4b2d1;overflow:hidden}
+.tp-season-thumb img{width:100%;height:82px;object-fit:contain}
+#tp-season-preview{border:1px solid;border-radius:10px;padding:10px}
+#tp-season-preview>div>img{max-width:180px;max-height:75px;object-fit:contain}
+.tp-season-preview-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin:12px 0}
+.tp-season-preview-nav span{display:flex;align-items:center;gap:4px;font-size:.75rem}.tp-season-preview-nav img{width:28px;height:28px;object-fit:contain}
+.tp-season-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:480px){.tp-season-assets,.tp-season-colors{grid-template-columns:repeat(2,minmax(0,1fr))}.vice-city-theme .tp-season-nav-icon{width:34px;height:34px}}

@@ -1,0 +1,36 @@
+begin;
+insert into auth.users(id,email) values ('00000000-0000-0000-0000-000000000005','season-role@example.invalid');
+insert into public.tp_members(user_id,display_name,active) values ('00000000-0000-0000-0000-000000000005','CI member',true);
+insert into auth.sessions values ('10000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001','aal2',null),('10000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000005','aal2',null);
+insert into auth.mfa_factors select id,user_id,'totp','verified' from auth.sessions;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000001','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now())::bigint)))::text,true);
+do $$ declare d date:=(now() at time zone 'Europe/Vienna')::date; a jsonb; id bigint; sample text:='data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoEAAEAAUAmJaACdAGIQAD+8JCi6T9T/Rf/UGf/6gz//UGfp4AAAA=='; p jsonb;
+begin
+ p:=jsonb_build_object('name','Winter','starts',d,'ends',d+30,'published',false,'palette',jsonb_build_object('accent','#12AABB'),'assets',jsonb_build_object('logo',sample));
+ a:=public.tp_admin_season_design('save',null,null,p);id:=(a->>'id')::bigint;
+ if public.tp_season_branding('')->>'revision'<>'default' then raise exception 'Draft exposed';end if;
+ a:=public.tp_admin_season_design('save',id,1,p||'{"published":true}');
+ if public.tp_season_branding('')->'design'->>'name'<>'Winter' then raise exception 'Not active';end if;
+ if public.tp_season_branding(id::text||':2')->>'unchanged'<>'true' then raise exception 'Revision not honored';end if;
+ begin perform public.tp_admin_season_design('save',id,1,p);raise exception 'Stale edit accepted';exception when raise_exception then if sqlerrm<>'Design wurde geändert. Bitte neu laden.' then raise;end if;end;
+ a:=public.tp_admin_season_design('save',null,null,p||jsonb_build_object('name','Future','starts',d+31,'ends',d+61,'published',true));
+ if public.tp_season_branding('')->'design'->>'name'<>'Winter' then raise exception 'Future published early';end if;
+ begin perform public.tp_admin_season_design('save',null,null,p||'{"palette":{"accent":"url(evil)"}}');raise exception 'Invalid CSS accepted';exception when raise_exception then if sqlerrm<>'Ungültige Farbe' then raise;end if;end;
+ perform public.tp_admin_season_design('disable',id,2);
+ if public.tp_season_branding('')->>'revision'<>'default' then raise exception 'Disable failed';end if;
+ perform public.tp_admin_season_design('save',id,3,p||'{"published":true}');
+end $$;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',true);
+select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_id','10000000-0000-0000-0000-000000000005','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now())::bigint)))::text,true);
+do $$ begin
+ begin perform public.tp_admin_season_design('list');raise exception 'Non-admin access';exception when raise_exception then if sqlerrm<>'Access denied' then raise;end if;end;
+ if public.tp_season_branding('')->'design'->>'name'<>'Winter' then raise exception 'Member branding missing';end if;
+end $$;
+reset role;
+set local role anon;
+do $$ begin if public.tp_season_branding('')->'design'->>'name'<>'Winter' then raise exception 'Login branding missing';end if;end $$;
+reset role;
+do $$ begin if has_table_privilege('anon','tp_private.season_designs','SELECT') or has_table_privilege('authenticated','tp_private.season_designs','INSERT') or has_function_privilege('anon','public.tp_admin_season_design(text,bigint,bigint,jsonb)','EXECUTE') then raise exception 'Unsafe grants';end if;end $$;
+rollback;

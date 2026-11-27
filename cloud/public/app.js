@@ -20,6 +20,8 @@ let testArt=null,testArtLoaded=false,testArtBusy=false;
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
+import {createSeasonAdmin,cleanDesign,applySeasonDesign,syncSeasonPwa} from "./season-design.js";
+let seasonDesign=null,seasonRevision="",seasonRequest=0,seasonPwaRevision="";
 import {ticketAwardsPanel} from "./ticket-awards.js";
 
 let trophyItems=[],trophyFilter="all",trophyCategory="all",trophyFavorites=[],trophyError=false,trophySound=false;
@@ -113,6 +115,16 @@ const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>st
 const $=id=>document.getElementById(id);
 let inviteFlow=["invite","recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"));
 const state={user:null,companies:[],entries:[],view:"dashboard",search:"",filter:"all",isAdmin:false,invites:[],inviteLink:null,solutions:[],pushSubs:[],gameProfile:null,gameEvents:[]};
+async function refreshSeason(){
+ const request=++seasonRequest;
+ try{const {data,error}=await db.rpc("tp_season_branding",{p_revision:seasonRevision});if(request!==seasonRequest)return;if(error)throw error;
+ if(!data?.unchanged){seasonDesign=cleanDesign(data?.design);seasonRevision=String(data?.revision||"default");}
+ applySeasonDesign(document,seasonDesign,state.view);
+ if(seasonRevision!==seasonPwaRevision){await syncSeasonPwa(seasonDesign,seasonRevision);if(request===seasonRequest)seasonPwaRevision=seasonRevision;}
+ }catch(e){console.warn("Season-Design",e);}
+}
+const seasonAdmin=createSeasonAdmin({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,onChange:refreshSeason});
+
 let profileRankReady=false;
 const memberAvatars=createMemberAvatars({document,db,userId:()=>state.user?.id});
 const memberCosmetics=createMemberCosmetics({document,db,userId:()=>state.user?.id});
@@ -204,8 +216,8 @@ async function load(){
  state.gameEvents=xpEvents.data||[];
  state.companies=a.data||[];
  state.entries=b.data||[];
- const nextAdmin=!adminStatus.error&&adminStatus.data===true;
- if(state.isAdmin!==nextAdmin){testArtLoaded=false;if(!nextAdmin)document.querySelectorAll('.tp-bp-test-tools').forEach(el=>el.remove());}
+ const nextAdmin=!adminStatus.error&&adminStatus.data?.user_id===loadingUser;
+ if(state.isAdmin!==nextAdmin){testArtLoaded=false;if(!nextAdmin){document.querySelectorAll('.tp-bp-test-tools,#tp-season-admin').forEach(el=>el.remove());seasonAdmin.reset();}}
  state.isAdmin=nextAdmin;
  await Promise.all([loadMenuPreferences(loadingUser),profile.load(loadingUser)]);
  if(state.user?.id!==loadingUser)return;
@@ -224,7 +236,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();memberAvatars.refresh();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;battlePass=null;challengeReady=false;inventory=[];inventoryReady=false;inventoryBusy=false;inventoryCategory="auto";testArt=null;testArtLoaded=false;testArtBusy=false;applyPremiumArt(document,null);applyEquipment(document,[]);adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();memberCosmetics.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;battlePass=null;challengeReady=false;inventory=[];inventoryReady=false;inventoryBusy=false;inventoryCategory="auto";testArt=null;testArtLoaded=false;testArtBusy=false;applyPremiumArt(document,null);applyEquipment(document,[]);adminCenter.reset();seasonAdmin.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();memberCosmetics.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -458,14 +470,16 @@ function settings(){
  return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern, Menüpunkte aus- und wieder einblenden.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+backup;
 }
 function render(){if(!state.user)return;profile.render();applyEquipment(document,inventory);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";const actualSrc=["inventory","statistics"].includes(state.view)?"./icons/hd-"+state.view+".avif":src;if(menuArt.getAttribute("src")!==actualSrc)menuArt.src=actualSrc;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
+$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";const actualSrc=["inventory","statistics"].includes(state.view)?"./icons/hd-"+state.view+".avif":src;menuArt.dataset.seasonOriginal=actualSrc;if(menuArt.getAttribute("src")!==actualSrc)menuArt.src=actualSrc;}applySeasonDesign(document,seasonDesign,state.view);$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
+// Preserve the admin season editor while background refreshes run.
+if(state.view==="admin"&&state.isAdmin&&seasonAdmin.editing()&&$("tp-season-admin")){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
 // Keep the actual dialog DOM, including editor selection and FileList, during background refresh.
 if(state.view==="tickets"&&ticketCenter.hasOpenDialog()){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null,state.isAdmin):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null,state.isAdmin):state.view==="admin"?seasonAdmin.page()+adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="statistics")ticketCenter.open();
-if(state.view==="admin")adminCenter.open();
+if(state.view==="admin"){adminCenter.open();seasonAdmin.open();}
 applyMenu(document,menuPrefs,state.isAdmin,state.view);
 if($("tp-settings-menu"))$("tp-settings-menu").onclick=()=>{if(menuReady)menuEditor.open(menuPrefs);else {notice("Menüeinstellungen konnten noch nicht geladen werden.");load().catch(fail);}};
 const search=$("search");if(search)search.addEventListener("input",e=>{state.search=e.target.value;const pos=e.target.selectionStart;render();const n=$("search");n?.focus();n?.setSelectionRange(pos,pos);});
@@ -750,4 +764,8 @@ window.addEventListener("tp-refresh-view",()=>render());
 checkMfaAccess();
 setInterval(()=>{if(state.user&&!document.hidden)checkMfaAccess();},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.user)checkMfaAccess();});
-if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js",{scope:"./",updateViaCache:"none"}).catch(console.warn);
+refreshSeason();
+setInterval(()=>{if(!document.hidden&&navigator.onLine)refreshSeason();},90000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&navigator.onLine)refreshSeason();});
+window.addEventListener("online",refreshSeason);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js",{scope:"./",updateViaCache:"none"}).then(()=>{navigator.serviceWorker.addEventListener("controllerchange",()=>{seasonPwaRevision="";refreshSeason();});}).catch(console.warn);

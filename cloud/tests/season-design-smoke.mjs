@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import {JSDOM} from "jsdom";
+import {readFileSync} from "node:fs";
+import {cleanDesign,applySeasonDesign,seasonAdminMarkup,assetLabels} from "../public/season-design.js";
+const src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoEAAEAAUAmJaACdAGIQAD+8JCi6T9T/Rf/UGf/6gz//UGfp4AAAA==";
+const design={name:"<winter>",palette:{accent:"#123456",background:"#151525",bad:"url(evil)"},assets:{logo:src,inventory:src,appIcon:src,background:src,battlepass:src,admin:"javascript:alert(1)"}};
+assert.equal(Object.keys(assetLabels).length,17);
+assert.equal(cleanDesign(design).assets.admin,undefined);
+assert.equal(cleanDesign(design).palette.bad,undefined);
+const doc=new JSDOM('<html><head><meta name="theme-color"><link rel="icon" href="old.png"></head><body><img class="brand" src="logo.webp"><img class="auth-logo" src="logo.webp"><nav id="nav"><button data-view="inventory"><span>icon</span><span>Inventar</span></button></nav><nav class="bottom-nav"><button data-view="inventory"><span>icon</span><span>Inventar</span></button></nav><img id="page-menu-art" src="old.avif" data-season-original="old.avif"></body></html>').window.document;
+applySeasonDesign(doc,design,"inventory");assert.equal(doc.querySelector(".brand").getAttribute("src"),src);assert.equal(doc.querySelector(".auth-logo").getAttribute("src"),src);
+assert.equal(doc.querySelectorAll(".tp-season-nav-icon").length,2);assert.equal(doc.getElementById("page-menu-art").getAttribute("src"),src);assert.equal(doc.documentElement.style.getPropertyValue("--season-accent"),"#123456");
+applySeasonDesign(doc,null,"inventory");assert.equal(doc.querySelector(".brand").getAttribute("src"),"logo.webp");assert.equal(doc.querySelectorAll(".tp-season-nav-icon").length,0);assert.equal(doc.getElementById("page-menu-art").getAttribute("src"),"old.avif");
+assert.equal(doc.querySelector('link[rel="icon"]').getAttribute("href"),"old.png");
+const markup=seasonAdminMarkup([{id:1,name:"<script>",starts:"2026-12-01",ends:"2027-01-01",published:true}],{name:"Winter",starts:"2026-12-01",ends:"2027-01-01",palette:{},assets:{logo:src}});
+const editor=new JSDOM(markup).window.document;assert.equal(editor.querySelectorAll("[data-season-file]").length,17);assert.equal(editor.querySelectorAll("script").length,0);
+const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");assert.match(app,/state.view==="admin"\?seasonAdmin.page\(\)\+adminCenter.page\(\)/);assert.match(app,/seasonAdmin.editing\(\)/);assert.match(app,/adminStatus.data\?\.user_id===loadingUser/);
+console.log("Season design: all 17 asset slots, safe input, logo, navigation, header, favicon, reset and admin integration passed");

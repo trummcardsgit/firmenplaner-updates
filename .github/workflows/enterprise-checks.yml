@@ -44,6 +44,7 @@ jobs:
           node cloud/tests/bp-inventory-smoke.mjs
           node cloud/tests/bp-test-art-smoke.mjs
           node cloud/tests/bp-member-cosmetics-smoke.mjs
+          node cloud/tests/season-design-smoke.mjs
 
   editor-browser:
     runs-on: ubuntu-24.04
@@ -121,6 +122,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-four-categories.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-four-categories-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-admin-art-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-season-designs.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/season-design-integration.sql
 
   preview:
     needs: [checks, database, editor-browser]
