@@ -12,6 +12,7 @@ import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
 import {battlePassMarkup,readBattlePass,replaceBattlePassTile} from "./battlepass.js";
+import {inventoryMarkup,readInventory,equipReward,applyEquipment,cosmeticFeedback} from "./bp-inventory.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
@@ -82,7 +83,7 @@ const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 // Preserve the Supabase project-specific production session key; TEST uses its own ref.
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 let menuPrefs=normalizeMenu(),menuRevision=0,menuReady=false;
-let battlePass=null,challengeReady=false,challengeRequest=0;
+let battlePass=null,challengeReady=false,challengeRequest=0,inventory=[],inventoryReady=false,inventoryBusy=false;
 const menuEditor=createMenuEditor({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,onSaved:p=>{menuRevision++;menuPrefs=p;applyMenu(document,menuPrefs,state.isAdmin,state.view);notice("Dein Menü wurde gespeichert.");},onError:fail});
 function openMenuEditor(onlyTickets=false){if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs,onlyTickets);}
 document.querySelectorAll("[data-menu-customize]").forEach(b=>b.onclick=()=>openMenuEditor());
@@ -96,7 +97,7 @@ async function loadMenuPreferences(uid){
   menuReady=true;
  }catch(e){if(state.user?.id===uid&&revision===menuRevision){menuReady=false;console.warn("Menüeinstellungen konnten nicht geladen werden",e);}}
 }
-const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load,ticketOrder:()=>menuPrefs.ticket_order,customizeOrder:()=>openMenuEditor(true)});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load,ticketOrder:()=>menuPrefs.ticket_order,customizeOrder:()=>openMenuEditor(true),onCosmeticEvent:kind=>cosmeticFeedback(document,inventory,kind)});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),cancelInvitation:async row=>{
  const {data:{session}}=await db.auth.getSession();
  if(!session?.access_token)throw new Error("Bitte neu anmelden.");
@@ -216,7 +217,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();memberAvatars.refresh();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;battlePass=null;challengeReady=false;adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;battlePass=null;challengeReady=false;inventory=[];inventoryReady=false;inventoryBusy=false;applyEquipment(document,[]);adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -354,7 +355,7 @@ const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
 if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
 
 $("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
-function nav(view){if(view==="admin"&&!state.isAdmin)return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();if(view==="dashboard"&&state.user)refreshCareerChallenges(state.user.id);}
+function nav(view){if(view==="admin"&&!state.isAdmin)return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();if(["dashboard","inventory"].includes(view)&&state.user)refreshCareerChallenges(state.user.id);}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function chip(value,extra){return '<span class="pill '+(extra||"")+'">'+esc(value)+"</span>";}
 function row(e){let meta=chip(company(e.company_id),"gold")+chip(e.kind==="note"?"Notiz":"Aufgabe");
@@ -367,7 +368,10 @@ function metric(t,n,h){return '<div class="metric '+(h||"")+'"><strong>'+n+"</st
 async function refreshCareerChallenges(uid){
  const request=++challengeRequest;
  try{const result=await readBattlePass(db);if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=result;challengeReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=null;challengeReady=false;console.warn("Battle Pass",e);}
+ if(!inventoryBusy){try{const rows=await readInventory(db);if(state.user?.id!==uid||request!==challengeRequest)return;inventory=rows;inventoryReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;inventoryReady=false;console.warn("Inventar",e);}}
+ applyEquipment(document,inventory);
  if(state.view==="dashboard")replaceBattlePassTile(document,battlePass,challengeReady);
+ if(state.view==="inventory"&&!inventoryBusy) $("content").innerHTML=inventoryMarkup(inventory,inventoryReady);
 }
 function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
 function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
@@ -440,11 +444,11 @@ function settings(){
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
  return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern, Menüpunkte aus- und wieder einblenden.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+backup;
 }
-function render(){if(!state.user)return;profile.render();if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","admin"].includes(state.view)?"none":"block";
+function render(){if(!state.user)return;profile.render();applyEquipment(document,inventory);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
+$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
 // Keep the actual dialog DOM, including editor selection and FileList, during background refresh.
 if(state.view==="tickets"&&ticketCenter.hasOpenDialog()){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="statistics")ticketCenter.open();
@@ -499,6 +503,17 @@ $(`entry-kind`).addEventListener("change",()=>taskProjectSelector.refresh($("ent
 $("new-entry").addEventListener("click",()=>openEntry());
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
 $("content").addEventListener("click",async event=>{const b=event.target.closest("button");if(!b)return;try{
+ if(b.hasAttribute("data-open-inventory")){nav("inventory");return;}
+ if(b.hasAttribute("data-inventory-refresh")){if(!inventoryBusy&&state.user)await refreshCareerChallenges(state.user.id);return;}
+ if(b.hasAttribute("data-bp-equip")){
+  if(inventoryBusy||!state.user||state.view!=="inventory")return;
+  const uid=state.user.id,[season,level]=b.dataset.bpEquip.split(":").map(Number),equip=b.dataset.bpActive!=="true";
+  if(!Number.isInteger(season)||!Number.isInteger(level))return;
+  inventoryBusy=true;challengeRequest++;b.disabled=true;
+  try{const rows=await equipReward(db,season,level,equip);if(state.user?.id!==uid)return;inventory=rows;inventoryReady=true;applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,true);notice(equip?"Belohnung ausgerüstet.":"Belohnung abgelegt.");}
+  finally{if(state.user?.id===uid){inventoryBusy=false;b.disabled=false;}}
+  return;
+ }
 if("openCareer" in b.dataset){nav("career");return;}
 if(b.id==="tp-enter-prestige"){openPrestigeDialog();return;}
 if(b.id==="new-company")return openCompany();

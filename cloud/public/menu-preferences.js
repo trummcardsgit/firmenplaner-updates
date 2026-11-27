@@ -1,4 +1,4 @@
-export const menuItems=Object.freeze({dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",admin:"Benutzerverwaltung",settings:"Einstellungen"});
+export const menuItems=Object.freeze({dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",admin:"Benutzerverwaltung",settings:"Einstellungen"});
 const defaults=Object.keys(menuItems);
 export const ticketMenuItems=Object.freeze({all:"All Tickets",open:"Open Tickets",my:"My Tickets"});
 export function normalizeTicketOrder(value){
