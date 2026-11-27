@@ -14,5 +14,8 @@ assert.equal(doc.querySelectorAll(".tp-bp-task.done").length,1);
 doc.querySelector('[data-bp-section="missions"]').open=false;doc.querySelector('[data-bp-section="collection"]').open=true;replaceBattlePassTile(doc,sample,true);assert.equal(doc.querySelector('[data-bp-section="missions"]').open,false);assert.equal(doc.querySelector('[data-bp-section="collection"]').open,true);
 assert.equal(new JSDOM(battlePassMarkup({...sample,level:30,xp:35000})).window.document.querySelector(".tp-bp-progress").value,1000);
 assert.equal(await readBattlePass({rpc:async fn=>{assert.equal(fn,"tp_sync_battlepass");return {data:sample}}}),sample);
-const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");assert.ok(app.includes("careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady)"));assert.doesNotMatch(app.split("\n").find(s=>s.includes('state.view==="career"?careerPage(')).split('state.view==="career"?')[1],/battlePassMarkup/);
+const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");assert.ok(app.includes("careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady,profileInfo("));assert.doesNotMatch(app.split("\n").find(s=>s.includes('state.view==="career"?careerPage(')).split('state.view==="career"?')[1],/battlePassMarkup/);
 console.log("Battle Pass: thirty rewards, XP progress, unlocked collection, escaping, refresh state and dashboard-only placement passed");
+
+const bannerSample={...sample,rewards:sample.rewards.map(r=>r.level===3?{...r,kind:"Banner",name:"Ocean Drive"}:r)};
+const bannerDoc=new JSDOM(battlePassMarkup(bannerSample,true,"Test Person")).window.document;assert.equal(bannerDoc.querySelector(".tp-calling-text strong").textContent,"Test Person");assert.equal(bannerDoc.querySelector(".tp-calling-card").dataset.cardArt,"3");

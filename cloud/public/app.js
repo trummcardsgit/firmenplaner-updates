@@ -370,10 +370,10 @@ async function refreshCareerChallenges(uid){
  try{const result=await readBattlePass(db);if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=result;challengeReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=null;challengeReady=false;console.warn("Battle Pass",e);}
  if(!inventoryBusy){try{const rows=await readInventory(db);if(state.user?.id!==uid||request!==challengeRequest)return;inventory=rows;inventoryReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;inventoryReady=false;console.warn("Inventar",e);}}
  applyEquipment(document,inventory);
- if(state.view==="dashboard")replaceBattlePassTile(document,battlePass,challengeReady);
+ if(state.view==="dashboard")replaceBattlePassTile(document,battlePass,challengeReady,profileInfo(state.user,state.members,state.gameProfile).name);
  if(state.view==="inventory"&&!inventoryBusy) $("content").innerHTML=inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name);
 }
-function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
+function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady,profileInfo(state.user,state.members,state.gameProfile).name)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
 function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
 if(kind==="task"&&features.taskCompany)data=data.filter(e=>e.company_id===features.taskCompany);
 if(kind==="task"&&features.taskProject)data=data.filter(e=>
