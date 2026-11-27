@@ -19,7 +19,7 @@ const db={from(t){assert.equal(t,"tp_menu_preferences");return {upsert(v){assert
 const editor=createMenuEditor({document:doc,db,userId:()=>uid,isAdmin:()=>false,onSaved:p=>saved=p,onError:e=>{throw e}});
 editor.open({});assert.equal(doc.querySelectorAll("#tp-menu-rows .tp-menu-row").length,11);
 const cb=doc.querySelector('[data-menu-key="settings"] input');cb.checked=false;cb.onchange();
-doc.querySelector('[data-menu-key="tasks"] button').onclick();await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});
+doc.querySelector('[data-menu-key="tasks"] button').onclick();doc.querySelector('[data-menu-key="tasks"] button').onclick();await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});
 assert.ok(saved.hidden_items.includes("settings"));assert.ok(saved.menu_order.indexOf("tasks")<saved.menu_order.indexOf("tickets"));
 editor.open(saved);doc.getElementById("tp-menu-reset").onclick();await doc.getElementById("tp-menu-form").onsubmit({preventDefault(){}});assert.deepEqual(saved,normalizeMenu());
 editor.reset();assert.equal(dialog.open,false);
