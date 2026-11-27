@@ -21,3 +21,9 @@ const bannerSample={...sample,rewards:sample.rewards.map(r=>r.level===3?{...r,ki
 const bannerDoc=new JSDOM(battlePassMarkup(bannerSample,true,"Test Person")).window.document;assert.equal(bannerDoc.querySelector(".tp-calling-text strong").textContent,"Test Person");assert.equal(bannerDoc.querySelector(".tp-calling-card").dataset.cardArt,"3");
 
 assert.equal(doc.querySelectorAll(".tp-bp-track img.tp-bp-art").length,30);assert.equal(doc.querySelector(".tp-bp-track img").getAttribute("src"),"./icons/bp-reward-1.svg");
+
+assert.equal(doc.getElementById("tp-battlepass").open,false);
+assert.match(doc.querySelector(".tp-bp-compact").textContent,/Stufe 1 \/ 30/);
+doc.getElementById("tp-battlepass").open=true;replaceBattlePassTile(doc,sample,true);assert.equal(doc.getElementById("tp-battlepass").open,true);
+doc.getElementById("tp-battlepass").open=false;replaceBattlePassTile(doc,sample,true);assert.equal(doc.getElementById("tp-battlepass").open,false);
+assert.equal(new JSDOM(battlePassMarkup(sample,true,"Test",true)).window.document.getElementById("tp-battlepass").open,true);

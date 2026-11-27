@@ -85,9 +85,13 @@ export function createProfile({document,db,userId,info,notice,onAvatarChange=()=
 }
 
 const memberEscape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-export function memberLabel(id,name){
+export function memberAvatarMarkup(id,name){
  const label=String(name||"Unbekannt"),initials=label.trim().split(/\s+/).slice(0,2).map(s=>Array.from(s)[0]||"").join("").toLocaleUpperCase("de-AT")||"?";
- return '<span class="tp-member-label"><span class="tp-member-avatar" aria-hidden="true" data-member-avatar="'+memberEscape(id||"")+'" data-initials="'+memberEscape(initials)+'">'+memberEscape(initials)+'</span><span>'+memberEscape(label)+'</span></span>';
+ return '<span class="tp-member-avatar" aria-hidden="true" data-member-avatar="'+memberEscape(id||"")+'" data-initials="'+memberEscape(initials)+'">'+memberEscape(initials)+'</span>';
+}
+export function memberLabel(id,name){
+ const label=String(name||"Unbekannt");
+ return '<span class="tp-member-label" data-member-label="'+memberEscape(id||"")+'">'+memberAvatarMarkup(id,label)+'<span class="tp-member-identity"><span data-member-name>'+memberEscape(label)+'</span></span></span>';
 }
 export function createMemberAvatars({document,db,userId}){
  let cache=new Map(),painted=new WeakMap(),epoch=0,running=false,scheduled=false;

@@ -43,6 +43,7 @@ jobs:
           node cloud/tests/battlepass-smoke.mjs
           node cloud/tests/bp-inventory-smoke.mjs
           node cloud/tests/bp-test-art-smoke.mjs
+          node cloud/tests/bp-member-cosmetics-smoke.mjs
 
   editor-browser:
     runs-on: ubuntu-24.04
@@ -115,6 +116,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/battlepass-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-inventory.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-inventory-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-member-cosmetics.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-member-cosmetics-integration.sql
 
   preview:
     needs: [checks, database, editor-browser]
