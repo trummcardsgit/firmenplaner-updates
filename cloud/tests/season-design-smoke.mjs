@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
 import {readFileSync} from "node:fs";
-import {cleanDesign,applySeasonDesign,seasonAdminMarkup,assetLabels,createSeasonAdmin} from "../public/season-design.js";
+import {cleanDesign,applySeasonDesign,seasonAdminMarkup,assetLabels,createSeasonAdmin,encodeSeasonImage} from "../public/season-design.js";
 const src="data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoEAAEAAUAmJaACdAGIQAD+8JCi6T9T/Rf/UGf/6gz//UGfp4AAAA==";
 const design={name:"<winter>",palette:{accent:"#123456",background:"#151525",bad:"url(evil)"},assets:{logo:src,inventory:src,appIcon:src,background:src,battlepass:src,admin:"javascript:alert(1)"}};
 assert.equal(Object.keys(assetLabels).length,17);
@@ -26,3 +26,14 @@ const form=adminDoc.getElementById("tp-season-form");form.elements.name.value="W
 form.dispatchEvent(new adminDoc.defaultView.Event("submit",{bubbles:true,cancelable:true}));
 await new Promise(r=>setTimeout(r,0));assert.equal(saved.name,"Winter Royale");assert.equal(saved.published,false);assert.equal(changed,1);assert.equal(admin.editing(),false);
 assert.match(adminDoc.body.textContent,/Winter Royale/);
+
+const draws=[];let attempts=0;
+const fake={width:0,height:0,getContext(){return {clearRect(){},drawImage(img,x,y,w,h){draws.push([w,h]);}};},toDataURL(){attempts++;return this.width>700?"data:image/webp;base64,"+"A".repeat(240000):src;}};
+assert.equal(encodeSeasonImage({width:1254,height:1254},"logo",fake),src);
+assert.deepEqual(draws,[[1000,1000],[780,780],[608,608]]);
+assert.equal(attempts,11);
+draws.length=0;assert.equal(encodeSeasonImage({width:1600,height:400},"inventory",fake),src);assert.deepEqual(draws,[[512,128]]);
+assert.throws(()=>encodeSeasonImage({width:10000,height:10000},"logo",fake),/Bildauflösung/);
+assert.throws(()=>encodeSeasonImage({width:10,height:10},"logo",{...fake,toDataURL:()=>"data:image/png;base64,AAAA"}),/WebP-Export/);
+assert.throws(()=>encodeSeasonImage({width:1200,height:800},"logo",{...fake,toDataURL:()=>"data:image/webp;base64,"+"A".repeat(280000)}),/reduzierter Auflösung/);
+console.log("Season image import: progressively reduced resolution, aspect ratio, format and size guard passed");

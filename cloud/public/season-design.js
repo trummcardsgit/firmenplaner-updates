@@ -29,21 +29,49 @@ export function applySeasonDesign(doc,design,view){
  const favicon=doc.querySelector('link[rel="icon"]');if(favicon){if(!favicon.dataset.seasonDefault)favicon.dataset.seasonDefault=favicon.getAttribute("href");favicon.href=a.appIcon||favicon.dataset.seasonDefault;}
 }
 async function decodeImage(src){const img=new Image();img.src=src;await img.decode();return img;}
+// Leave headroom for base64 and the full 17-image design package.
+const importTarget=220000;
+export function encodeSeasonImage(img,key,canvas,target=importTarget){
+ const limit=key==="logo"?1000:["background","battlepass"].includes(key)?1200:512;
+ const width=img.naturalWidth||img.width,height=img.naturalHeight||img.height;
+ if(!width||!height||width*height>40000000)throw Error("Bildauflösung zu groß oder ungültig.");
+ let edge=Math.min(limit,Math.max(width,height));
+ const ctx=canvas.getContext("2d");if(!ctx)throw Error("Bildverarbeitung im Browser nicht verfügbar.");
+ while(true){
+  const scale=edge/Math.max(width,height);
+  canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  for(const q of [.9,.8,.7,.55,.4]){
+   const src=canvas.toDataURL("image/webp",q);
+   if(!src.startsWith("data:image/webp;base64,"))throw Error("Dieser Browser unterstützt den WebP-Export nicht.");
+   if(src.length<=target&&isImage(src))return src;
+  }
+  if(edge<=96)break;
+  edge=Math.max(96,Math.floor(edge*.78));
+ }
+ throw Error("Grafik kann auch bei reduzierter Auflösung nicht ausreichend komprimiert werden.");
+}
+function readImageFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error("Bilddatei konnte nicht gelesen werden."));r.readAsDataURL(file);});}
 export async function convertSeasonImage(file,key){
  if(!file||file.size>10000000||!["image/png","image/jpeg","image/webp","image/avif"].includes(file.type))throw Error("Bitte PNG, JPG, WebP oder AVIF bis 10 MB wählen.");
  const url=URL.createObjectURL(file);
- try{const img=await decodeImage(url);if(img.width*img.height>40000000)throw Error("Bildauflösung zu groß.");
- const limit=key==="logo"?1000:["background","battlepass"].includes(key)?1200:512,scale=Math.min(1,limit/Math.max(img.width,img.height)),canvas=document.createElement("canvas");
- canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
- let src=canvas.toDataURL("image/webp",.88);for(const q of [.75,.6,.45]){if(src.length<=260000)break;src=canvas.toDataURL("image/webp",q);}
- if(!isImage(src))throw Error("Grafik kann nicht ausreichend komprimiert werden.");return src;
+ try{
+  const img=await decodeImage(url);
+  const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+  if(!w||!h||w*h>40000000)throw Error("Bildauflösung zu groß oder ungültig.");
+  const limit=key==="logo"?1000:["background","battlepass"].includes(key)?1200:512;
+  // Already optimized WebP: retain the exact artwork and transparency.
+  if(file.type==="image/webp"&&Math.max(w,h)<=limit&&file.size<=164000){
+   const src=await readImageFile(file);if(isImage(src)&&src.length<=importTarget)return src;
+  }
+  return encodeSeasonImage(img,key,document.createElement("canvas"));
  }finally{URL.revokeObjectURL(url);}
 }
 const today=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en",{timeZone:"Europe/Vienna",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).map(x=>[x.type,x.value]));return p.year+"-"+p.month+"-"+p.day;};
 const endMonth=d=>{const x=new Date(d+"T12:00:00Z");x.setUTCDate(x.getUTCDate()+30);return x.toISOString().slice(0,10);};
 export function seasonAdminMarkup(rows,draft=null,busy=false){
  const list=rows.map(r=>'<div class="tp-season-row"><div><b>'+esc(r.name)+'</b><small>'+esc(r.starts)+' bis '+esc(r.ends)+' (Ende exklusiv) · '+(r.published?"Veröffentlicht":"Entwurf")+'</small></div><button type="button" data-season-edit="'+Number(r.id)+'">Bearbeiten</button>'+(r.published?'<button type="button" data-season-disable="'+Number(r.id)+'">Deaktivieren</button>':'')+'</div>').join("");
- const editor=draft?'<form id="tp-season-form"><h3>'+esc(draft.id?"Design bearbeiten":"Neue Season")+'</h3><label>Name<input name="name" required maxlength="80" value="'+esc(draft.name)+'"></label><div class="tp-season-dates"><label>Start<input type="date" name="starts" required value="'+esc(draft.starts)+'"></label><label>Ende (00:00 Uhr)<input type="date" name="ends" required value="'+esc(draft.ends)+'"></label></div><div class="tp-season-colors">'+Object.entries(colorLabels).map(([k,label])=>'<label>'+label+'<input type="color" data-season-color="'+k+'" value="'+esc(draft.palette[k]||defaults[k])+'"></label>').join("")+'</div><div id="tp-season-preview"></div><h3>Grafiken</h3><p>Fehlende Grafiken verwenden das Originaldesign. Nur Bilddateien, keine externen URLs.</p><div class="tp-season-assets">'+Object.entries(assetLabels).map(([k,label])=>'<div><b>'+esc(label)+'</b><div class="tp-season-thumb" data-season-thumb="'+k+'">'+(draft.assets[k]?'<img alt="" src="'+draft.assets[k]+'">':'Standard')+'</div><input type="file" data-season-file="'+k+'" accept="image/png,image/jpeg,image/webp,image/avif" aria-label="'+esc(label)+'"><button type="button" data-season-clear="'+k+'">Standard verwenden</button></div>').join("")+'</div><label class="tp-ticket-check"><input type="checkbox" name="published"'+(draft.published?" checked":"")+'> Veröffentlichung für Zeitraum freigeben</label><div class="tp-season-actions"><button type="submit" class="primary">Speichern</button><button type="button" data-season-now>Jetzt aktivieren</button><button type="button" data-season-cancel>Abbrechen</button></div></form>':"";
+ const editor=draft?'<form id="tp-season-form"><h3>'+esc(draft.id?"Design bearbeiten":"Neue Season")+'</h3><label>Name<input name="name" required maxlength="80" value="'+esc(draft.name)+'"></label><div class="tp-season-dates"><label>Start<input type="date" name="starts" required value="'+esc(draft.starts)+'"></label><label>Ende (00:00 Uhr)<input type="date" name="ends" required value="'+esc(draft.ends)+'"></label></div><div class="tp-season-colors">'+Object.entries(colorLabels).map(([k,label])=>'<label>'+label+'<input type="color" data-season-color="'+k+'" value="'+esc(draft.palette[k]||defaults[k])+'"></label>').join("")+'</div><div id="tp-season-preview"></div><h3>Grafiken</h3><p>Fehlende Grafiken verwenden das Originaldesign. PNG, JPG, WebP und AVIF bis 10 MB werden automatisch in WebP umgewandelt und bei Bedarf verkleinert. Transparenz bleibt erhalten. Keine externen URLs.</p><div class="tp-season-assets">'+Object.entries(assetLabels).map(([k,label])=>'<div><b>'+esc(label)+'</b><div class="tp-season-thumb" data-season-thumb="'+k+'">'+(draft.assets[k]?'<img alt="" src="'+draft.assets[k]+'">':'Standard')+'</div><input type="file" data-season-file="'+k+'" accept="image/png,image/jpeg,image/webp,image/avif" aria-label="'+esc(label)+'"><button type="button" data-season-clear="'+k+'">Standard verwenden</button></div>').join("")+'</div><label class="tp-ticket-check"><input type="checkbox" name="published"'+(draft.published?" checked":"")+'> Veröffentlichung für Zeitraum freigeben</label><div class="tp-season-actions"><button type="submit" class="primary">Speichern</button><button type="button" data-season-now>Jetzt aktivieren</button><button type="button" data-season-cancel>Abbrechen</button></div></form>':"";
  return '<div class="tp-ticket-panel"><h2>Season-Verwaltung</h2><p>Designwechsel automatisch um 00:00 Uhr (Österreich). Bei Überschneidungen gilt der neueste Start, danach die zuletzt gespeicherte Version. Ohne aktive Season gilt Vice City. Battle-Pass-XP und Belohnungen bleiben unverändert.</p><button type="button" data-season-new>+ Neue Season</button>'+list+editor+(busy?'<p>Wird verarbeitet …</p>':'')+'</div>';
 }
 export function createSeasonAdmin({document,db,userId,isAdmin,notice,fail,onChange}){
