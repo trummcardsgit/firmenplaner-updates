@@ -35,6 +35,13 @@ export function careerChallenges(events,uid,now=Date.now()){
  const count=(kind,start,monthly=false)=>new Set(valid.filter(e=>e.kind===kind&&(monthly?dateKey(Date.parse(e.created_at)).startsWith(start):dateKey(Date.parse(e.created_at))>=start)).map(e=>String(e.ticket_id))).size;
  return [{period:"Heute",label:"Wissen teilen",detail:"Kommentar zu einem Ticket schreiben",count:count("comment",current),goal:1},{period:"Diese Woche",label:"Qualität verbessern",detail:"Zwei verschiedene Ticketbeschreibungen bearbeiten",count:count("description_edited",week),goal:2},{period:"Monatssaison "+month,label:"Service-Meister",detail:"Fünf verschiedene Tickets abschließen",count:count("closed",month,true),goal:5}];
 }
+export function dailyChallengeMarkup(events,uid,ready=true,now=Date.now()){
+ const heading='<div class="tp21-daily-head"><h3>Tägliche Aufgaben</h3><small>Reset um 00:00 Uhr</small></div>';
+ if(!ready)return '<section id="tp21-daily-challenges" class="tp21-daily">'+heading+'<small>Fortschritt noch nicht verfügbar.</small></section>';
+ const goals=careerChallenges(events,uid,now).filter(g=>g.period==="Heute");
+ const done=goals.filter(g=>g.count>=g.goal).length;
+ return '<section id="tp21-daily-challenges" class="tp21-daily">'+heading+'<div class="tp21-daily-summary"><span>'+done+' / '+goals.length+' erledigt</span><progress aria-label="Tagesfortschritt" max="'+Math.max(1,goals.length)+'" value="'+done+'"></progress></div>'+goals.map(g=>{const complete=g.count>=g.goal;return '<div class="tp21-daily-row'+(complete?' is-complete':'')+'"><span class="tp21-daily-symbol" aria-hidden="true">'+(complete?'✓':'◇')+'</span><div><strong>'+esc(g.label)+'</strong><small>'+esc(g.detail)+'</small></div><span class="tp21-daily-count">'+Math.min(g.count,g.goal)+' / '+g.goal+(complete?' · Erledigt':'')+'</span></div>';}).join("")+'</section>';
+}
 export function careerChallengeMarkup(events,uid,ready=true){
  if(!ready)return '<section class="tp-ticket-panel"><h3>Karriere · Herausforderungen</h3><p>Fortschritt konnte noch nicht geladen werden.</p></section>';
  return '<section class="tp-ticket-panel tp21-career"><small>RHTFLOW 2.1 · KARRIERE</small><h2>Herausforderungen &amp; Monatssaison</h2><p>Persönliche Abzeichen für den aktuellen Zeitraum, ohne zusätzliche XP oder Mitarbeiterrangliste.</p><div class="tp21-metrics">'+careerChallenges(events,uid).map(g=>'<div class="tp21-metric"><small>'+esc(g.period)+'</small><strong>'+esc(g.label)+'</strong><span>'+esc(g.detail)+'</span><progress max="'+g.goal+'" value="'+Math.min(g.count,g.goal)+'"></progress><b>'+Math.min(g.count,g.goal)+' / '+g.goal+'</b><span class="tp21-badge">'+(g.count>=g.goal?"★ Abzeichen freigeschaltet":"◇ Abzeichen noch gesperrt")+'</span></div>').join("")+'</div></section>';

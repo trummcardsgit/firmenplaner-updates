@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
-import {secondsFor,duration,ticketMetrics,careerChallenges,analyticsMarkup} from "../public/rhtflow-21.js";
+import {readFileSync} from "node:fs";
+import {secondsFor,duration,ticketMetrics,careerChallenges,dailyChallengeMarkup,analyticsMarkup} from "../public/rhtflow-21.js";
 import {createTicketCenter} from "../public/tickets.js";
 const now=Date.parse("2026-11-27T12:00:00Z"),created_at="2026-11-26T12:00:00Z";
 const tickets=[{id:1,title:"A",description:"Test",status:"accepted",assignee_id:"u",creator_id:"u",company_id:"c",created_at},{id:2,title:"B",description:"Test",status:"open",creator_id:"v",company_id:"c",created_at},{id:3,title:"C",description:"Test",status:"closed",assignee_id:"u",company_id:"c",created_at}];
@@ -10,6 +11,15 @@ const events=[{ticket_id:3,actor_id:"u",kind:"closed",created_at:"2026-11-27T10:
 assert.equal(secondsFor(times,now),1800);assert.equal(duration(1800),"00:30:00");
 const m=ticketMetrics({tickets,events,times,scope:"mine",uid:"u",now});assert.equal(m.total,2);assert.equal(m.closed,1);assert.equal(m.tracked,1800);assert.equal(m.avgSeconds,79200);
 assert.equal(careerChallenges(events,"u",now)[0].count,1);assert.equal(careerChallenges(events,"v",now)[0].count,0);
+const daily=new JSDOM(dailyChallengeMarkup(events,"u",true,now)).window.document;
+assert.equal(daily.querySelectorAll(".tp21-daily-row").length,1);assert.match(daily.body.textContent,/1 \/ 1 erledigt/);assert.ok(daily.querySelector(".is-complete"));
+assert.doesNotMatch(daily.body.textContent,/Qualität verbessern|Service-Meister/);
+const other=new JSDOM(dailyChallengeMarkup(events,"v",true,now)).window.document;assert.match(other.body.textContent,/0 \/ 1 erledigt/);
+const nextDay=new JSDOM(dailyChallengeMarkup(events,"u",true,Date.parse("2026-11-27T23:00:00Z"))).window.document;assert.match(nextDay.body.textContent,/0 \/ 1 erledigt/);
+assert.match(dailyChallengeMarkup([],"u",false,now),/Fortschritt noch nicht verfügbar/);
+const app=readFileSync(new URL("../public/app.js",import.meta.url),"utf8");
+assert.ok(app.includes("return careerCard(state.gameProfile)+dailyChallengeMarkup(challengeEvents,state.user.id,challengeReady)+"));
+assert.ok(app.includes('view==="dashboard"&&state.user)refreshCareerChallenges(state.user.id)'));
 assert.match(analyticsMarkup({tickets,events,times,companies:[{id:"c",name:"<script>"}]},"u",false,{days:"all",company:"",scope:"mine"},now),/&lt;script&gt;/);
 const dom=new JSDOM('<div id="tp-ticket-subnav"></div><main id="content"></main>');
 globalThis.document=dom.window.document;dom.window.HTMLDialogElement.prototype.close=function(){this.removeAttribute("open")};
