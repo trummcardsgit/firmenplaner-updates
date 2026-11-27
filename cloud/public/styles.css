@@ -564,3 +564,5 @@ dialog.tp-project-delete-dialog::backdrop{background:#080e1ed6}
 .tp-member-label{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;max-width:100%;min-width:0}.tp-member-label>span:last-child{overflow-wrap:anywhere;min-width:0}.tp-member-avatar{width:26px;height:26px;flex:0 0 26px;display:inline-grid;place-items:center;border:1px solid #c59ae7;border-radius:50%;overflow:hidden;background:#493357;color:#fff;font-size:10px;font-weight:700;line-height:1}.tp-member-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}.tp-ticket-check .tp-member-label{flex:1}.tp-ticket-event .tp-member-avatar{width:22px;height:22px;flex-basis:22px}.tp-admin-member .tp-member-avatar,.tp-colleague-showcase .tp-member-avatar{width:32px;height:32px;flex-basis:32px}
 
 #tp-menu-ticket-rows{display:grid;gap:8px;margin-block:12px}.tp-menu-ticket-row{grid-template-columns:minmax(0,1fr) auto}#tp-menu-main-section[hidden]{display:none!important}
+
+.tp-account-mobile-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:6px}.tp-account-mobile-actions button{font-size:12px;padding:6px 10px}

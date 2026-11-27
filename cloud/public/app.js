@@ -1,5 +1,5 @@
 import {createProfile,profileInfo,memberLabel,createMemberAvatars} from "./profile-avatar.js";
-import {normalizeMenu,applyMenu,createMenuEditor} from "./menu-preferences.js";
+import {normalizeMenu,applyMenu,createMenuEditor,allowedMenu} from "./menu-preferences.js";
 import {createMfa,mfaStatus} from "./mfa.js";
 import {validFavorites,showcasePanel,readAllShowcases} from "./trophy-showcases.js";
 import {createActivation} from "./activation.js";
@@ -375,8 +375,9 @@ $("mfa-signout").onclick=async()=>{if(mfaBusy)return;try{const {error}=await db.
 const authError=new URLSearchParams(location.hash.slice(1)).get("error_code");
 if(authError){recovery.open();recoveryUI.message("Der Link ist ungültig oder abgelaufen. Fordere einen E-Mail-Code an.");history.replaceState(null,"",location.pathname+location.search);}
 
-$("signout").addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
-function nav(view){if(view==="admin"&&!state.isAdmin)return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();if(["dashboard","inventory"].includes(view)&&state.user)refreshCareerChallenges(state.user.id);}
+for(const b of document.querySelectorAll("#signout,[data-account-signout]"))b.addEventListener("click",async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;showApp(null);}catch(e){fail(e)}});
+for(const b of document.querySelectorAll("[data-open-account]"))b.addEventListener("click",()=>nav("account"));
+function nav(view){if(!state.user||(view!=="account"&&!allowedMenu(view,state.isAdmin)))return;state.view=view;state.filter=view==="tasks"?"open":"all";state.search="";document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));render();if(["dashboard","inventory"].includes(view)&&state.user)refreshCareerChallenges(state.user.id);}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function chip(value,extra){return '<span class="pill '+(extra||"")+'">'+esc(value)+"</span>";}
 function row(e){let meta=chip(company(e.company_id),"gold")+chip(e.kind==="note"?"Notiz":"Aufgabe");
@@ -456,7 +457,7 @@ function invitePanel(){
 
  return admin;
 }
-function settings(){
+function settings(personalOnly=false){
  const own='<div class="panel"><h2>Dein Konto</h2><p class="muted">'+esc(state.user?.email||"")+
  '</p><p>Deine Firmen und Aufgaben sind durch Benutzerrechte geschützt. Neue Konten erhalten nur eingeladene Personen.</p></div>';
  const password='<div class="panel"><h2>Passwort festlegen oder ändern</h2><p>Nach der ersten Einladung hier dein Passwort erstellen. Das geht nur nach erfolgreicher Anmeldung über den Einladungslink.</p><form id="password-form"><label>Neues Passwort<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="subtle" type="submit">Passwort speichern</button></form></div>';
@@ -469,15 +470,15 @@ function settings(){
  '<p class="install-tip">iPhone: zuerst RHTFLOW über Safari zum Home-Bildschirm hinzufügen und die installierte App öffnen. Danach hier Push aktivieren.</p></div>';
  const install='<div class="panel"><h2>Als App installieren</h2><p>Auf iPhone: Safari → Teilen → Zum Home-Bildschirm. Auf Android: Chrome → App installieren.</p><button class="primary" id="install-app">App installieren</button><p class="install-tip">RHTFLOW – Zugang nur per Einladung</p></div>';
  const backup='<div class="panel"><h2>Datensicherung</h2><p>Firmen und Aufgaben als JSON sichern.</p><button class="subtle" id="export-json">Daten exportieren</button></div>';
- return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern, Menüpunkte aus- und wieder einblenden.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+backup;
+ return own+'<div class="panel"><h2>Persönliches Menü</h2><p>Reihenfolge ändern. Sichtbare Menüpunkte werden durch deine Rolle bestimmt.</p><button type="button" id="tp-settings-menu" class="primary">Menü anpassen</button></div>'+password+reminder+install+(personalOnly?"":backup);
 }
-function render(){if(!state.user)return;profile.render();applyEquipment(document,inventory);if(state.view==="admin"&&!state.isAdmin)state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen"};
-$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";const actualSrc=["inventory","statistics"].includes(state.view)?"./icons/hd-"+state.view+".avif":src;menuArt.dataset.seasonOriginal=actualSrc;if(menuArt.getAttribute("src")!==actualSrc)menuArt.src=actualSrc;}applySeasonDesign(document,seasonDesign,state.view);$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
+function render(){if(!state.user)return;profile.render();applyEquipment(document,inventory);if(state.view!=="account"&&!allowedMenu(state.view,state.isAdmin))state.view="dashboard";ticketCenter.setMenuVisible(state.view==="tickets");document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));const names={dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",admin:"Benutzerverwaltung",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",settings:"Einstellungen",account:"Mein Konto"};
+$("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";const actualSrc=state.view==="account"?"./icons/hd-settings.svg":["inventory","statistics"].includes(state.view)?"./icons/hd-"+state.view+".avif":src;menuArt.dataset.seasonOriginal=actualSrc;if(menuArt.getAttribute("src")!==actualSrc)menuArt.src=actualSrc;}applySeasonDesign(document,seasonDesign,state.view);$("new-entry").style.display=["account","settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
 // Preserve the admin season editor while background refreshes run.
 if(state.view==="admin"&&state.isAdmin&&(seasonAdmin.editing()||bpSeasonAdmin.editing())&&$("tp-season-admin")){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
 // Keep the actual dialog DOM, including editor selection and FileList, during background refresh.
 if(state.view==="tickets"&&ticketCenter.hasOpenDialog()){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory,inventorySeason)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt,state.isAdmin,isTestBuild(cfg)):state.view==="admin"?seasonAdmin.page()+adminCenter.page()+bpSeasonAdmin.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory,inventorySeason)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt,state.isAdmin,isTestBuild(cfg)):state.view==="admin"?seasonAdmin.page()+adminCenter.page()+bpSeasonAdmin.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings(state.view==="account");
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="statistics")ticketCenter.open();
@@ -599,7 +600,7 @@ if(b.id==="enable-notifications")return await enablePush();
 if(b.id==="test-notification")return await testPush();
 if(b.id==="disable-push")return await disablePush();
 if(b.id==="install-app"){if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else notice("Im Browsermenü App installieren / Zum Home-Bildschirm wählen.");}
-if(b.id==="export-json"){const json=JSON.stringify({exported_at:new Date().toISOString(),companies:state.companies,entries:state.entries},null,2),url=URL.createObjectURL(new Blob([json],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="trummplaner-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+if(b.id==="export-json"&&state.isAdmin){const json=JSON.stringify({exported_at:new Date().toISOString(),companies:state.companies,entries:state.entries},null,2),url=URL.createObjectURL(new Blob([json],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="trummplaner-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }catch(e){fail(e)}});
 $("content").addEventListener("submit",async event=>{
  if(event.target.id==="invite-form"){

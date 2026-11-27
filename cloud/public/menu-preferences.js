@@ -1,5 +1,6 @@
 export const menuItems=Object.freeze({dashboard:"Übersicht",career:"Karriere",tickets:"Tickets",statistics:"Statistikcenter",inventory:"Inventar",tasks:"Aufgaben",notes:"Notizen",solutions:"Lösungen",projects:"Projekte",documents:"Word-Dokumente",companies:"Firmen",admin:"Benutzerverwaltung",settings:"Einstellungen"});
-const defaults=Object.keys(menuItems);
+export const memberMenu=Object.freeze(['tickets','dashboard','tasks','notes','solutions','projects','companies','career','inventory']);
+const defaults=[...memberMenu,...Object.keys(menuItems).filter(k=>!memberMenu.includes(k))];
 export const ticketMenuItems=Object.freeze({all:"All Tickets",open:"Open Tickets",my:"My Tickets"});
 export function normalizeTicketOrder(value){
  return [...new Set([...(Array.isArray(value)?value:[]).filter(k=>typeof k==="string"&&Object.hasOwn(ticketMenuItems,k)),...Object.keys(ticketMenuItems)])];
@@ -14,8 +15,8 @@ const clean=a=>[...new Set((Array.isArray(a)?a:[]).filter(k=>typeof k==="string"
 export function normalizeMenu(value={}){
  return {menu_order:[...new Set([...clean(value?.menu_order),...defaults])],hidden_items:clean(value?.hidden_items),ticket_order:normalizeTicketOrder(value?.ticket_order)};
 }
-export function allowedMenu(key,isAdmin){return Object.hasOwn(menuItems,key)&&(key!=="admin"||isAdmin);}
-export function visibleMenu(value,isAdmin){const p=normalizeMenu(value);return p.menu_order.filter(k=>allowedMenu(k,isAdmin)&&!p.hidden_items.includes(k));}
+export function allowedMenu(key,isAdmin){return Object.hasOwn(menuItems,key)&&(isAdmin===true||memberMenu.includes(key));}
+export function visibleMenu(value,isAdmin){const p=normalizeMenu(value);return p.menu_order.filter(k=>allowedMenu(k,isAdmin));}
 export function moveMenu(value,key,direction,isAdmin){
  const p=normalizeMenu(value),allowed=p.menu_order.filter(k=>allowedMenu(k,isAdmin)),i=allowed.indexOf(key),j=i+direction;
  if(i<0||j<0||j>=allowed.length||![-1,1].includes(direction))return p;
@@ -29,7 +30,7 @@ export function applyMenu(document,value,isAdmin,activeView){
   const submenu=root.querySelector("#tp-ticket-subnav");
   for(const key of p.menu_order){
    const b=buttons.get(key);if(!b)continue;
-   b.hidden=!allowedMenu(key,isAdmin)||p.hidden_items.includes(key);
+   b.hidden=!allowedMenu(key,isAdmin);
    root.insertBefore(b,adjust||null);
    if(key==="tickets"&&submenu){root.insertBefore(submenu,adjust||null);submenu.hidden=b.hidden||activeView!=="tickets";b.setAttribute("aria-expanded",String(!submenu.hidden));}
   }
@@ -45,8 +46,8 @@ export function createMenuEditor({document,db,userId,isAdmin,onSaved,onError}){
   for(const [i,key] of allowed.entries()){
    const row=document.createElement("div");row.className="tp-menu-row";row.dataset.menuKey=key;
    const label=document.createElement("span");label.textContent=menuItems[key];
-   const checkLabel=document.createElement("label"),check=document.createElement("input");check.type="checkbox";check.checked=!draft.hidden_items.includes(key);check.disabled=busy;check.setAttribute("aria-label",menuItems[key]+" anzeigen");
-   check.onchange=()=>{draft.hidden_items=check.checked?draft.hidden_items.filter(k=>k!==key):[...new Set([...draft.hidden_items,key])];};checkLabel.append(check,document.createTextNode("Anzeigen"));
+   const checkLabel=document.createElement("label"),check=document.createElement("input");check.type="checkbox";check.checked=true;check.disabled=true;check.setAttribute("aria-label",menuItems[key]+" anzeigen");
+   checkLabel.append(check,document.createTextNode("Sichtbar · Rolle"));
    const controls=document.createElement("div");controls.className="tp-menu-move";
    for(const [dir,symbol,word] of [[-1,"↑","nach oben"],[1,"↓","nach unten"]]){
     const b=document.createElement("button");b.type="button";b.textContent=symbol;b.setAttribute("aria-label",menuItems[key]+" "+word);b.disabled=busy||(dir===-1?i===0:i===allowed.length-1);
