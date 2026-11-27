@@ -17,7 +17,7 @@ const artLevels=new Set([3,11,21,30]);
 export function callingCardArt(level){return artLevels.has(Number(level))?Number(level):0;}
 export function callingCardMarkup(name="Mein Profil",active={}){
  const banner=active.banner||active.master,title=active.title||active.master,emblem=active.emblem||active.master;
- return '<div class="tp-calling-card" data-card-art="'+callingCardArt(banner?.level)+'" data-card-frame="'+(active.frame?.level|| (active.master?30:0))+'"><div class="tp-calling-text"><strong>'+esc(name||"Mein Profil")+'</strong>'+(title?'<span class="tp-calling-title">['+esc(title===active.master?"Vice City Elite":title.name)+']</span>':'')+'</div>'+(emblem?'<span class="tp-calling-emblem">'+rewardArtwork(emblem,"tp-calling-emblem-art")+'</span>':'')+'</div>';
+ return '<div class="tp-calling-card tp-premium-card" data-card-art="'+callingCardArt(banner?.level)+'" data-card-frame="'+(active.frame?.level|| (active.master?30:0))+'"><div class="tp-calling-text"><strong>'+esc(name||"Mein Profil")+'</strong>'+(title?'<span class="tp-calling-title">['+esc(title===active.master?"Vice City Elite":title.name)+']</span>':'')+'</div>'+(emblem?'<span class="tp-calling-emblem">'+rewardArtwork(emblem,"tp-calling-emblem-art")+'</span>':'')+'</div>';
 }
 const bodySlots=["frame","background","effect","color","theme","comment","menu","master"];
 export function applyEquipment(doc,rows){
@@ -29,7 +29,7 @@ export function applyEquipment(doc,rows){
   if(!info||!name)continue;
   info.querySelectorAll(".tp-calling-title,.tp-calling-emblem,.tp-equipped-showcase").forEach(n=>n.remove());
   const master=active.master,banner=active.banner||master,title=active.title||master,emblem=active.emblem||master;
-  el.classList.add("tp-profile-calling-card");
+  el.classList.add("tp-profile-calling-card","tp-premium-card");
   el.dataset.cardArt=String(callingCardArt(banner?.level));
   el.dataset.cardFrame=String(active.frame?.level||(master?30:0));
   if(title){const line=doc.createElement("span");line.className="tp-calling-title";line.textContent="["+(title===master?"Vice City Elite":title.name)+"]";name.after(line);}
