@@ -11,7 +11,7 @@ import {installDictation} from "./dictation.js";
 import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
-import {overviewChallengeMarkup,readCareerEvents} from "./rhtflow-21.js";
+import {battlePassMarkup,readBattlePass,replaceBattlePassTile} from "./battlepass.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
@@ -82,7 +82,7 @@ const projectRef=new URL(cfg.supabaseUrl).hostname.split(".")[0];
 // Preserve the Supabase project-specific production session key; TEST uses its own ref.
 const db=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{storageKey:"sb-"+projectRef+"-auth-token",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 let menuPrefs=normalizeMenu(),menuRevision=0,menuReady=false;
-let challengeEvents=[],challengeReady=false,challengeRequest=0;
+let battlePass=null,challengeReady=false,challengeRequest=0;
 const menuEditor=createMenuEditor({document,db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,onSaved:p=>{menuRevision++;menuPrefs=p;applyMenu(document,menuPrefs,state.isAdmin,state.view);notice("Dein Menü wurde gespeichert.");},onError:fail});
 function openMenuEditor(onlyTickets=false){if(!state.user)return;if(!menuReady){notice("Menüeinstellungen konnten noch nicht geladen werden. Bitte aktualisieren.");load().catch(fail);return;}menuEditor.open(menuPrefs,onlyTickets);}
 document.querySelectorAll("[data-menu-customize]").forEach(b=>b.onclick=()=>openMenuEditor());
@@ -216,7 +216,7 @@ async function load(){
  if(state.user?.id!==loadingUser)return;
  render();memberAvatars.refresh();
 }
-function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;challengeEvents=[];challengeReady=false;adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
+function showApp(user){if(state.user?.id!==user?.id){$("content").replaceChildren();state.view="dashboard";state.search="";state.filter="all";state.isAdmin=false;state.entries=[];state.companies=[];state.solutions=[];state.members=[];state.invites=[];state.inviteLink=null;state.gameProfile=null;state.gameEvents=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];document.querySelectorAll('[data-view="admin"]').forEach(b=>b.hidden=true);ticketCenter.reset();challengeRequest++;battlePass=null;challengeReady=false;adminCenter.reset();resetShowcases();menuEditor.reset();profile.reset();memberAvatars.reset();profileRankReady=false;menuRevision++;menuPrefs=normalizeMenu();menuReady=false;applyMenu(document,menuPrefs,false,"dashboard");trophyItems=[];trophyError=false;trophyFilter="all";trophyCategory="all";document.getElementById("tp-trophy-popup")?.remove()}state.user=user||null;readTrophyPrefs();$("auth").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);if(user){profile.render();load().catch(fail);}else{state.companies=[];state.entries=[];state.isAdmin=false;state.invites=[];state.inviteLink=null;state.solutions=[];state.members=[];state.ticketAwards=[];state.closedTickets=0;state.pushSubs=[];state.gameProfile=null;state.gameEvents=[];}}
 async function login(){
  const emailField=$("login-email"),passwordField=$("login-password");
  if(!emailField.reportValidity()||!passwordField.reportValidity())return;
@@ -366,10 +366,10 @@ function list(items,empty){return items.length?items.map(row).join(""):'<div cla
 function metric(t,n,h){return '<div class="metric '+(h||"")+'"><strong>'+n+"</strong><span>"+esc(t)+"</span></div>";}
 async function refreshCareerChallenges(uid){
  const request=++challengeRequest;
- try{const rows=await readCareerEvents(db,uid);if(state.user?.id!==uid||request!==challengeRequest)return;challengeEvents=rows;challengeReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;challengeEvents=[];challengeReady=false;console.warn("Karriere-Herausforderungen",e);}
- if(state.view==="dashboard"){const tile=document.getElementById("tp21-overview-challenges");if(tile)tile.outerHTML=overviewChallengeMarkup(challengeEvents,uid,challengeReady);}
+ try{const result=await readBattlePass(db);if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=result;challengeReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;battlePass=null;challengeReady=false;console.warn("Battle Pass",e);}
+ if(state.view==="dashboard")replaceBattlePassTile(document,battlePass,challengeReady);
 }
-function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+overviewChallengeMarkup(challengeEvents,state.user.id,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
+function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+battlePassMarkup(battlePass,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
 function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
 if(kind==="task"&&features.taskCompany)data=data.filter(e=>e.company_id===features.taskCompany);
 if(kind==="task"&&features.taskProject)data=data.filter(e=>
