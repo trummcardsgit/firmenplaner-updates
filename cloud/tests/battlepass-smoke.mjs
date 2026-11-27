@@ -19,3 +19,5 @@ console.log("Battle Pass: thirty rewards, XP progress, unlocked collection, esca
 
 const bannerSample={...sample,rewards:sample.rewards.map(r=>r.level===3?{...r,kind:"Banner",name:"Ocean Drive"}:r)};
 const bannerDoc=new JSDOM(battlePassMarkup(bannerSample,true,"Test Person")).window.document;assert.equal(bannerDoc.querySelector(".tp-calling-text strong").textContent,"Test Person");assert.equal(bannerDoc.querySelector(".tp-calling-card").dataset.cardArt,"3");
+
+assert.equal(doc.querySelectorAll(".tp-bp-track img.tp-bp-art").length,30);assert.equal(doc.querySelector(".tp-bp-track img").getAttribute("src"),"./icons/bp-reward-1.svg");
