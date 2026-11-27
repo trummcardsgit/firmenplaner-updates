@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
-import {boardTransition,secondsFor,duration,ticketMetrics,careerChallenges,analyticsMarkup} from "../public/rhtflow-21.js";
+import {secondsFor,duration,ticketMetrics,careerChallenges,analyticsMarkup} from "../public/rhtflow-21.js";
 import {createTicketCenter} from "../public/tickets.js";
 const now=Date.parse("2026-11-27T12:00:00Z"),created_at="2026-11-26T12:00:00Z";
 const tickets=[{id:1,title:"A",description:"Test",status:"accepted",assignee_id:"u",creator_id:"u",company_id:"c",created_at},{id:2,title:"B",description:"Test",status:"open",creator_id:"v",company_id:"c",created_at},{id:3,title:"C",description:"Test",status:"closed",assignee_id:"u",company_id:"c",created_at}];
 const candidates=[{ticket_id:2,user_id:"u",response:"pending"}];
 const times=[{id:1,ticket_id:1,owner_id:"u",started_at:"2026-11-27T10:00:00Z",ended_at:"2026-11-27T10:30:00Z",end_reason:"pause"}];
 const events=[{ticket_id:3,actor_id:"u",kind:"closed",created_at:"2026-11-27T10:00:00Z"},{ticket_id:2,actor_id:"u",kind:"comment",created_at:"2026-11-27T10:00:00Z"}];
-assert.equal(boardTransition(tickets[1],"accepted","u",false,candidates),"accept");assert.equal(boardTransition(tickets[0],"closed","v",false,candidates),null);assert.equal(boardTransition(tickets[2],"open","u",true,candidates),null);
 assert.equal(secondsFor(times,now),1800);assert.equal(duration(1800),"00:30:00");
 const m=ticketMetrics({tickets,events,times,scope:"mine",uid:"u",now});assert.equal(m.total,2);assert.equal(m.closed,1);assert.equal(m.tracked,1800);assert.equal(m.avgSeconds,79200);
 assert.equal(careerChallenges(events,"u",now)[0].count,1);assert.equal(careerChallenges(events,"v",now)[0].count,0);
@@ -18,7 +17,11 @@ const data={tp_tickets:tickets,tp_ticket_candidates:candidates,tp_members:[{user
 const calls=[];const db={from(table){return {select(){return this},eq(){return this},order(){return this},async range(){return {data:data[table]||[]}}}},async rpc(fn,args){calls.push({fn,args});return {data:null}}};
 const timer=globalThis.setInterval;globalThis.setInterval=()=>0;const center=createTicketCenter({db,userId:()=>"u",isAdmin:()=>false,notice(){},fail(e){throw e}});globalThis.setInterval=timer;
 const content=document.getElementById("content");content.innerHTML=center.page();await center.open();
-document.querySelector('[data-tp-action="view-board"]').click();assert.equal(document.querySelectorAll(".tp21-lane").length,4);assert.ok(document.querySelector('[data-board-status="accepted"] [data-ticket-id="1"]'));
+assert.equal(document.querySelector('[data-tp-action="view-board"],[data-tp-action="view-list"],.tp21-board'),null);
+assert.equal(document.querySelector("#tp-ticket-status").disabled,false);
+document.querySelector("#tp-ticket-status").value="";document.querySelector("#tp-ticket-status").dispatchEvent(new dom.window.Event("change"));
+assert.ok(document.querySelector('.tp-ticket-list [data-ticket-id="1"]'));assert.ok(document.querySelector('.tp-ticket-list [data-ticket-id="3"]'));
+assert.equal(document.querySelector('[data-ticket-id="1"]').draggable,false);
 document.querySelector('[data-ticket-id="1"] [data-tp-action="timer-start"]').click();await new Promise(r=>setTimeout(r,0));assert.deepEqual(calls[0],{fn:"tp_ticket_timer",args:{p_ticket:"1",p_action:"start"}});
 content.innerHTML=center.page("statistics");await center.open();assert.ok(document.querySelector("#tp21-period"));assert.match(content.textContent,/Statistikcenter/);
-console.log("RHTFLOW 2.1: timer, board transitions, metrics, challenges and UI integration passed");
+console.log("RHTFLOW 2.1: timer, list-only tickets, status filtering, metrics, challenges and UI integration passed");
