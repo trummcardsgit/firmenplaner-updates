@@ -26,7 +26,7 @@ select set_config('request.jwt.claims',jsonb_build_object('aal','aal2','session_
 select public.tp_respond_ticket(:ticket,true);
 select public.tp_ticket_comment(:ticket,'Helpful note');
 select public.tp_close_ticket(:ticket,'Resolved');
-do $ declare a jsonb; b jsonb; oldxp bigint; begin
+do $$ declare a jsonb; b jsonb; oldxp bigint; begin
  select total_xp into oldxp from public.tp_game_profiles where owner_id=auth.uid();
  a:=public.tp_sync_battlepass();b:=public.tp_sync_battlepass();
  if (select total_xp from public.tp_game_profiles where owner_id=auth.uid()) is distinct from oldxp then raise exception 'BP changed career XP';end if;
