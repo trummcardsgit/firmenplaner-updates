@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import {JSDOM} from "jsdom";
 
 const root=new URL("../public/",import.meta.url);
@@ -75,3 +76,25 @@ assert.ok(style.sheet.cssRules.length>50);
 console.log("Neon-Menueicons erfolgreich: 8 richtige Motive plus Karriere auf Desktop und Handy, Labels erhalten, WebP 384x48, PWA-Cache.");
 
 const custom=read("game-progression.css");for(const view of [...views,"career"]){const path="icons/nav-"+view+".webp";assert.ok(custom.includes(path));assert.ok(sw.includes(path));const bytes=readFileSync(new URL(path,root));assert.equal(bytes.subarray(0,4).toString(),"RIFF");assert.equal(bytes.subarray(8,12).toString(),"WEBP");}
+
+const premium={
+ inventory:{label:["Inventar","Inventar"],hash:"69c5aa5fb35dd1fac09bdcf878ed1019f71e65ad3ba740496df90ce46402bad1"},
+ statistics:{label:["Statistikcenter","Statistik"],hash:"fdc46de85a181caa0003f5f144ab5f9baa0c9908eaa6b93f47b344e88b2e81e2"}
+};
+for(const [view,item] of Object.entries(premium)){
+ const path="icons/hd-"+view+".avif",bytes=readFileSync(new URL(path,root));
+ assert.equal(bytes.subarray(4,12).toString("ascii"),"ftypavif");
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),item.hash,"Approved image must match exactly");
+ assert.ok(sw.includes('"./'+path+'"'));
+ for(const [i,nav] of ["#nav",".bottom-nav"].entries()){
+  const button=doc.querySelector(nav+' button[data-view="'+view+'"]');
+  const icon=button.querySelector("img.tp-menu-premium-icon");
+  assert.equal(icon.getAttribute("src"),"./"+path);
+  assert.equal(icon.getAttribute("aria-hidden"),"true");
+  assert.equal(icon.alt,"");
+  assert.equal(button.textContent.trim(),item.label[i]);
+ }
+}
+assert.match(read("app.js"),/\["inventory","statistics"\]\.includes\(state\.view\)\?"\.\/icons\/hd-"\+state\.view\+"\.avif"/);
+assert.match(custom,/\.tp-menu-premium-icon\{display:block;width:38px;height:38px;object-fit:contain/);
+console.log("Approved Inventory and Statistics icons: exact artwork hashes, both navigation layouts, header art, and offline assets verified.");
