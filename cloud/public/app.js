@@ -11,7 +11,7 @@ import {installDictation} from "./dictation.js";
 import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
-import {careerChallengeMarkup,dailyChallengeMarkup,readCareerEvents} from "./rhtflow-21.js";
+import {overviewChallengeMarkup,readCareerEvents} from "./rhtflow-21.js";
 import {trophyCabinet,toggleFavorite,announceTrophies} from "./trophies.js";
 import {createTicketCenter} from "./tickets.js";
 import {createAdminCenter} from "./admin.js";
@@ -367,9 +367,9 @@ function metric(t,n,h){return '<div class="metric '+(h||"")+'"><strong>'+n+"</st
 async function refreshCareerChallenges(uid){
  const request=++challengeRequest;
  try{const rows=await readCareerEvents(db,uid);if(state.user?.id!==uid||request!==challengeRequest)return;challengeEvents=rows;challengeReady=true;}catch(e){if(state.user?.id!==uid||request!==challengeRequest)return;challengeEvents=[];challengeReady=false;console.warn("Karriere-Herausforderungen",e);}
- if(state.view==="dashboard"){const tile=document.getElementById("tp21-daily-challenges");if(tile)tile.outerHTML=dailyChallengeMarkup(challengeEvents,uid,challengeReady);}
+ if(state.view==="dashboard"){const tile=document.getElementById("tp21-overview-challenges");if(tile)tile.outerHTML=overviewChallengeMarkup(challengeEvents,uid,challengeReady);}
 }
-function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+dailyChallengeMarkup(challengeEvents,state.user.id,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
+function dashboard(){const a=active(),next=[...a].sort((a,b)=>(a.due_at||"9999").localeCompare(b.due_at||"9999"));return careerCard(state.gameProfile)+overviewChallengeMarkup(challengeEvents,state.user.id,challengeReady)+'<div class="cards">'+metric("Offene Aufgaben",a.length)+metric("Heute fällig",a.filter(today).length,"highlight")+metric("Überfällig",a.filter(overdue).length)+metric("Firmen",state.companies.length)+'</div><div class="panel"><h2>Deine nächsten Aufgaben</h2>'+list(next.slice(0,10),"Alles erledigt! Erstelle deine erste Aufgabe.")+"</div>";}
 function entries(kind){let data=state.entries.filter(e=>e.kind===kind);
 if(kind==="task"&&features.taskCompany)data=data.filter(e=>e.company_id===features.taskCompany);
 if(kind==="task"&&features.taskProject)data=data.filter(e=>
@@ -444,7 +444,7 @@ function render(){if(!state.user)return;profile.render();if(state.view==="admin"
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","admin"].includes(state.view)?"none":"block";
 // Keep the actual dialog DOM, including editor selection and FileList, during background refresh.
 if(state.view==="tickets"&&ticketCenter.hasOpenDialog()){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+careerChallengeMarkup(challengeEvents,state.user.id,challengeReady)+showcaseMarkup()):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="statistics")ticketCenter.open();
