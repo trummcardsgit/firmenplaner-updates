@@ -37,6 +37,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   finally{if(uid()===u&&generation===prefsGeneration){prefsSaving=false;draw();}}
  }
  const root=()=>document.getElementById("tp-ticket-root");
+ const hasOpenDialog=()=>!!root()?.querySelector("dialog[open]");
  const uid=()=>userId();
  const name=id=>data?.members.find(m=>m.user_id===id)?.display_name||"Unbekannt";
  const person=id=>memberLabel(id,name(id));
@@ -64,7 +65,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   syncMenu();
  }
  function selectCategory(key){
-  if(!ticketCategories.some(([id])=>id===key)||!root()||busy||prefsSaving)return;
+  if(!ticketCategories.some(([id])=>id===key)||!root()||busy||prefsSaving||hasOpenDialog())return;
   tab=key;restoreFilters();restorePending=!prefsReady;draw();syncMenu();
  }
  document.getElementById("tp-ticket-subnav")?.addEventListener("click",e=>{
@@ -73,6 +74,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
  });
  function reset(){epoch++;prefsGeneration++;preferences=new Map();prefsReady=false;prefsSaving=false;restorePending=true;focusId="";data=null;tab="all";firm="";status="open";search="";busy=false;setMenuVisible(false)}
  async function read(background=false){
+  if(hasOpenDialog())return;
   const u=uid(),token=++epoch;if(!u)return;const filterRevision=prefsGeneration;
   const names=["tp_tickets","tp_ticket_candidates","tp_members","tp_companies","tp_ticket_events","tp_ticket_notifications","tp_ticket_task_links"];
   const keys=["tickets","candidates","members","companies","events","notifications","taskLinks"];
@@ -95,32 +97,32 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
    }
    return all;
   }));
-  if(token!==epoch||uid()!==u)return;
+  if(token!==epoch||uid()!==u||hasOpenDialog())return;
   const next=Object.fromEntries(results.map((r,i)=>[keys[i],r]));
   if(!background&&(!prefsReady||restorePending)&&!prefsSaving){
    try{
     const p=await db.from("tp_ticket_filter_preferences").select("category,company_filter,status_filter,search_filter").eq("owner_id",u).range(0,2);
-    if(token!==epoch||uid()!==u)return;
+    if(token!==epoch||uid()!==u||hasOpenDialog())return;
     if(filterRevision!==prefsGeneration||prefsSaving)return;
     if(p.error)throw p.error;
     preferences=readTicketFilters(p.data,next.companies);prefsReady=true;
-   }catch(e){if(token!==epoch||uid()!==u)return;prefsReady=false;console.warn("Ticketfilter konnten nicht geladen werden",e);}
+   }catch(e){if(token!==epoch||uid()!==u||hasOpenDialog())return;prefsReady=false;console.warn("Ticketfilter konnten nicht geladen werden",e);}
   }
   const changed=JSON.stringify(data)!==JSON.stringify(next);
-  if(background&&(busy||root()?.querySelector('dialog[open]')||root()?.contains(document.activeElement)&&document.activeElement?.matches('input,textarea,select,summary')))return;
+  if(hasOpenDialog()||background&&(busy||root()?.contains(document.activeElement)&&document.activeElement?.matches('input,textarea,select,summary')))return;
   data=next;if(restorePending){restoreFilters();restorePending=!prefsReady;}syncMenu();
   if(!background||changed){
-   if(background&&(busy||root()?.querySelector("dialog[open]")||root()?.contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary")))return;
+   if(hasOpenDialog()||background&&(busy||root()?.contains(document.activeElement)&&document.activeElement?.matches("input,textarea,select,summary")))return;
    const expanded=[...root()?.querySelectorAll("article details[open]")||[]].map(d=>d.closest("article")?.dataset.ticketId);
    draw();
    root()?.querySelectorAll("article details").forEach(d=>{if(expanded.includes(d.closest("article")?.dataset.ticketId))d.open=true});
   }
  }
  function page(){return '<section id="tp-ticket-root" class="tp-ticket-center"><p>Tickets werden geladen …</p></section>'}
- function error(e){if(root())root().innerHTML='<div class="tp-ticket-panel"><p>Ticket-Center nicht verfügbar. Die Enterprise-Datenbank muss eingerichtet sein.</p><button type="button" id="tp-ticket-retry">Erneut laden</button></div>';document.getElementById("tp-ticket-retry")?.addEventListener("click",()=>open());fail(e)}
- function open(id=""){if(id){restorePending=false;focusId=String(id);tab="all";firm="";status="";search=""}syncMenu();if(data)draw();return read().catch(error)}
+ function error(e){if(hasOpenDialog()){console.warn("Ticket refresh failed while dialog open",e);return;}if(root())root().innerHTML='<div class="tp-ticket-panel"><p>Ticket-Center nicht verfügbar. Die Enterprise-Datenbank muss eingerichtet sein.</p><button type="button" id="tp-ticket-retry">Erneut laden</button></div>';document.getElementById("tp-ticket-retry")?.addEventListener("click",()=>open());fail(e)}
+ function open(id=""){if(hasOpenDialog())return Promise.resolve();if(id){restorePending=false;focusId=String(id);tab="all";firm="";status="";search=""}syncMenu();if(data)draw();return read().catch(error)}
  function draw(){
-  const el=root();if(!el||!data)return;
+  const el=root();if(!el||!data||hasOpenDialog())return;
   const list=filterTickets(data.tickets,data.candidates,uid(),tab,firm,status,search);
   const categoryLabel=ticketCategories.find(([key])=>key===tab)?.[1]||"All Tickets";
   el.innerHTML='<div class="tp-ticket-panel"><div class="tp-ticket-head"><div><small>RHTFLOW · ENTERPRISE</small><h2>'+esc(categoryLabel)+'</h2></div><button type="button" class="primary" data-tp-action="create">+ Neues Ticket</button></div><div class="tp-ticket-mobile-subnav" role="group" aria-label="Ticket-Kategorien">'+normalizeTicketOrder(ticketOrder()).map(k=>[k,ticketMenuItems[k]]).map(([k,n])=>'<button type="button" class="tp-ticket-subnav-button" data-ticket-category="'+k+'" aria-pressed="'+(tab===k)+'"><span>'+n+'</span><span class="tp-ticket-subnav-count">'+count(k)+'</span></button>').join("")+'</div><div class="tp-ticket-filters"><select id="tp-ticket-firm" aria-label="Firma">'+options({"":"Alle Firmen",...Object.fromEntries(data.companies.map(c=>[c.id,c.name]))},firm)+'</select><select id="tp-ticket-status" aria-label="Status">'+options({"":"Alle Status",...statuses},status)+'</select><input id="tp-ticket-search" placeholder="Tickets suchen" maxlength="200" value="'+esc(search)+'"><button type="button" data-tp-action="customize-order">☷ Reihenfolge anpassen</button><button type="button" data-tp-action="refresh">Aktualisieren</button><button type="button" data-tp-action="save-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Filter speichern</button><button type="button" data-tp-action="reset-filter" '+(!prefsReady||prefsSaving?'disabled':'')+'>Standardfilter</button></div><small class="tp-filter-state" role="status">'+(!prefsReady?'Gespeicherte Filter konnten noch nicht geladen werden. Bitte aktualisieren.':prefsSaving?'Filter werden gespeichert …':JSON.stringify(currentFilters())===JSON.stringify(preferences.get(tab))?'Persönlicher Filter gespeichert':preferences.has(tab)?'Filter geändert · zum Übernehmen speichern':'Noch kein persönlicher Filter gespeichert')+'</small></div>'+
@@ -150,9 +152,11 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   finally{if(uid()===u){busy=false;if(button)button.disabled=false}}
  }
  function dialog(title,body,submit){
-  const d=document.getElementById("tp-ticket-dialog");if(!d)return;
+  const d=document.getElementById("tp-ticket-dialog");if(!d||d.open||busy)return;
   d.innerHTML='<form id="tp-ticket-local-form"><h2>'+esc(title)+'</h2>'+body+'<div class="tp-ticket-actions"><button type="button" id="tp-ticket-cancel">Abbrechen</button><button type="submit" class="primary">Speichern</button></div></form>';
-  d.querySelector("#tp-ticket-cancel").onclick=()=>d.close();
+  // Escape must not silently discard a form; the explicit Cancel button remains available.
+  d.oncancel=e=>e.preventDefault();
+  d.querySelector("#tp-ticket-cancel").onclick=()=>{if(!busy)d.close();};
   d.querySelector("form").onsubmit=e=>{e.preventDefault();e.stopPropagation();if(![...e.currentTarget.querySelectorAll("[data-ticket-editor]")].every(syncTicketEditor))return;submit(new FormData(e.currentTarget),e.currentTarget.querySelector('[type="submit"]'))};
   d.querySelectorAll("[data-ticket-editor]").forEach(mountTicketEditor);
   d.showModal();
@@ -189,6 +193,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   }finally{d?.removeEventListener("cancel",preventClose);if(uid()===u){busy=false;btn.disabled=false;if(cancel)cancel.disabled=false;}}
  }
  function action(a,id,b){
+  if(hasOpenDialog()||busy)return;
   if(a==="edit-description"){
    const t=data?.tickets.find(x=>String(x.id)===String(id));if(!canEditTicketDescription(t,uid(),isAdmin(),data?.candidates||[]))return;
    const expected=t.description;
@@ -217,8 +222,8 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   const listAll=async path=>{const rows=[];for(let offset=0;;offset+=100){const r=await bucket.list(path,{limit:100,offset,sortBy:{column:"name",order:"asc"}});if(r.error)throw r.error;rows.push(...(r.data||[]));if((r.data||[]).length<100)return rows;}};
   const dirs=await listAll(String(id)),files=[];
   for(const dir of dirs){if(dir.id)continue;const path=id+"/"+dir.name;for(const f of await listAll(path))if(f.id)files.push({path:path+"/"+f.name,name:f.name.slice(37)})}
-  if(uid()!==u||!root())return;
-  const d=document.getElementById("tp-ticket-dialog");
+  if(uid()!==u||!root()||hasOpenDialog())return;
+  const d=document.getElementById("tp-ticket-dialog");if(!d)return;d.oncancel=null;
   const can=canAttach(t,u,isAdmin(),data.candidates);
   d.innerHTML='<h2>Dateianhänge · Ticket #'+esc(id)+'</h2>'+ (errors.length?'<p role="alert">Nicht hochgeladen:</p><ul>'+errors.map(e=>'<li>'+esc(e)+'</li>').join("")+'</ul>':"") + (files.length?files.map((f,i)=>'<p><button type="button" data-file-index="'+i+'">↓ '+esc(f.name)+'</button></p>').join(""):'<p>Keine Anhänge vorhanden.</p>')+(can?'<form id="tp-attachment-form">'+attachmentPicker+'<button type="submit" class="primary">Dateien hochladen</button></form>':'<p>Für dieses Ticket können keine weiteren Anhänge hochgeladen werden.</p>')+'<button type="button" id="tp-ticket-cancel">Schließen</button>';
   d.querySelector("#tp-ticket-cancel").onclick=()=>d.close();
@@ -247,5 +252,5 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
   polling=true;try{await read(true)}catch(e){console.warn("Ticket refresh failed",e)}finally{polling=false}
  }
  setInterval(poll,15000);
- return {page,open,reset,poll,setMenuVisible};
+ return {page,open,reset,poll,setMenuVisible,hasOpenDialog};
 }
