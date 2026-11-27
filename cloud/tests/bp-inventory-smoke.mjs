@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
 import {readFileSync} from "node:fs";
-import {inventoryMarkup,equippedRewards,applyEquipment,equipReward,cosmeticFeedback,callingCardMarkup} from "../public/bp-inventory.js";
+import {inventoryMarkup,inventoryRewardsMarkup,normalizeInventoryCategory,equippedRewards,applyEquipment,equipReward,cosmeticFeedback,callingCardMarkup} from "../public/bp-inventory.js";
 const rows=[{season_id:1,level:1,name:"<script>",slot:"emblem",glyph:"★",rarity:"rare",equipped:true},{season_id:1,level:2,name:"Night Shift",slot:"title",glyph:"☾",rarity:"common",equipped:true},{season_id:1,level:5,name:"Neon Pink",slot:"frame",glyph:"◇",rarity:"rare",equipped:false}];
-const doc=new JSDOM('<body><div class="tp-user-profile"><button data-profile-picture></button><div class="tp-profile-info"><strong data-profile-name>Test</strong></div></div><div id="toast">OK</div>'+inventoryMarkup(rows)+'</body>').window.document;
+const doc=new JSDOM('<body><div class="tp-user-profile"><button data-profile-picture></button><div class="tp-profile-info"><strong data-profile-name>Test</strong></div></div><div id="toast">OK</div>'+inventoryMarkup(rows,true,"Test","all")+'</body>').window.document;
 assert.equal(doc.querySelectorAll("[data-bp-equip]").length,3);assert.equal(doc.querySelectorAll('[data-bp-active="true"]').length,2);assert.equal(doc.querySelectorAll("script").length,0);assert.equal(doc.querySelector('[data-bp-equip="1:5"]').textContent,"Ausrüsten");
 applyEquipment(doc,rows);assert.equal(doc.querySelector(".tp-profile-info [data-profile-name]").textContent,"Test");assert.equal(doc.querySelector(".tp-profile-info [data-profile-name]").nextElementSibling.textContent,"[Night Shift]");assert.equal(doc.querySelector(".tp-profile-info .tp-calling-emblem img").getAttribute("src"),"./icons/bp-reward-1.svg");assert.equal(doc.body.dataset.bpFrame,undefined);
 const changed=rows.map(r=>r.level===5?{...r,equipped:true}:r);applyEquipment(doc,changed);assert.equal(doc.body.dataset.bpFrame,"5");assert.equal(doc.querySelectorAll(".tp-profile-info .tp-calling-title").length,1);
@@ -23,3 +23,19 @@ console.log("Calling card: actual username, title directly after name, artwork s
 for(let i=1;i<=30;i++){const svg=readFileSync(new URL("../public/icons/bp-reward-"+i+".svg",import.meta.url),"utf8");assert.match(svg,/<svg/);assert.match(svg,/linearGradient/);assert.doesNotMatch(svg,/<script|https?:\/\/(?!www.w3.org\/2000\/svg)/);}
 assert.equal(doc.querySelectorAll(".tp-bp-art").length,3);
 const sw=readFileSync(new URL("../public/sw.js",import.meta.url),"utf8");for(let i=1;i<=30;i++)assert.ok(sw.includes("./icons/bp-reward-"+i+".svg"));
+
+const filteredRows=[...changed,{...banner,level:11,name:"Tropical Hotline",equipped:false},banner];
+const filters=new JSDOM(inventoryMarkup(filteredRows,true,"Test","banner")).window.document;
+assert.equal(filters.querySelector("#tp-inventory-category").value,"banner");
+assert.equal(filters.querySelectorAll("[data-bp-equip]").length,2);
+assert.deepEqual([...filters.querySelectorAll("[data-bp-equip]")].map(b=>b.dataset.bpEquip),["1:11","1:3"]);
+assert.match(filters.querySelector(".tp-inventory-filter small").textContent,/2 von 5/);
+assert.equal(filters.querySelectorAll(".tp-inventory-active>span").length,4);
+filters.getElementById("tp-inventory-rewards").outerHTML=inventoryRewardsMarkup(filteredRows,"Test","frame");
+assert.equal(filters.querySelectorAll("[data-bp-equip]").length,1);assert.equal(filters.querySelector("[data-bp-equip]").dataset.bpEquip,"1:5");
+filters.getElementById("tp-inventory-rewards").outerHTML=inventoryRewardsMarkup(filteredRows,"Test","effect");
+assert.equal(filters.querySelectorAll("[data-bp-equip]").length,0);assert.match(filters.querySelector(".tp-inventory-empty").textContent,/noch keine Belohnung/);
+assert.equal(normalizeInventoryCategory("invalid",filteredRows),"banner");assert.equal(normalizeInventoryCategory("auto",rows),"emblem");
+assert.equal(new JSDOM(inventoryMarkup(filteredRows,true,"Test","all")).window.document.querySelectorAll("[data-bp-equip]").length,5);
+assert.match(app,/inventoryCategory=normalizeInventoryCategory\(event.target.value,inventory\)/);
+console.log("Inventory category filter: exact category, counts, empty state, default, all, and independent equipped preview passed");

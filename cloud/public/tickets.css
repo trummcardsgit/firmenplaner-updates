@@ -110,3 +110,11 @@
 .tp-bp-collapse[open]>.tp-bp-compact .tp-bp-compact-chevron{transform:rotate(180deg)}
 .tp-bp-collapse:not([open])>.tp-bp-compact{border-radius:12px}
 @media(max-width:480px){.tp-bp-collapse>.tp-bp-compact{padding:9px 10px;gap:7px}.tp-bp-compact-progress{font-size:.68rem}.tp-colleague-card-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Inventory categories: keep the equipped preview and gallery separate from the filtered collection. */
+.tp-inventory-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:12px 0 16px;padding:10px 12px;border:1px solid #805987;border-radius:9px;background:#31213f}
+.tp-inventory-filter label{font-weight:750;color:#f4c7ed;font-size:.85rem}
+.tp-inventory-filter select{flex:1;min-width:150px;max-width:380px;color:#fff;background:#251b35;border:1px solid #ad7cba;border-radius:7px;padding:9px 12px;font:inherit}
+.tp-inventory-filter small{color:#cbb8dc;font-variant-numeric:tabular-nums}
+.tp-inventory-empty{padding:16px 10px;color:#cbb8dc}
+@media(max-width:480px){.tp-inventory-filter label{width:100%}.tp-inventory-filter select{max-width:none;min-width:0;width:100%}.tp-inventory-filter small{width:100%}}
