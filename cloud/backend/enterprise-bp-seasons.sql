@@ -169,7 +169,7 @@ begin
  for r in select value from jsonb_array_elements(p_payload->'rewards') loop
  if (r->>'level')::integer not between 1 and levels or length(trim(r->>'name')) not between 1 and 80 or r->>'name' is null or r->>'rarity' not in ('common','rare','epic','legendary') or tp_private.bp_slot(r->>'kind') is null then raise exception 'Ungültige Belohnung';end if;
  img:=r->>'art';
- if img is not null then
+ if img is not null and img is distinct from ('./icons/bp-winter-'||(r->>'level')||'.svg') then
  if length(img)>220000 or img !~ '^data:image/webp;base64,[A-Za-z0-9+/]+={0,2}$' then raise exception 'Ungültige Grafik';end if;
  raw:=decode(split_part(img,',',2),'base64');if octet_length(raw)<24 or substring(raw from 1 for 4)<>convert_to('RIFF','UTF8') or substring(raw from 9 for 4)<>convert_to('WEBP','UTF8') then raise exception 'Ungültiges WebP-Bild';end if;
  end if;

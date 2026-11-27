@@ -1,7 +1,7 @@
-import {callingCardMarkup,equippedRewards,profileFrameLevel} from "./bp-inventory.js";
+import {callingCardMarkup,equippedRewards,profileFrameLevel,applyFrameArt} from "./bp-inventory.js";
 import {memberAvatarMarkup} from "./profile-avatar.js";
 const allowed={banner:[3,11,21,30],title:[2,4,8,9,13,16,19,23,24,28],frame:[5,10,17,20,26,27]};
-const valid=r=>r&&typeof r.owner_id==="string"&&r.owner_id.length>0&&r.season_id===1&&Object.hasOwn(allowed,r.slot)&&allowed[r.slot].includes(r.level)&&r.equipped===true&&typeof r.name==="string"&&typeof r.glyph==="string";
+const valid=r=>r&&typeof r.owner_id==="string"&&r.owner_id.length>0&&Number.isInteger(r.season_id)&&r.season_id>0&&Object.hasOwn(allowed,r.slot)&&Number.isInteger(r.level)&&r.level>=1&&r.level<=30&&(r.season_id!==1||allowed[r.slot].includes(r.level))&&r.equipped===true&&typeof r.name==="string"&&typeof r.glyph==="string";
 export function memberCosmeticsMap(rows){
  const map=new Map();for(const r of Array.isArray(rows)?rows:[]){if(!valid(r))continue;if(!map.has(r.owner_id))map.set(r.owner_id,[]);map.get(r.owner_id).push(r);}return new Map([...map].map(([id,items])=>[id,equippedRewards(items)]));
 }
@@ -10,7 +10,7 @@ export function cosmeticFrame(active){return profileFrameLevel(active);}
 export function paintMemberCosmetics(doc,map){
  for(const node of doc.querySelectorAll("[data-member-avatar]")){
   const frame=cosmeticFrame(map.get(node.dataset.memberAvatar));
-  if(frame)node.dataset.memberFrame=String(frame);else delete node.dataset.memberFrame;
+  if(frame)node.dataset.memberFrame=String(frame);else delete node.dataset.memberFrame;applyFrameArt(node,map.get(node.dataset.memberAvatar));
  }
  for(const node of doc.querySelectorAll("[data-member-label]")){
   const name=node.querySelector("[data-member-name]");if(!name)continue;
