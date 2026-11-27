@@ -204,7 +204,9 @@ async function load(){
  state.gameEvents=xpEvents.data||[];
  state.companies=a.data||[];
  state.entries=b.data||[];
- state.isAdmin=!!adminStatus.data;
+ const nextAdmin=!adminStatus.error&&adminStatus.data===true;
+ if(state.isAdmin!==nextAdmin){testArtLoaded=false;if(!nextAdmin)document.querySelectorAll('.tp-bp-test-tools').forEach(el=>el.remove());}
+ state.isAdmin=nextAdmin;
  await Promise.all([loadMenuPreferences(loadingUser),profile.load(loadingUser)]);
  if(state.user?.id!==loadingUser)return;
  if(new URLSearchParams(location.search).has("ticket"))state.view="tickets";
@@ -380,7 +382,7 @@ async function refreshCareerChallenges(uid){
  if(state.user?.id!==uid||request!==challengeRequest)return;
  if(inventoryReady)memberCosmetics.own(uid,inventory);
  if(state.view==="dashboard")replaceBattlePassTile(document,battlePass,challengeReady,profileInfo(state.user,state.members,state.gameProfile).name);
- if(state.view==="inventory"&&!inventoryBusy) $("content").innerHTML=inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null);
+ if(state.view==="inventory"&&!inventoryBusy) $("content").innerHTML=inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null,state.isAdmin);
 }
 function bpOpenKey(){return (cfg.staging?"rhtflow-test-":"rhtflow-")+"bp-expanded-"+state.user?.id;}
 function bpExpanded(){try{return localStorage.getItem(bpOpenKey())==="true";}catch{return false;}}
@@ -459,7 +461,7 @@ function render(){if(!state.user)return;profile.render();applyEquipment(document
 $("page-title").textContent=names[state.view];const menuArt=$("page-menu-art");if(menuArt&&Object.hasOwn(names,state.view)){const src="./icons/hd-"+state.view+".svg";if(menuArt.getAttribute("src")!==src)menuArt.src=src;}$("new-entry").style.display=["settings","solutions","projects","documents","career","tickets","statistics","inventory","admin"].includes(state.view)?"none":"block";
 // Keep the actual dialog DOM, including editor selection and FileList, during background refresh.
 if(state.view==="tickets"&&ticketCenter.hasOpenDialog()){applyMenu(document,menuPrefs,state.isAdmin,state.view);return;}
-$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
+$("content").innerHTML=state.view==="dashboard"?dashboard():state.view==="career"?careerPage(state.gameProfile,state.gameEvents,esc,fmt,trophyCabinet(trophyItems,trophyFilter,trophyCategory,trophyFavorites,trophyError,trophySound)+ticketAwardsPanel(state.ticketAwards,state.closedTickets)+showcaseMarkup()):state.view==="inventory"?inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null,state.isAdmin):state.view==="admin"?adminCenter.page():["tickets","statistics"].includes(state.view)?ticketCenter.page(state.view):state.view==="tasks"?entries("task"):state.view==="notes"?entries("note"):state.view==="solutions"?solutionResults():state.view==="projects"?features.projectsPage():state.view==="documents"?features.documentsPage():state.view==="companies"?companies():settings();
 if(state.view==="career"){bindTrophies();bindShowcases();syncShowcases();}
 if(state.view==="tickets"){const deep=new URLSearchParams(location.search).get("ticket");ticketCenter.open(deep||"");if(deep){const url=new URL(location.href);url.searchParams.delete("ticket");history.replaceState(null,"",url)}}
 if(state.view==="statistics")ticketCenter.open();
@@ -517,9 +519,9 @@ $("content").addEventListener("toggle",event=>{const target=event.target;if(targ
 $("content").addEventListener("change",async event=>{
  if(event.target.matches?.("[data-inventory-category]")&&state.view==="inventory"&&state.user){inventoryCategory=normalizeInventoryCategory(event.target.value,inventory);const section=$("tp-inventory-rewards");if(section){section.outerHTML=inventoryRewardsMarkup(inventory,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory);$("tp-inventory-category")?.focus();}return;}
  const input=event.target;if(!input.matches?.("[data-test-bp-art]"))return;
- const file=input.files?.[0];if(!file||!isTestBuild(cfg)||!testArt?.can_install||!state.user||state.view!=="inventory"||inventoryBusy||testArtBusy)return;
+ const file=input.files?.[0];if(!file||!isTestBuild(cfg)||!state.isAdmin||!testArt?.can_install||!state.user||state.view!=="inventory"||inventoryBusy||testArtBusy)return;
  const uid=state.user.id;testArtBusy=true;challengeRequest++;input.disabled=true;
- try{if(file.size>1200000)throw Error("Grafikpaket zu groß.");const cards=parseArtPack(await file.text());if(state.user?.id!==uid)return;const art=await installTestArt(db,cards);if(state.user?.id!==uid)return;testArt=art;testArtLoaded=true;applyPremiumArt(document,art);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt);notice("Premium-Visitenkarten auf TEST installiert.");}
+ try{if(file.size>1200000)throw Error("Grafikpaket zu groß.");const cards=parseArtPack(await file.text());if(state.user?.id!==uid||!state.isAdmin)return;const art=await installTestArt(db,cards);if(state.user?.id!==uid)return;testArt=art;testArtLoaded=true;applyPremiumArt(document,art);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,inventoryReady,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt,state.isAdmin);notice("Premium-Visitenkarten auf TEST installiert.");}
  catch(e){if(state.user?.id===uid)fail(e);}
  finally{if(state.user?.id===uid){testArtBusy=false;input.disabled=false;input.value="";}}
 });
@@ -527,9 +529,9 @@ $("content").addEventListener("click",async event=>{const b=event.target.closest
  if(b.hasAttribute("data-open-inventory")){nav("inventory");return;}
  if(b.hasAttribute("data-inventory-refresh")){if(!inventoryBusy&&!testArtBusy&&state.user){if(isTestBuild(cfg))testArtLoaded=false;await refreshCareerChallenges(state.user.id);}return;}
  if(b.hasAttribute("data-test-bp-preset")){
-  if(!isTestBuild(cfg)||!testArt?.can_install||!testArt?.test_unlocked||!state.user||inventoryBusy||testArtBusy||state.view!=="inventory")return;
+  if(!isTestBuild(cfg)||!state.isAdmin||!testArt?.can_install||!testArt?.test_unlocked||!state.user||inventoryBusy||testArtBusy||state.view!=="inventory")return;
   const uid=state.user.id;inventoryBusy=true;challengeRequest++;b.disabled=true;
-  try{const rows=await testPreset(db,b.dataset.testBpPreset);if(state.user?.id!==uid)return;inventory=rows;inventoryReady=true;memberCosmetics.own(uid,inventory);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,true,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt);notice("TEST-Ausrüstungsset aktiviert.");}
+  try{const rows=await testPreset(db,b.dataset.testBpPreset);if(state.user?.id!==uid)return;inventory=rows;inventoryReady=true;memberCosmetics.own(uid,inventory);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,true,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(testArt,state.isAdmin);notice("TEST-Ausrüstungsset aktiviert.");}
   finally{if(state.user?.id===uid){inventoryBusy=false;b.disabled=false;}}
   return;
  }
@@ -538,7 +540,7 @@ $("content").addEventListener("click",async event=>{const b=event.target.closest
   const uid=state.user.id,[season,level]=b.dataset.bpEquip.split(":").map(Number),equip=b.dataset.bpActive!=="true";
   if(!Number.isInteger(season)||!Number.isInteger(level))return;
   inventoryBusy=true;challengeRequest++;b.disabled=true;
-  try{const rows=await equipReward(db,season,level,equip);if(state.user?.id!==uid)return;inventory=rows;inventoryReady=true;memberCosmetics.own(uid,inventory);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,true,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null);notice(equip?"Belohnung ausgerüstet.":"Belohnung abgelegt.");}
+  try{const rows=await equipReward(db,season,level,equip);if(state.user?.id!==uid)return;inventory=rows;inventoryReady=true;memberCosmetics.own(uid,inventory);applyEquipment(document,inventory);if(state.view==="inventory")$("content").innerHTML=inventoryMarkup(inventory,true,profileInfo(state.user,state.members,state.gameProfile).name,inventoryCategory)+memberCosmetics.gallery(state.members,state.user.id)+testToolsMarkup(isTestBuild(cfg)?testArt:null,state.isAdmin);notice(equip?"Belohnung ausgerüstet.":"Belohnung abgelegt.");}
   finally{if(state.user?.id===uid){inventoryBusy=false;b.disabled=false;}}
   return;
  }
