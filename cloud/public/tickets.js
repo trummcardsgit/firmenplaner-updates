@@ -15,7 +15,7 @@ export function countActiveTickets(tickets,candidates,uid,category){
  return filterTickets(tickets,candidates,uid,category).filter(t=>t.status==="open"||t.status==="accepted").length;
 }
 export const ticketCategories=[["all","All Tickets"],["open","Open Tickets"],["my","My Tickets"]];
-export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,ticketOrder=()=>[],customizeOrder=()=>{},onCosmeticEvent=()=>{}}){
+export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,ticketOrder=()=>[],customizeOrder=()=>{}}){
  let data=null,tab="all",firm="",status="open",search="",busy=false,epoch=0,focusId="",polling=false,menuVisible=false,stats={days:"30",company:"",scope:"mine"};
  let preferences=new Map(),prefsReady=false,prefsSaving=false,prefsGeneration=0,restorePending=true;
  const pageSize=500;
@@ -156,7 +156,7 @@ export function createTicketCenter({db,userId,isAdmin,notice,fail,refreshApp,tic
  }
  async function call(fn,args,button){
   if(busy)return;busy=true;const u=uid();if(button)button.disabled=true;
-  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");if(fn==="tp_close_ticket"||fn==="tp_ticket_comment")onCosmeticEvent(fn==="tp_close_ticket"?"ticket-closed":"comment");if(["tp_import_ticket_task","tp_close_ticket","tp_publish_ticket_solution","tp_reassign_ticket"].includes(fn)&&refreshApp){await refreshApp();if(uid()===u&&root())await read()}else await read()}
+  try{const r=await db.rpc(fn,args);if(r.error)throw r.error;if(uid()!==u)return;document.getElementById("tp-ticket-dialog")?.close();notice("Ticket aktualisiert.");if(["tp_import_ticket_task","tp_close_ticket","tp_publish_ticket_solution","tp_reassign_ticket"].includes(fn)&&refreshApp){await refreshApp();if(uid()===u&&root())await read()}else await read()}
   catch(e){if(uid()===u){fail(e);if(fn==="tp_respond_ticket")await read().catch(error)}}
   finally{if(uid()===u){busy=false;if(button)button.disabled=false}}
  }

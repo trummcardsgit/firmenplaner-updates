@@ -12,7 +12,7 @@ import {createTaskProjectSelector} from "./task-projects.js";
 import {installDueDatePresets} from "./due-presets.js";
 import {careerCard,careerPage,playerRank} from "./game-progression.js";
 import {battlePassMarkup,readBattlePass,replaceBattlePassTile} from "./battlepass.js";
-import {inventoryMarkup,inventoryRewardsMarkup,normalizeInventoryCategory,readInventory,equipReward,applyEquipment,cosmeticFeedback} from "./bp-inventory.js";
+import {inventoryMarkup,inventoryRewardsMarkup,normalizeInventoryCategory,readInventory,equipReward,applyEquipment} from "./bp-inventory.js";
 let inventoryCategory="auto";
 import {createMemberCosmetics} from "./bp-member-cosmetics.js";
 import {isTestBuild,parseArtPack,applyPremiumArt,getTestArt,installTestArt,testPreset,testToolsMarkup} from "./bp-test-art.js";
@@ -101,7 +101,7 @@ async function loadMenuPreferences(uid){
   menuReady=true;
  }catch(e){if(state.user?.id===uid&&revision===menuRevision){menuReady=false;console.warn("Menüeinstellungen konnten nicht geladen werden",e);}}
 }
-const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load,ticketOrder:()=>menuPrefs.ticket_order,customizeOrder:()=>openMenuEditor(true),onCosmeticEvent:kind=>cosmeticFeedback(document,inventory,kind)});
+const ticketCenter=createTicketCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,refreshApp:load,ticketOrder:()=>menuPrefs.ticket_order,customizeOrder:()=>openMenuEditor(true)});
 const adminCenter=createAdminCenter({db,userId:()=>state.user?.id,isAdmin:()=>state.isAdmin,notice,fail,settingsPanel:()=>invitePanel(),cancelInvitation:async row=>{
  const {data:{session}}=await db.auth.getSession();
  if(!session?.access_token)throw new Error("Bitte neu anmelden.");

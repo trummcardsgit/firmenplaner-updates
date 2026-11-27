@@ -118,6 +118,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-inventory-integration.sql
           psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-member-cosmetics.sql
           psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-member-cosmetics-integration.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/backend/enterprise-bp-four-categories.sql
+          psql -v ON_ERROR_STOP=1 -f cloud/tests/bp-four-categories-integration.sql
 
   preview:
     needs: [checks, database, editor-browser]
