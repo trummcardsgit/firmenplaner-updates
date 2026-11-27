@@ -13,7 +13,7 @@ const m=ticketMetrics({tickets,events,times,scope:"mine",uid:"u",now});assert.eq
 assert.equal(careerChallenges(events,"u",now)[0].count,1);assert.equal(careerChallenges(events,"v",now)[0].count,0);
 assert.match(analyticsMarkup({tickets,events,times,companies:[{id:"c",name:"<script>"}]},"u",false,{days:"all",company:"",scope:"mine"},now),/&lt;script&gt;/);
 const dom=new JSDOM('<div id="tp-ticket-subnav"></div><main id="content"></main>');
-globalThis.document=dom.window.document;
+globalThis.document=dom.window.document;dom.window.HTMLDialogElement.prototype.close=function(){this.removeAttribute("open")};
 const data={tp_tickets:tickets,tp_ticket_candidates:candidates,tp_members:[{user_id:"u",active:true,display_name:"Test"}],tp_companies:[{id:"c",name:"Firma"}],tp_ticket_events:events,tp_ticket_time_sessions:times};
 const calls=[];const db={from(table){return {select(){return this},eq(){return this},order(){return this},async range(){return {data:data[table]||[]}}}},async rpc(fn,args){calls.push({fn,args});return {data:null}}};
 const timer=globalThis.setInterval;globalThis.setInterval=()=>0;const center=createTicketCenter({db,userId:()=>"u",isAdmin:()=>false,notice(){},fail(e){throw e}});globalThis.setInterval=timer;

@@ -8,7 +8,7 @@ create table public.tp_ticket_time_sessions(
  started_at timestamptz not null default clock_timestamp(),
  ended_at timestamptz,
  end_reason text,
- check((ended_at is null and end_reason is null) or (ended_at is not null and ended_at>=started_at and end_reason in ('pause','stop','automatic')))
+ check((ended_at is null and end_reason is null) or (ended_at is not null and ended_at>=started_at and end_reason is not null and end_reason in ('pause','stop','automatic')))
 );
 create unique index tp_ticket_one_running_timer on public.tp_ticket_time_sessions(owner_id) where ended_at is null;
 create index tp_ticket_time_ticket_owner on public.tp_ticket_time_sessions(ticket_id,owner_id,id desc);

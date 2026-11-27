@@ -29,7 +29,7 @@ export function ticketMetrics({tickets=[],events=[],times=[],from=-Infinity,to=I
  return {total:selected.length,counts,closed:closed.length,rate:selected.length?Math.round(closed.length/selected.length*100):0,avgSeconds:intervals.length?Math.round(intervals.reduce((a,b)=>a+b,0)/intervals.length/1000):null,tracked,months:[...groups].sort(([a],[b])=>a.localeCompare(b))};
 }
 export function analyticsMarkup(data,uid,admin,filters,now=Date.now()){
- const from=filters.days==="all"?-Infinity:now-Number(filters.days)*86400000,m=ticketMetrics({...data,from,to:now+1,company:filters.company,scope:filters.scope,uid,now});
+ const from=filters.days==="all"?-Infinity:now-Number(filters.days)*86400000,m=ticketMetrics({...data,times:admin?data.times:(data.times||[]).filter(r=>r.owner_id===uid),from,to:now+1,company:filters.company,scope:filters.scope,uid,now});
  const opt=(v,t,s)=>'<option value="'+esc(v)+'"'+(v===s?' selected':'')+'>'+esc(t)+'</option>';
  const card=(label,value)=>'<div class="tp21-metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';
  const max=Math.max(1,...Object.values(m.counts)),bar=(label,n,max)=>'<div class="tp21-chartrow"><span>'+esc(label)+'</span><progress max="'+max+'" value="'+n+'"></progress><b>'+n+'</b></div>';
